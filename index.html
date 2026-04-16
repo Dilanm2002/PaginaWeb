@@ -1159,6 +1159,7 @@
         <div class="mesa-field" id="campo-nombre-invitado" style="display:none">
           <label for="invitado-nombre">Tu nombre <span style="color:#dc2626">*</span></label>
           <input type="text" id="invitado-nombre" placeholder="Ej: María López" autocomplete="name" />
+          <span id="nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Por favor ingresa tu nombre para continuar.</span>
         </div>
         <div class="mesa-field">
           <label for="mesa-input">Número de Mesa</label>
@@ -1957,6 +1958,15 @@
       mesaQuienEl.innerHTML = '';
       campoInvitado.style.display = '';
       invitadoNombre.value = '';
+      invitadoNombre.style.borderColor = '';
+      const nombreError = document.getElementById('nombre-error');
+      if (nombreError) nombreError.style.display = 'none';
+      invitadoNombre.addEventListener('input', () => {
+        if (invitadoNombre.value.trim()) {
+          invitadoNombre.style.borderColor = '';
+          if (nombreError) nombreError.style.display = 'none';
+        }
+      }, { once: true });
     }
 
     mesaPreviewEl.innerHTML = `
@@ -1996,12 +2006,15 @@
       rol           = session.rol;
     } else {
       nombreUsuario = invitadoNombre.value.trim();
+      const nombreError = document.getElementById('nombre-error');
       if (!nombreUsuario) {
         invitadoNombre.style.borderColor = '#dc2626';
+        if (nombreError) nombreError.style.display = 'block';
         invitadoNombre.focus();
-        setTimeout(() => invitadoNombre.style.borderColor = '', 1500);
         return;
       }
+      invitadoNombre.style.borderColor = '';
+      if (nombreError) nombreError.style.display = 'none';
       rol = 'invitado';
     }
 
