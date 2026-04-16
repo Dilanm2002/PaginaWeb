@@ -1645,7 +1645,8 @@
   let meseroMesaTarget = null;
 
   function renderMesasActivas() {
-    const pedidos = leerCaja();
+    // Solo mostrar pedidos creados por el mesero, no de clientes/invitados
+    const pedidos = leerCaja().filter(p => p.rol === 'mesero');
     const seccion = document.getElementById('mesero-mesas-activas');
     const banner  = document.getElementById('mesero-target-banner');
     if (!seccion) return;
