@@ -1163,7 +1163,7 @@
         </div>
         <div class="mesa-field">
           <label for="mesa-input">Número de Mesa</label>
-          <input type="number" id="mesa-input" min="1" max="99" placeholder="Ej: 5" />
+          <input type="number" id="mesa-input" min="1" max="12" placeholder="Ej: 5" />
         </div>
         <div class="mesa-order-preview" id="mesa-preview"></div>
         <button id="btn-confirmar-mesa" class="btn-confirmar-mesa">✓ Enviar a Caja</button>
@@ -1994,7 +1994,7 @@
   btnConfirmarMesa.addEventListener('click', () => {
     const session = getSession();
     const mesa = Number(mesaInput.value.trim());
-    if (!mesa || mesa < 1) {
+    if (!mesa || mesa < 1 || mesa > 12) {
       mesaInput.style.borderColor = '#dc2626';
       mesaInput.focus();
       setTimeout(() => mesaInput.style.borderColor = '', 1500);
