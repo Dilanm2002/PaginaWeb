@@ -1777,8 +1777,8 @@
     }
     syncQtys();
 
-    // Popover ingredientes
-    grid.addEventListener('click', e => {
+    // Popover ingredientes (onclick reemplaza listener anterior, evita acumulación)
+    grid.onclick = e => {
       const infoBtn = e.target.closest('.mesero-info-btn');
       if (infoBtn) {
         e.stopPropagation();
@@ -1835,7 +1835,7 @@
       }
       syncQtys();
       renderCarrito();
-    });
+    };
 
     // Cerrar popover al hacer click fuera del grid
     document.addEventListener('click', () => {
