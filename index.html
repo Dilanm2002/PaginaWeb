@@ -566,6 +566,20 @@
     .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; }
     .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; }
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
+    .resumen-cards { display: none; flex-direction: column; gap: .65rem; }
+    .resumen-card {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: .75rem 1rem;
+    }
+    .resumen-card__head {
+      display: flex; justify-content: space-between; align-items: center;
+      margin-bottom: .4rem;
+    }
+    .resumen-card__mesa { font-weight: 700; font-size: .9rem; }
+    .resumen-card__total { font-weight: 800; color: var(--cinnamon); font-size: .95rem; }
+    .resumen-card__cliente { font-size: .78rem; color: var(--text-muted); margin-bottom: .35rem; }
+    .resumen-card__items { font-size: .8rem; color: var(--text); line-height: 1.5; }
+    .resumen-card__hora { font-size: .72rem; color: var(--text-muted); margin-top: .3rem; }
 
     /* ════════════════════════════════════════
        VISTA RÁPIDA MESERO
@@ -902,10 +916,8 @@
       .cajero-stats { gap: .5rem; }
       .cajero-stat__val { font-size: 1.2rem; }
       .resumen-kpis { grid-template-columns: 1fr 1fr; }
-      .resumen-tabla { font-size: .72rem; }
-      .resumen-tabla th, .resumen-tabla td { padding: .35rem .45rem; }
-      /* Ocultar columna Ítems en tabla para que quepa */
-      .resumen-tabla th:nth-child(3), .resumen-tabla td:nth-child(3) { display: none; }
+      .resumen-tabla { display: none; }
+      .resumen-cards { display: flex; }
 
       /* ── Mesero ── */
       .mesero-view { padding: 1.25rem 0 4rem; }
@@ -1537,6 +1549,7 @@
       return;
     }
 
+    const filas = [...historial].reverse();
     tablaEl.innerHTML = `
       <table class="resumen-tabla">
         <thead>
@@ -1549,7 +1562,7 @@
           </tr>
         </thead>
         <tbody>
-          ${[...historial].reverse().map(h => `
+          ${filas.map(h => `
             <tr>
               <td><strong>Mesa ${h.mesa}</strong></td>
               <td>${h.nombreUsuario}</td>
@@ -1558,7 +1571,19 @@
               <td class="td-total">$${h.total.toFixed(2)}</td>
             </tr>`).join('')}
         </tbody>
-      </table>`;
+      </table>
+      <div class="resumen-cards">
+        ${filas.map(h => `
+          <div class="resumen-card">
+            <div class="resumen-card__head">
+              <span class="resumen-card__mesa">Mesa ${h.mesa}</span>
+              <span class="resumen-card__total">$${h.total.toFixed(2)}</span>
+            </div>
+            <div class="resumen-card__cliente">${h.nombreUsuario}</div>
+            <div class="resumen-card__items">${h.items.map(i => `${i.cantidad}× ${i.nombre}`).join(' · ')}</div>
+            <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
+          </div>`).join('')}
+      </div>`;
   }
 
   function renderCajeroView() {
