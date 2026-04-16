@@ -2167,13 +2167,16 @@
       btnCaja.style.display = 'none';
 
       if (session.rol === 'mesero') {
-        // Vista rápida sin fotos
+        // Vista rápida sin fotos — limpiar carrito del cliente anterior
+        vaciarCarrito();
+        meseroMesaTarget = null;
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
         renderProductosMesero();
         renderCarrito();
       } else {
-        // Cliente / invitado: menú con fotos
+        // Cliente / invitado: menú con fotos — limpiar carrito del mesero anterior
+        vaciarCarrito();
         document.querySelector('.filter-bar-wrap').style.display = '';
         document.querySelector('.hero').style.display = '';
         grid.className = 'products-grid';
