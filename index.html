@@ -2007,9 +2007,15 @@
     } else {
       nombreUsuario = invitadoNombre.value.trim();
       const nombreError = document.getElementById('nombre-error');
-      if (!nombreUsuario) {
+      const nombreValido = nombreUsuario.length >= 2 && /[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]/.test(nombreUsuario);
+      if (!nombreValido) {
         invitadoNombre.style.borderColor = '#dc2626';
-        if (nombreError) nombreError.style.display = 'block';
+        if (nombreError) {
+          nombreError.textContent = !nombreUsuario
+            ? 'Por favor ingresa tu nombre para continuar.'
+            : 'Ingresa un nombre válido (solo letras).';
+          nombreError.style.display = 'block';
+        }
         invitadoNombre.focus();
         return;
       }
