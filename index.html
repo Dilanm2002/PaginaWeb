@@ -1157,8 +1157,8 @@
       <div class="mesa-modal-body">
         <div id="mesa-quien-info" class="mesa-quien"></div>
         <div class="mesa-field" id="campo-nombre-invitado" style="display:none">
-          <label for="invitado-nombre">Tu nombre</label>
-          <input type="text" id="invitado-nombre" placeholder="Ej: María López" />
+          <label for="invitado-nombre">Tu nombre <span style="color:#dc2626">*</span></label>
+          <input type="text" id="invitado-nombre" placeholder="Ej: María López" autocomplete="name" />
         </div>
         <div class="mesa-field">
           <label for="mesa-input">Número de Mesa</label>
@@ -1995,8 +1995,14 @@
       nombreUsuario = session.nombre;
       rol           = session.rol;
     } else {
-      nombreUsuario = invitadoNombre.value.trim() || 'Invitado';
-      rol           = 'invitado';
+      nombreUsuario = invitadoNombre.value.trim();
+      if (!nombreUsuario) {
+        invitadoNombre.style.borderColor = '#dc2626';
+        invitadoNombre.focus();
+        setTimeout(() => invitadoNombre.style.borderColor = '', 1500);
+        return;
+      }
+      rol = 'invitado';
     }
 
     const items = leerCarrito();
