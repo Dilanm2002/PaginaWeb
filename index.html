@@ -1382,7 +1382,7 @@
       mesa,
       nombreUsuario,
       rol,
-      items: items.map(i => ({ nombre:i.nombre, cantidad:i.cantidad, precio:i.precio })),
+      items: items.map(i => ({ id:i.id, nombre:i.nombre, cantidad:i.cantidad, precio:i.precio })),
       total: totales.total,
       hora: new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' })
     });
@@ -2172,6 +2172,7 @@
     vaciarCarrito();
     renderCarrito();
     renderCajeroView();
+    renderMesasActivas();
     cerrarModalMesa();
     cerrarCarrito();
     toast(`Pedido de Mesa ${mesa} enviado a caja 🎉`, 'success');
