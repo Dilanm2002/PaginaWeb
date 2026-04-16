@@ -124,6 +124,19 @@
     }
     .auth-error.visible { display: block; }
 
+    @media (max-width: 480px) {
+      .auth-backdrop { padding: .5rem; align-items: flex-end; }
+      .auth-box { border-radius: var(--radius) var(--radius) 0 0; max-height: 92vh; overflow-y: auto; }
+      .auth-header { padding: 1.25rem 1.25rem .9rem; }
+      .auth-logo { font-size: 1.6rem; }
+      .auth-body { padding: 1rem; }
+      .auth-field { margin-bottom: .75rem; }
+      /* grids de 2 columnas → 1 columna en móvil */
+      #tab-register > div[style*="grid-template-columns"] {
+        display: flex !important; flex-direction: column; gap: 0 !important;
+      }
+    }
+
     .btn-auth {
       width: 100%; padding: .8rem;
       background: var(--cinnamon); color: #fff;
@@ -959,17 +972,37 @@
         <!-- TAB REGISTRO -->
         <div id="tab-register" class="auth-form-panel">
           <div id="register-error" class="auth-error"></div>
-          <div class="auth-field">
-            <label for="reg-nombre">Nombre completo</label>
-            <input type="text" id="reg-nombre" placeholder="Ej: María López" autocomplete="name" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+            <div class="auth-field">
+              <label for="reg-nombre">Nombre <span style="color:#dc2626">*</span></label>
+              <input type="text" id="reg-nombre" placeholder="Ej: María" autocomplete="given-name" />
+            </div>
+            <div class="auth-field">
+              <label for="reg-apellido">Apellido <span style="color:#dc2626">*</span></label>
+              <input type="text" id="reg-apellido" placeholder="Ej: López" autocomplete="family-name" />
+            </div>
           </div>
           <div class="auth-field">
-            <label for="reg-usuario">Usuario</label>
+            <label for="reg-email">Correo electrónico <span style="color:#dc2626">*</span></label>
+            <input type="email" id="reg-email" placeholder="Ej: maria@gmail.com" autocomplete="email" />
+          </div>
+          <div class="auth-field">
+            <label for="reg-telefono">Teléfono <span style="color:#dc2626">*</span></label>
+            <input type="tel" id="reg-telefono" placeholder="Ej: 0991234567" autocomplete="tel" maxlength="15" />
+          </div>
+          <div class="auth-field">
+            <label for="reg-usuario">Usuario <span style="color:#dc2626">*</span></label>
             <input type="text" id="reg-usuario" placeholder="Ej: maria123" autocomplete="username" />
           </div>
-          <div class="auth-field">
-            <label for="reg-password">Contraseña</label>
-            <input type="password" id="reg-password" placeholder="Mínimo 4 caracteres" autocomplete="new-password" />
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
+            <div class="auth-field">
+              <label for="reg-password">Contraseña <span style="color:#dc2626">*</span></label>
+              <input type="password" id="reg-password" placeholder="Mín. 4 caracteres" autocomplete="new-password" />
+            </div>
+            <div class="auth-field">
+              <label for="reg-password2">Confirmar <span style="color:#dc2626">*</span></label>
+              <input type="password" id="reg-password2" placeholder="Repite la clave" autocomplete="new-password" />
+            </div>
           </div>
           <button class="btn-auth" id="btn-register">Crear cuenta</button>
         </div>
@@ -1234,11 +1267,12 @@
     const users = leerUsuarios();
     return users.find(u => u.usuario === usuario && u.password === password) ?? null;
   }
-  function registrar(nombre, usuario, password, rol) {
+  function registrar(nombre, apellido, email, telefono, usuario, password, rol) {
     const users = leerUsuarios();
     if (users.find(u => u.usuario === usuario)) return { ok: false, msg: 'Ese nombre de usuario ya existe.' };
+    if (users.find(u => u.email === email)) return { ok: false, msg: 'Ya existe una cuenta con ese correo.' };
     if (password.length < 4) return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
-    const nuevo = { id: Date.now(), nombre, usuario, password, rol };
+    const nuevo = { id: Date.now(), nombre, apellido, email, telefono, usuario, password, rol };
     users.push(nuevo);
     localStorage.setItem(LS_USERS, JSON.stringify(users));
     return { ok: true, user: nuevo };
@@ -2125,16 +2159,56 @@
   });
 
   document.getElementById('btn-register').addEventListener('click', () => {
-    const nombre   = document.getElementById('reg-nombre').value.trim();
-    const usuario  = document.getElementById('reg-usuario').value.trim();
-    const password = document.getElementById('reg-password').value;
-    const rol      = 'usuario';
-    const errEl    = document.getElementById('register-error');
+    const nombre    = document.getElementById('reg-nombre').value.trim();
+    const apellido  = document.getElementById('reg-apellido').value.trim();
+    const email     = document.getElementById('reg-email').value.trim();
+    const telefono  = document.getElementById('reg-telefono').value.trim();
+    const usuario   = document.getElementById('reg-usuario').value.trim();
+    const password  = document.getElementById('reg-password').value;
+    const password2 = document.getElementById('reg-password2').value;
+    const rol       = 'usuario';
+    const errEl     = document.getElementById('register-error');
 
-    if (!nombre || !usuario || !password) { errEl.textContent = 'Completa todos los campos.'; errEl.classList.add('visible'); return; }
-    const res = registrar(nombre, usuario, password, rol);
-    if (!res.ok) { errEl.textContent = res.msg; errEl.classList.add('visible'); return; }
-    errEl.classList.remove('visible');
+    const campos = ['reg-nombre','reg-apellido','reg-email','reg-telefono','reg-usuario','reg-password','reg-password2'];
+    campos.forEach(id => { document.getElementById(id).style.borderColor = ''; });
+
+    const markInvalid = (id, msg) => {
+      document.getElementById(id).style.borderColor = '#dc2626';
+      document.getElementById(id).focus();
+      errEl.textContent = msg; errEl.classList.add('visible');
+    };
+    const show = msg => { errEl.textContent = msg; errEl.classList.add('visible'); };
+
+    if (!nombre || !apellido || !email || !telefono || !usuario || !password || !password2) {
+      campos.forEach(id => {
+        if (!document.getElementById(id).value.trim()) document.getElementById(id).style.borderColor = '#dc2626';
+      });
+      return show('Completa todos los campos obligatorios.');
+    }
+    if (!/^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]{2,}$/.test(nombre)) {
+      return markInvalid('reg-nombre', 'El nombre solo puede contener letras (mín. 2 caracteres).');
+    }
+    if (!/^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]{2,}$/.test(apellido)) {
+      return markInvalid('reg-apellido', 'El apellido solo puede contener letras (mín. 2 caracteres).');
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      return markInvalid('reg-email', 'Ingresa un correo electrónico válido.');
+    }
+    if (!/^(09\d{8}|0[2-7]\d{7})$/.test(telefono)) {
+      return markInvalid('reg-telefono', 'Teléfono inválido. Usa formato ecuatoriano (ej: 0991234567).');
+    }
+    if (usuario.length < 3) {
+      return markInvalid('reg-usuario', 'El usuario debe tener al menos 3 caracteres.');
+    }
+    if (password !== password2) {
+      document.getElementById('reg-password').style.borderColor = '#dc2626';
+      document.getElementById('reg-password2').style.borderColor = '#dc2626';
+      return show('Las contraseñas no coinciden.');
+    }
+
+    const res = registrar(nombre, apellido, email, telefono, usuario, password, rol);
+    if (!res.ok) { show(res.msg); return; }
+    limpiarFormAuth();
     setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });
     aplicarSesion();
   });
@@ -2230,14 +2304,37 @@
   ══════════════════════════════════════════════════ */
   seedUsers();
 
+  function limpiarFormAuth() {
+    ['login-usuario','login-password'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.style.borderColor = ''; }
+    });
+    const loginErr = document.getElementById('login-error');
+    if (loginErr) loginErr.classList.remove('visible');
+
+    ['reg-nombre','reg-apellido','reg-email','reg-telefono','reg-usuario','reg-password','reg-password2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) { el.value = ''; el.style.borderColor = ''; }
+    });
+    const regErr = document.getElementById('register-error');
+    if (regErr) { regErr.textContent = ''; regErr.classList.remove('visible'); }
+
+    // Volver al tab de login por defecto
+    document.querySelectorAll('.auth-tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.auth-form-panel').forEach(p => p.classList.remove('active'));
+    document.querySelector('.auth-tab[data-tab="login"]').classList.add('active');
+    document.getElementById('tab-login').classList.add('active');
+  }
+
   // Botón "Iniciar Sesión" en header → abre modal
   document.getElementById('btn-abrir-auth').addEventListener('click', () => {
+    limpiarFormAuth();
     authBackdrop.classList.add('open');
   });
 
   // Cerrar modal al hacer click en el backdrop (fuera del cuadro)
   authBackdrop.addEventListener('click', (e) => {
-    if (e.target === authBackdrop) authBackdrop.classList.remove('open');
+    if (e.target === authBackdrop) { limpiarFormAuth(); authBackdrop.classList.remove('open'); }
   });
 
   const sesionActual = getSession();
