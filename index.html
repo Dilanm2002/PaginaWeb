@@ -566,20 +566,51 @@
     .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; }
     .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; }
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
-    .resumen-cards { display: none; flex-direction: column; gap: .65rem; }
+    .resumen-cards { display: none; flex-direction: column; gap: .75rem; }
     .resumen-card {
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: .75rem 1rem;
+      background: var(--white);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      overflow: hidden;
+      box-shadow: 0 2px 8px rgba(20,8,2,.06);
     }
     .resumen-card__head {
       display: flex; justify-content: space-between; align-items: center;
-      margin-bottom: .4rem;
+      background: var(--brown-dark);
+      padding: .6rem 1rem;
     }
-    .resumen-card__mesa { font-weight: 700; font-size: .9rem; }
-    .resumen-card__total { font-weight: 800; color: var(--cinnamon); font-size: .95rem; }
-    .resumen-card__cliente { font-size: .78rem; color: var(--text-muted); margin-bottom: .35rem; }
-    .resumen-card__items { font-size: .8rem; color: var(--text); line-height: 1.5; }
-    .resumen-card__hora { font-size: .72rem; color: var(--text-muted); margin-top: .3rem; }
+    .resumen-card__mesa {
+      font-weight: 700; font-size: .88rem;
+      color: var(--cream); letter-spacing: .02em;
+    }
+    .resumen-card__total {
+      font-weight: 800; color: var(--cinnamon-lt); font-size: 1rem;
+    }
+    .resumen-card__body { padding: .7rem 1rem .75rem; }
+    .resumen-card__cliente {
+      display: flex; align-items: center; gap: .35rem;
+      font-size: .78rem; font-weight: 600;
+      color: var(--text-muted); margin-bottom: .5rem;
+    }
+    .resumen-card__items {
+      font-size: .8rem; color: var(--text); line-height: 1.6;
+      background: var(--cream); border-radius: var(--radius-sm);
+      padding: .45rem .65rem;
+    }
+    .resumen-card__item-row {
+      display: flex; align-items: baseline; gap: .4rem;
+    }
+    .resumen-card__item-qty {
+      font-weight: 700; color: var(--cinnamon);
+      min-width: 1.4rem; font-size: .75rem;
+    }
+    .resumen-card__hora {
+      display: flex; align-items: center; gap: .3rem;
+      font-size: .72rem; color: var(--text-muted); margin-top: .55rem;
+    }
+    .resumen-card__hora::before {
+      content: '🕐'; font-size: .7rem;
+    }
 
     /* ════════════════════════════════════════
        VISTA RÁPIDA MESERO
@@ -1579,9 +1610,20 @@
               <span class="resumen-card__mesa">Mesa ${h.mesa}</span>
               <span class="resumen-card__total">$${h.total.toFixed(2)}</span>
             </div>
-            <div class="resumen-card__cliente">${h.nombreUsuario}</div>
-            <div class="resumen-card__items">${h.items.map(i => `${i.cantidad}× ${i.nombre}`).join(' · ')}</div>
-            <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
+            <div class="resumen-card__body">
+              <div class="resumen-card__cliente">
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${h.nombreUsuario.charAt(0).toUpperCase()}</span>
+                ${h.nombreUsuario}
+              </div>
+              <div class="resumen-card__items">
+                ${h.items.map(i => `
+                  <div class="resumen-card__item-row">
+                    <span class="resumen-card__item-qty">${i.cantidad}×</span>
+                    <span>${i.nombre}</span>
+                  </div>`).join('')}
+              </div>
+              <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
+            </div>
           </div>`).join('')}
       </div>`;
   }
