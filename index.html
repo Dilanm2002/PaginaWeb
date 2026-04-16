@@ -817,13 +817,78 @@
     /* ════════════════════════════════════════
        RESPONSIVE
     ════════════════════════════════════════ */
+
+    /* Toasts más pequeños en móvil */
+    @media (max-width: 768px) {
+      .toast {
+        font-size: .82rem; padding: .65rem 1.1rem;
+        max-width: calc(100vw - 2rem); white-space: normal;
+      }
+      #toast-container { bottom: 1rem; width: calc(100% - 2rem); left: 1rem; transform: none; }
+    }
+
     @media (max-width: 600px) {
+      /* Header compacto */
       .main-nav { display: none; }
-      .hero { padding: 3.5rem 0 3rem; }
+      .site-header .wrap { padding-block: .75rem; gap: .5rem; flex-wrap: nowrap; }
+      .logo-sub { display: none; }
+      .logo-text { font-size: 1.25rem; }
+      .logo-icon { width: 34px; height: 34px; font-size: 1rem; }
+      .user-chip__rol { display: none; }
+      .user-chip__name { font-size: .75rem; }
+      .user-chip__avatar { width: 28px; height: 28px; font-size: .75rem; }
+      .btn-logout { font-size: .7rem; padding: .28rem .5rem; }
+
+      /* Hero */
+      .hero { padding: 2.5rem 0 2rem; }
+      .hero-title { font-size: 2.4rem; }
+
+      /* Filter bar */
       .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .25rem; }
       .filter-bar::-webkit-scrollbar { height: 3px; }
       .filter-bar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); }
+      .filter-btn { font-size: .75rem; padding: .35rem .75rem; white-space: nowrap; }
+
+      /* Productos */
+      .products-grid { grid-template-columns: 1fr; gap: 1rem; }
+
+      /* Carrito panel */
+      .cart-panel { width: 100%; max-width: 100%; }
+
+      /* Cajero */
       .cajero-grid { grid-template-columns: 1fr; }
+      .cajero-header { flex-direction: column; align-items: flex-start; gap: .75rem; }
+      .cajero-stats { gap: .5rem; }
+      .cajero-stat__val { font-size: 1.2rem; }
+
+      /* Resumen del día */
+      .resumen-kpis { grid-template-columns: 1fr 1fr; }
+      .resumen-tabla th, .resumen-tabla td { padding: .4rem .5rem; font-size: .75rem; }
+
+      /* Mesero — popover ingredientes: evitar que se corte */
+      .mesero-ing-pop {
+        position: fixed;
+        bottom: auto; right: auto; left: 1rem;
+        top: 50%; transform: translateY(-50%);
+        width: calc(100vw - 2rem);
+        white-space: normal;
+        z-index: 9999;
+      }
+      .mesero-ing-pop.visible { transform: translateY(-50%); }
+      .mesero-ing-pop::after { display: none; }
+
+      /* Mesero — filas más compactas */
+      .mesero-row { padding: .6rem .75rem; gap: .5rem; }
+      .mesero-row__name { font-size: .88rem; }
+      .mesero-row__price { font-size: .82rem; min-width: 48px; }
+
+      /* Mesas activas mesero */
+      .mesero-mesas-list { gap: .4rem; }
+      .mesero-mesa-card { font-size: .78rem; padding: .45rem .7rem; }
+      .mesero-mesa-target { font-size: .78rem; flex-direction: column; align-items: flex-start; gap: .35rem; }
+
+      /* Modal confirmar pedido */
+      .mesa-box { margin: .75rem; }
     }
   </style>
 </head>
