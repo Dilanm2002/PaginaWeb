@@ -67,6 +67,7 @@
       background: var(--brown-dark);
       padding: 1.75rem 1.5rem 1.25rem;
       text-align: center;
+      position: relative;
     }
     .auth-logo {
       font-family: 'Dancing Script', cursive;
@@ -125,21 +126,22 @@
     .auth-error.visible { display: block; }
 
     @media (max-width: 480px) {
-      .auth-backdrop { padding: .75rem; align-items: center; }
+      .auth-backdrop { padding: .6rem; align-items: center; }
       .auth-box {
         border-radius: var(--radius);
-        max-height: 88vh;
+        max-height: 85vh;
         overflow-y: auto;
         -webkit-overflow-scrolling: touch;
       }
-      .auth-header { padding: 1rem 1.25rem .75rem; }
-      .auth-logo { font-size: 1.5rem; }
-      .auth-subtitle { font-size: .7rem; }
-      .auth-body { padding: .9rem; }
-      .auth-field { margin-bottom: .65rem; }
-      .auth-field label { font-size: .72rem; margin-bottom: .25rem; }
-      .auth-field input { padding: .65rem .8rem; font-size: .92rem; }
-      .btn-auth { padding: .7rem; font-size: .95rem; }
+      .auth-header { padding: .75rem 1.25rem .6rem; }
+      .auth-logo { font-size: 1.3rem; }
+      .auth-subtitle { display: none; }
+      .auth-body { padding: .75rem; }
+      .auth-field { margin-bottom: .45rem; }
+      .auth-field label { font-size: .7rem; margin-bottom: .2rem; }
+      .auth-field input { padding: .5rem .75rem; font-size: .88rem; }
+      .auth-error { padding: .4rem .65rem; font-size: .78rem; margin-bottom: .5rem; }
+      .btn-auth { padding: .6rem; font-size: .92rem; margin-top: .25rem; }
       /* grids de 2 columnas → 1 columna en móvil */
       #tab-register > div[style*="grid-template-columns"] {
         display: flex !important; flex-direction: column; gap: 0 !important;
@@ -953,6 +955,7 @@
   <div id="auth-backdrop" class="auth-backdrop">
     <div class="auth-box">
       <div class="auth-header">
+        <button id="btn-cerrar-auth" aria-label="Cerrar" style="position:absolute;top:.6rem;right:.6rem;background:rgba(255,255,255,.15);border:none;color:var(--cream);width:28px;height:28px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&#x2715;</button>
         <div class="auth-logo">Sal <span>y</span> Canela</div>
         <div class="auth-subtitle">Restaurante Artesanal</div>
       </div>
@@ -2344,6 +2347,10 @@
   // Cerrar modal al hacer click en el backdrop (fuera del cuadro)
   authBackdrop.addEventListener('click', (e) => {
     if (e.target === authBackdrop) { limpiarFormAuth(); authBackdrop.classList.remove('open'); }
+  });
+
+  document.getElementById('btn-cerrar-auth').addEventListener('click', () => {
+    limpiarFormAuth(); authBackdrop.classList.remove('open');
   });
 
   const sesionActual = getSession();
