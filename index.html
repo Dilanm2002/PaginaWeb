@@ -905,6 +905,17 @@
       .mesero-ing-pop.visible { transform: translateY(-50%); opacity: 1; }
       .mesero-ing-pop::after { display: none; }
 
+      /* ── Header: forzar una sola fila sin desbordarse ── */
+      .site-header .wrap > div[style] {
+        flex-wrap: nowrap !important;
+        gap: .35rem !important;
+      }
+      /* Ocultar texto "Mi Orden", solo mostrar ícono + badge */
+      .cart-btn-label { display: none; }
+      .cart-btn { padding: .38rem .5rem; gap: .2rem; }
+      /* Ocultar texto "Iniciar Sesión", solo mostrar icono-like */
+      #btn-abrir-auth { font-size: .68rem; padding: .28rem .45rem; }
+
       /* ── Modal pedido ── */
       .mesa-box { margin: .75rem; }
       .mesa-modal-head { padding: .85rem 1rem; }
@@ -1008,7 +1019,7 @@
             <line x1="3" y1="6" x2="21" y2="6"/>
             <path d="M16 10a4 4 0 01-8 0"/>
           </svg>
-          Mi Orden
+          <span class="cart-btn-label">Mi Orden</span>
           <span id="cart-count" class="cart-count" aria-live="polite">0</span>
         </button>
 
