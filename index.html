@@ -2095,7 +2095,9 @@
 
     mesaBackdrop.classList.add('open');
     mesaBackdrop.setAttribute('aria-hidden','false');
-    mesaInput.focus();
+    // Enfocar nombre si es invitado, sino la mesa
+    const campoNombreVisible = campoInvitado && campoInvitado.style.display !== 'none';
+    setTimeout(() => { (campoNombreVisible ? invitadoNombre : mesaInput).focus(); }, 50);
   }
   function cerrarModalMesa() {
     mesaBackdrop.classList.remove('open');
