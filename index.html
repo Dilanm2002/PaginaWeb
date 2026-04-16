@@ -828,67 +828,87 @@
     }
 
     @media (max-width: 600px) {
-      /* Header compacto */
+
+      /* ── Header ── */
       .main-nav { display: none; }
-      .site-header .wrap { padding-block: .75rem; gap: .5rem; flex-wrap: nowrap; }
+      .site-header .wrap { padding-block: .65rem; gap: .4rem; flex-wrap: nowrap; }
       .logo-sub { display: none; }
-      .logo-text { font-size: 1.25rem; }
-      .logo-icon { width: 34px; height: 34px; font-size: 1rem; }
+      .logo-text { font-size: 1.2rem; }
+      .logo-icon { width: 32px; height: 32px; font-size: .95rem; }
+      /* Botones derecha más compactos */
+      .cart-btn { padding: .4rem .65rem; font-size: .78rem; gap: .3rem; }
+      .cart-btn svg { width: 15px; height: 15px; }
+      .caja-btn { padding: .4rem .65rem; font-size: .78rem; }
+      .btn-logout { font-size: .68rem; padding: .28rem .5rem; }
+      /* Chip usuario compacto */
+      .user-chip { gap: .35rem; }
+      .user-chip__avatar { width: 26px; height: 26px; font-size: .72rem; flex-shrink: 0; }
       .user-chip__rol { display: none; }
-      .user-chip__name { font-size: .75rem; }
-      .user-chip__avatar { width: 28px; height: 28px; font-size: .75rem; }
-      .btn-logout { font-size: .7rem; padding: .28rem .5rem; }
+      .user-chip__name { font-size: .72rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-      /* Hero */
-      .hero { padding: 2.5rem 0 2rem; }
-      .hero-title { font-size: 2.4rem; }
+      /* ── Hero ── */
+      .hero { padding: 2rem 0 1.75rem; }
+      .hero h1 { font-size: 2.2rem; margin-bottom: .6rem; }
+      .hero p { font-size: .88rem; }
+      .hero-label { font-size: .7rem; margin-bottom: .5rem; }
 
-      /* Filter bar */
-      .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .25rem; }
+      /* ── Filter bar ── */
+      .filter-bar-wrap { top: 54px; }
+      .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .25rem; gap: .35rem; }
       .filter-bar::-webkit-scrollbar { height: 3px; }
       .filter-bar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); }
-      .filter-btn { font-size: .75rem; padding: .35rem .75rem; white-space: nowrap; }
+      .filter-btn { font-size: .73rem; padding: .3rem .7rem; white-space: nowrap; }
 
-      /* Productos */
-      .products-grid { grid-template-columns: 1fr; gap: 1rem; }
+      /* ── Menú productos ── */
+      section#menu { padding: 2rem 0 3rem; }
+      .section-title { font-size: 1.4rem; margin-bottom: 1.25rem; }
+      .products-grid { grid-template-columns: 1fr; gap: .85rem; }
+      .product-card__img { height: 170px; }
+      .product-card__body { padding: .85rem; }
+      .product-card__name { font-size: .95rem; }
+      .product-card__desc { font-size: .78rem; -webkit-line-clamp: 2; line-clamp: 2; }
+      .product-card__price { font-size: 1rem; }
 
-      /* Carrito panel */
+      /* ── Carrito panel ── */
       .cart-panel { width: 100%; max-width: 100%; }
 
-      /* Cajero */
+      /* ── Cajero ── */
       .cajero-grid { grid-template-columns: 1fr; }
       .cajero-header { flex-direction: column; align-items: flex-start; gap: .75rem; }
       .cajero-stats { gap: .5rem; }
       .cajero-stat__val { font-size: 1.2rem; }
-
-      /* Resumen del día */
       .resumen-kpis { grid-template-columns: 1fr 1fr; }
-      .resumen-tabla th, .resumen-tabla td { padding: .4rem .5rem; font-size: .75rem; }
+      .resumen-tabla { font-size: .72rem; }
+      .resumen-tabla th, .resumen-tabla td { padding: .35rem .45rem; }
+      /* Ocultar columna Ítems en tabla para que quepa */
+      .resumen-tabla th:nth-child(3), .resumen-tabla td:nth-child(3) { display: none; }
 
-      /* Mesero — popover ingredientes: evitar que se corte */
+      /* ── Mesero ── */
+      .mesero-view { padding: 1.25rem 0 4rem; }
+      .mesero-mesas-title { font-size: .68rem; }
+      .mesero-mesas-list { gap: .35rem; }
+      .mesero-mesa-card { font-size: .76rem; padding: .4rem .65rem; }
+      .mesero-mesa-target { font-size: .76rem; flex-wrap: wrap; gap: .3rem; }
+      .mesero-cat-title { font-size: .68rem; padding: .4rem .75rem; }
+      .mesero-row { padding: .55rem .75rem; gap: .4rem; }
+      .mesero-row__name { font-size: .85rem; }
+      .mesero-row__price { font-size: .8rem; min-width: 44px; }
+      .mesero-qty__btn { width: 28px; height: 28px; font-size: .95rem; }
+      .mesero-qty__val { font-size: .85rem; min-width: 18px; }
+
+      /* Popover ingredientes: centrado en pantalla para no cortarse */
       .mesero-ing-pop {
-        position: fixed;
-        bottom: auto; right: auto; left: 1rem;
-        top: 50%; transform: translateY(-50%);
-        width: calc(100vw - 2rem);
-        white-space: normal;
-        z-index: 9999;
+        position: fixed; left: 1rem; right: 1rem;
+        bottom: auto; top: 50%; transform: translateY(-50%);
+        width: auto; white-space: normal; z-index: 9999;
       }
-      .mesero-ing-pop.visible { transform: translateY(-50%); }
+      .mesero-ing-pop.visible { transform: translateY(-50%); opacity: 1; }
       .mesero-ing-pop::after { display: none; }
 
-      /* Mesero — filas más compactas */
-      .mesero-row { padding: .6rem .75rem; gap: .5rem; }
-      .mesero-row__name { font-size: .88rem; }
-      .mesero-row__price { font-size: .82rem; min-width: 48px; }
-
-      /* Mesas activas mesero */
-      .mesero-mesas-list { gap: .4rem; }
-      .mesero-mesa-card { font-size: .78rem; padding: .45rem .7rem; }
-      .mesero-mesa-target { font-size: .78rem; flex-direction: column; align-items: flex-start; gap: .35rem; }
-
-      /* Modal confirmar pedido */
+      /* ── Modal pedido ── */
       .mesa-box { margin: .75rem; }
+      .mesa-modal-head { padding: .85rem 1rem; }
+      .mesa-modal-body { padding: 1rem; }
     }
   </style>
 </head>
