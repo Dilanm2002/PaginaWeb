@@ -569,10 +569,12 @@
     .btn-add-gasto {
       padding: .55rem 1.1rem; background: var(--cinnamon); color: #fff;
       border: none; border-radius: var(--radius-sm); font-size: .88rem;
-      font-weight: 700; cursor: pointer; transition: background .2s; white-space: nowrap;
-      align-self: end;
+      font-weight: 700; cursor: pointer; white-space: nowrap; align-self: end;
+      transition: background .2s, transform .15s, box-shadow .15s;
+      box-shadow: 0 3px 10px rgba(200,86,26,.35);
     }
-    .btn-add-gasto:hover { background: var(--brown-dark); }
+    .btn-add-gasto:hover  { background: var(--brown-dark); box-shadow: 0 4px 14px rgba(59,26,8,.35); }
+    .btn-add-gasto:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(200,86,26,.2); }
     .gastos-resumen {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: .85rem; margin-bottom: 1.5rem;
@@ -609,9 +611,8 @@
     .gasto-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
     .gastos-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
     @media (max-width: 600px) {
-      .gastos-tabla .td-hora { display: none; }
-    }
-    @media (max-width: 600px) {
+      .gastos-tabla .td-hora,
+      .gastos-tabla th:nth-child(2) { display: none; }
       .gastos-form { grid-template-columns: 1fr; }
       .gastos-resumen { grid-template-columns: 1fr 1fr; }
     }
