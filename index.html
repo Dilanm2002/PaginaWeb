@@ -442,6 +442,7 @@
     .cajero-order-card {
       background: var(--white); border: 1px solid var(--border);
       border-radius: var(--radius); overflow: hidden; box-shadow: var(--shadow);
+      display: flex; flex-direction: column;
     }
     .cajero-order-card__head {
       padding: .85rem 1.1rem;
@@ -468,7 +469,7 @@
 
     .cajero-order-time { font-size: .72rem; color: var(--text-muted); white-space: nowrap; margin-top: .1rem; }
 
-    .cajero-order-items { padding: .65rem 1.1rem; }
+    .cajero-order-items { padding: .65rem 1.1rem; flex: 1; }
     .cajero-order-item {
       display: flex; align-items: center; gap: .5rem;
       font-size: .84rem; padding: .4rem 0; border-bottom: 1px solid var(--border);
