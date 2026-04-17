@@ -578,18 +578,33 @@
     .btn-add-gasto:active { transform: scale(.96); box-shadow: 0 1px 4px rgba(200,86,26,.2); }
     .gastos-resumen {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-      gap: .85rem; margin-bottom: 1.5rem;
+      gap: .9rem; margin-top: 1rem;
     }
+    .gastos-tabla .td-desc { font-weight: 500; color: var(--text); }
     .gastos-kpi {
       background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: 1rem 1.1rem;
-      display: flex; flex-direction: column; gap: .2rem;
+      border-radius: var(--radius); padding: 1.1rem 1.2rem 1rem;
+      display: flex; flex-direction: column; gap: .25rem;
+      box-shadow: 0 2px 10px rgba(59,26,8,.06);
+      position: relative; overflow: hidden;
+      transition: transform .15s, box-shadow .15s;
     }
-    .gastos-kpi__val { font-size: 1.5rem; font-weight: 800; }
+    .gastos-kpi:hover { transform: translateY(-2px); box-shadow: 0 6px 18px rgba(59,26,8,.1); }
+    .gastos-kpi::before {
+      content: ''; position: absolute; top: 0; left: 0; right: 0;
+      height: 3px;
+    }
+    .gastos-kpi:nth-child(1)::before { background: var(--cinnamon); }
+    .gastos-kpi:nth-child(2)::before { background: #dc2626; }
+    .gastos-kpi:nth-child(3)::before { background: #16a34a; }
+    .gastos-kpi__lbl {
+      font-size: .68rem; font-weight: 700; text-transform: uppercase;
+      letter-spacing: .08em; color: var(--text-muted); margin-bottom: .2rem;
+    }
+    .gastos-kpi__val { font-size: 1.6rem; font-weight: 800; line-height: 1.1; }
     .gastos-kpi__val.green { color: #16a34a; }
     .gastos-kpi__val.red   { color: #dc2626; }
     .gastos-kpi__val.neutral { color: var(--cinnamon); }
-    .gastos-kpi__lbl { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
     .gastos-tabla { width: 100%; border-collapse: collapse; font-size: .83rem; }
     .gastos-tabla th {
       background: var(--brown-dark); color: var(--cream);
@@ -611,13 +626,28 @@
     }
     .gasto-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
     .gastos-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
+    .gastos-resumen-title {
+      display: flex; align-items: center; gap: .5rem;
+      font-size: .75rem; font-weight: 700; color: var(--brown-dark);
+      text-transform: uppercase; letter-spacing: .09em;
+      margin-top: 2rem; margin-bottom: .85rem;
+      padding-top: 1.5rem; border-top: 2px solid var(--border);
+    }
+    .gastos-resumen-title::before {
+      content: ''; display: inline-block; width: 3px; height: .85em;
+      background: var(--cinnamon); border-radius: 2px; flex-shrink: 0;
+    }
     @media (max-width: 600px) {
       .gastos-tabla { font-size: .75rem; }
       .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }
       .gastos-tabla th:nth-child(3), .gastos-tabla td:nth-child(3) { display: none; }
-      .gastos-form { flex-direction: column; }
-      .gastos-form-field.gastos-form-monto { flex: 1; }
-      .gastos-resumen { grid-template-columns: 1fr 1fr; }
+      .gastos-form { flex-wrap: wrap; }
+      .gastos-form-field { flex: 1 1 100%; }
+      .gastos-form-field.gastos-form-monto { flex: 1 1 auto; min-width: 110px; }
+      .btn-add-gasto { flex: 0 0 auto; width: auto; }
+      .gastos-resumen { grid-template-columns: repeat(3, 1fr); }
+      .gastos-kpi { padding: .75rem .7rem; }
+      .gastos-kpi__val { font-size: 1.2rem; }
     }
     .resumen-kpis {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
@@ -1327,9 +1357,6 @@
             Control de Gastos
           </div>
 
-          <!-- Resumen financiero del día -->
-          <div class="gastos-resumen" id="gastos-resumen"></div>
-
           <!-- Formulario para agregar gasto -->
           <div class="gastos-form">
             <div class="gastos-form-field">
@@ -1345,6 +1372,10 @@
 
           <!-- Lista de gastos del día -->
           <div id="gastos-lista"></div>
+
+          <!-- Resumen financiero del día -->
+          <p class="gastos-resumen-title">Resumen del día</p>
+          <div class="gastos-resumen" id="gastos-resumen"></div>
         </div>
 
       </div>
@@ -1803,16 +1834,16 @@
 
     resumenEl.innerHTML = `
       <div class="gastos-kpi">
-        <div class="gastos-kpi__val neutral">$${totalVentas.toFixed(2)}</div>
         <div class="gastos-kpi__lbl">Ingresos del día</div>
+        <div class="gastos-kpi__val neutral">$${totalVentas.toFixed(2)}</div>
       </div>
       <div class="gastos-kpi">
-        <div class="gastos-kpi__val red">$${totalGastos.toFixed(2)}</div>
         <div class="gastos-kpi__lbl">Gastos del día</div>
+        <div class="gastos-kpi__val red">$${totalGastos.toFixed(2)}</div>
       </div>
       <div class="gastos-kpi">
-        <div class="gastos-kpi__val ${ganancia >= 0 ? 'green' : 'red'}">$${ganancia.toFixed(2)}</div>
         <div class="gastos-kpi__lbl">Ganancia neta</div>
+        <div class="gastos-kpi__val ${ganancia >= 0 ? 'green' : 'red'}">$${ganancia.toFixed(2)}</div>
       </div>`;
 
     if (!gastos.length) {
@@ -1833,7 +1864,7 @@
         <tbody>
           ${[...gastos].reverse().map(g => `
             <tr>
-              <td>${g.descripcion}</td>
+              <td class="td-desc">${g.descripcion}</td>
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
