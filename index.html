@@ -613,6 +613,7 @@
     @media (max-width: 600px) {
       .gastos-tabla { font-size: .75rem; }
       .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }
+      .gastos-tabla th:nth-child(3), .gastos-tabla td:nth-child(3) { display: none; }
       .gastos-form { grid-template-columns: 1fr; }
       .gastos-resumen { grid-template-columns: 1fr 1fr; }
     }
@@ -1819,6 +1820,7 @@
         <thead>
           <tr>
             <th>Descripción</th>
+            <th>Fecha</th>
             <th>Hora</th>
             <th style="text-align:right">Monto</th>
             <th></th>
@@ -1828,6 +1830,7 @@
           ${[...gastos].reverse().map(g => `
             <tr>
               <td>${g.descripcion}</td>
+              <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
               <td class="td-del"><button class="gasto-del-btn" data-del-id="${g.id}" aria-label="Eliminar gasto">✕</button></td>
