@@ -626,32 +626,36 @@
       margin-bottom: .75rem;
     }
     .mesero-mesas-list { display: block; }
-    .mesero-mesas-chips { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .mesero-mesas-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
     .mesero-mesa-card {
-      border: 2px solid var(--border); border-radius: var(--radius-sm);
-      padding: .55rem .9rem; background: var(--white); cursor: pointer;
-      display: flex; align-items: center; gap: .6rem;
-      font-size: .84rem; transition: border-color .15s, background .15s;
+      border: 2px solid var(--border); border-radius: var(--radius);
+      padding: .5rem .85rem; background: var(--white); cursor: pointer;
+      display: flex; flex-direction: column; gap: .15rem;
+      font-size: .84rem; transition: border-color .15s, background .15s, box-shadow .15s;
+      min-width: 100px;
     }
-    .mesero-mesa-card:hover { border-color: var(--cinnamon); }
+    .mesero-mesa-card:hover { border-color: var(--cinnamon); box-shadow: 0 2px 8px rgba(185,85,40,.15); }
     .mesero-mesa-card.selected {
       border-color: var(--cinnamon); background: #fef3ec;
+      box-shadow: 0 2px 10px rgba(185,85,40,.2);
     }
-    .mesero-mesa-card__num { font-weight: 700; color: var(--brown-dark); }
-    .mesero-mesa-card__items { color: var(--text-muted); font-size: .78rem; }
+    .mesero-mesa-card__num { font-weight: 800; color: var(--brown-dark); font-size: .88rem; }
+    .mesero-mesa-card__items { color: var(--text-muted); font-size: .72rem; }
     .mesero-mesa-card__badge {
       background: var(--cinnamon); color: #fff;
-      font-size: .65rem; font-weight: 700;
-      padding: .1rem .45rem; border-radius: 999px;
+      font-size: .6rem; font-weight: 700; align-self: flex-start;
+      padding: .1rem .4rem; border-radius: 999px; margin-top: .1rem;
       display: none;
     }
     .mesero-mesa-card.selected .mesero-mesa-card__badge { display: inline; }
     .mesero-mesa-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
+
+    /* Panel de detalle de la mesa seleccionada */
     .mesero-mesa-detalle {
-      margin-top: .85rem;
       background: var(--white); border: 2px solid var(--cinnamon);
       border-radius: var(--radius); overflow: hidden;
       animation: slideDown .18s ease;
+      margin-bottom: .75rem;
     }
     @keyframes slideDown {
       from { opacity: 0; transform: translateY(-6px); }
@@ -659,38 +663,36 @@
     }
     .mesero-mesa-detalle__head {
       background: var(--brown-dark); color: var(--cream);
-      padding: .55rem 1rem;
-      display: flex; justify-content: space-between; align-items: center;
-      font-size: .82rem; font-weight: 700;
+      padding: .6rem 1rem;
+      display: flex; justify-content: space-between; align-items: center; gap: .5rem;
     }
-    .mesero-mesa-detalle__total {
-      color: var(--cinnamon-lt); font-size: .9rem;
-    }
-    .mesero-mesa-detalle__body { padding: .5rem 1rem .6rem; }
+    .mesero-mesa-detalle__head-left { display: flex; flex-direction: column; gap: .1rem; }
+    .mesero-mesa-detalle__title { font-size: .9rem; font-weight: 800; }
+    .mesero-mesa-detalle__cliente { font-size: .72rem; color: var(--cream-dk); opacity: .8; }
+    .mesero-mesa-detalle__total { color: var(--cinnamon-lt); font-size: 1rem; font-weight: 800; }
+    .mesero-mesa-detalle__body { padding: .45rem 1rem .55rem; }
     .mesero-mesa-detalle__row {
       display: flex; align-items: center; gap: .5rem;
-      padding: .3rem 0; border-bottom: 1px solid var(--border);
-      font-size: .83rem;
+      padding: .28rem 0; border-bottom: 1px solid var(--border);
+      font-size: .82rem;
     }
     .mesero-mesa-detalle__row:last-child { border-bottom: none; }
-    .mesero-mesa-detalle__qty {
-      font-weight: 800; color: var(--cinnamon);
-      min-width: 1.5rem; font-size: .78rem;
+    .mesero-mesa-detalle__qty { font-weight: 800; color: var(--cinnamon); min-width: 1.6rem; font-size: .76rem; }
+    .mesero-mesa-detalle__nombre { flex: 1; color: var(--text); }
+    .mesero-mesa-detalle__precio { color: var(--text-muted); font-size: .76rem; }
+    .mesero-mesa-detalle__cta {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: .55rem 1rem; background: #fef3ec;
+      border-top: 1px solid #f5c9a8; font-size: .8rem; color: var(--cinnamon);
+      font-weight: 600;
     }
-    .mesero-mesa-detalle__nombre { flex: 1; color: var(--text); font-weight: 500; }
-    .mesero-mesa-detalle__precio { color: var(--text-muted); font-size: .78rem; }
-    .mesero-mesa-target {
-      margin-bottom: 1.25rem; padding: .6rem 1rem;
-      background: #fef3ec; border: 1.5px solid var(--cinnamon);
-      border-radius: var(--radius-sm); font-size: .84rem;
-      display: none; align-items: center; justify-content: space-between; gap: 1rem;
-    }
-    .mesero-mesa-target.visible { display: flex; }
-    .mesero-mesa-target strong { color: var(--cinnamon); }
-    .mesero-mesa-target__cancel {
+    .mesero-mesa-detalle__cta-cancel {
       background: none; border: none; color: var(--text-muted);
-      font-size: .8rem; cursor: pointer; text-decoration: underline;
+      font-size: .78rem; cursor: pointer; text-decoration: underline; padding: 0;
     }
+
+    /* Banner legacy — oculto, reemplazado por CTA integrado */
+    .mesero-mesa-target { display: none !important; }
     .mesero-cat-section { margin-bottom: 2rem; }
     .mesero-cat-title {
       display: flex; align-items: center; gap: .6rem;
@@ -1816,7 +1818,10 @@
       const detalle = pedidoSeleccionado ? `
         <div class="mesero-mesa-detalle">
           <div class="mesero-mesa-detalle__head">
-            <span>Pedido actual — Mesa ${pedidoSeleccionado.mesa}</span>
+            <div class="mesero-mesa-detalle__head-left">
+              <span class="mesero-mesa-detalle__title">Mesa ${pedidoSeleccionado.mesa}</span>
+              <span class="mesero-mesa-detalle__cliente">👤 ${pedidoSeleccionado.nombreUsuario}</span>
+            </div>
             <span class="mesero-mesa-detalle__total">$${pedidoSeleccionado.total.toFixed(2)}</span>
           </div>
           <div class="mesero-mesa-detalle__body">
@@ -1826,6 +1831,10 @@
                 <span class="mesero-mesa-detalle__nombre">${i.nombre}</span>
                 <span class="mesero-mesa-detalle__precio">$${(i.precio * i.cantidad).toFixed(2)}</span>
               </div>`).join('')}
+          </div>
+          <div class="mesero-mesa-detalle__cta">
+            <span>⬇ Selecciona productos abajo para agregar a esta mesa</span>
+            <button class="mesero-mesa-detalle__cta-cancel" id="btn-cancel-mesa-target">Cancelar</button>
           </div>
         </div>` : '';
 
@@ -1861,11 +1870,18 @@
       });
     }
 
-    if (meseroMesaTarget && banner) {
-      banner.classList.add('visible');
-      banner.querySelector('strong').textContent = `Mesa ${meseroMesaTarget.mesa}`;
-    } else if (banner) {
-      banner.classList.remove('visible');
+    // Reasignar botón cancelar (está dentro del detalle generado dinámicamente)
+    const btnCancel = document.getElementById('btn-cancel-mesa-target');
+    if (btnCancel) {
+      btnCancel.onclick = () => {
+        meseroMesaTarget = null;
+        renderMesasActivas();
+        const carrito = leerCarrito();
+        PRODUCTOS.forEach(prod => {
+          const el = document.getElementById(`mqty-${prod.id}`);
+          if (el) { const it = carrito.find(x => x.id === prod.id); el.textContent = it ? it.cantidad : 0; }
+        });
+      };
     }
   }
 
@@ -1914,17 +1930,6 @@
     }).join('');
 
     renderMesasActivas();
-
-    document.getElementById('btn-cancel-mesa-target').addEventListener('click', () => {
-      meseroMesaTarget = null;
-      renderMesasActivas();
-      // Volver a mostrar cantidades del carrito
-      const carrito = leerCarrito();
-      PRODUCTOS.forEach(prod => {
-        const el = document.getElementById(`mqty-${prod.id}`);
-        if (el) { const it = carrito.find(x => x.id === prod.id); el.textContent = it ? it.cantidad : 0; }
-      });
-    });
 
     // Sincronizar contadores: si hay mesa seleccionada muestra cantidades de esa mesa, si no del carrito
     function syncQtys() {
