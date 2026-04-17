@@ -543,6 +543,71 @@
       font-size: 1.1rem; font-weight: 700; color: var(--brown-dark);
       margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
     }
+
+    /* ── Control de Gastos ── */
+    .gastos-section {
+      margin-top: 2.5rem; border-top: 2px solid var(--border); padding-top: 2rem;
+    }
+    .gastos-title {
+      font-size: 1.1rem; font-weight: 700; color: var(--brown-dark);
+      margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
+    }
+    .gastos-form {
+      display: grid; grid-template-columns: 1fr auto auto; gap: .65rem;
+      margin-bottom: 1.25rem; align-items: end;
+    }
+    .gastos-form-field { display: flex; flex-direction: column; gap: .3rem; }
+    .gastos-form-field label { font-size: .72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: .06em; }
+    .gastos-form-field input {
+      padding: .55rem .85rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .88rem;
+      font-family: 'Inter', sans-serif; background: var(--white); color: var(--text);
+      transition: border-color .2s;
+    }
+    .gastos-form-field input:focus { outline: none; border-color: var(--cinnamon); }
+    .btn-add-gasto {
+      padding: .55rem 1.1rem; background: var(--cinnamon); color: #fff;
+      border: none; border-radius: var(--radius-sm); font-size: .88rem;
+      font-weight: 700; cursor: pointer; transition: background .2s; white-space: nowrap;
+      align-self: end;
+    }
+    .btn-add-gasto:hover { background: var(--brown-dark); }
+    .gastos-resumen {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .85rem; margin-bottom: 1.5rem;
+    }
+    .gastos-kpi {
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: 1rem 1.1rem;
+      display: flex; flex-direction: column; gap: .2rem;
+    }
+    .gastos-kpi__val { font-size: 1.5rem; font-weight: 800; }
+    .gastos-kpi__val.green { color: #16a34a; }
+    .gastos-kpi__val.red   { color: #dc2626; }
+    .gastos-kpi__val.neutral { color: var(--cinnamon); }
+    .gastos-kpi__lbl { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
+    .gastos-lista { display: flex; flex-direction: column; gap: .4rem; }
+    .gasto-row {
+      display: flex; align-items: center; gap: .75rem;
+      background: var(--white); border: 1px solid var(--border);
+      border-radius: var(--radius-sm); padding: .55rem .85rem;
+      font-size: .84rem;
+    }
+    .gasto-row__desc { flex: 1; color: var(--text); }
+    .gasto-row__monto { font-weight: 700; color: #dc2626; min-width: 70px; text-align: right; }
+    .gasto-row__hora  { font-size: .72rem; color: var(--text-muted); }
+    .gasto-row__del {
+      width: 22px; height: 22px; border-radius: 50%;
+      border: 1.5px solid #e0b0b0; background: #fdf0f0; color: #c0392b;
+      font-size: .72rem; cursor: pointer; display: flex; align-items: center;
+      justify-content: center; flex-shrink: 0; transition: all .15s;
+    }
+    .gasto-row__del:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+    .gastos-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
+    @media (max-width: 600px) {
+      .gastos-form { grid-template-columns: 1fr; }
+      .gastos-resumen { grid-template-columns: 1fr 1fr; }
+    }
     .resumen-kpis {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
       gap: .85rem; margin-bottom: 1.5rem;
@@ -1240,6 +1305,37 @@
           <div class="resumen-kpis" id="resumen-kpis"></div>
           <div id="resumen-tabla-wrap"></div>
         </div>
+
+        <!-- Control de Gastos -->
+        <div class="gastos-section">
+          <div class="gastos-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
+              <path d="M12 6v6l4 2"/>
+            </svg>
+            Control de Gastos
+          </div>
+
+          <!-- Resumen financiero del día -->
+          <div class="gastos-resumen" id="gastos-resumen"></div>
+
+          <!-- Formulario para agregar gasto -->
+          <div class="gastos-form">
+            <div class="gastos-form-field" style="grid-column:1/-1">
+              <label for="gasto-desc">Descripción del gasto</label>
+              <input type="text" id="gasto-desc" placeholder="Ej: Ingredientes, gas, mantenimiento..." maxlength="80" />
+            </div>
+            <div class="gastos-form-field">
+              <label for="gasto-monto">Monto ($)</label>
+              <input type="number" id="gasto-monto" placeholder="0.00" min="0.01" step="0.01" />
+            </div>
+            <button class="btn-add-gasto" id="btn-add-gasto">+ Registrar gasto</button>
+          </div>
+
+          <!-- Lista de gastos del día -->
+          <div id="gastos-lista"></div>
+        </div>
+
       </div>
     </div>
 
@@ -1338,6 +1434,7 @@
   const LS_UPDATED   = 'salycanela_last_updated';
   const LS_CAJA      = 'salycanela_caja';
   const LS_HISTORIAL = 'salycanela_historial';
+  const LS_GASTOS    = 'salycanela_gastos';
   const IVA          = 0.15;
 
   /* ══════════════════════════════════════════════════
@@ -1440,6 +1537,8 @@
     try { return JSON.parse(localStorage.getItem(LS_HISTORIAL)) ?? []; } catch { return []; }
   }
   function guardarHistorial(h) { localStorage.setItem(LS_HISTORIAL, JSON.stringify(h)); }
+  function leerGastos()    { try { return JSON.parse(localStorage.getItem(LS_GASTOS)) ?? []; } catch { return []; } }
+  function guardarGastos(g){ localStorage.setItem(LS_GASTOS, JSON.stringify(g)); }
 
   function cobrarPedido(id) {
     const todos    = leerCaja();
@@ -1675,6 +1774,56 @@
       </div>`;
   }
 
+  function renderGastos() {
+    const hoy = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
+    const gastos  = leerGastos().filter(g => g.fecha === hoy);
+    const historial = leerHistorial().filter(h => h.fecha === hoy);
+
+    const totalVentas  = historial.reduce((s,h) => s + h.total, 0);
+    const totalGastos  = gastos.reduce((s,g) => s + g.monto, 0);
+    const ganancia     = totalVentas - totalGastos;
+
+    const resumenEl = document.getElementById('gastos-resumen');
+    const listaEl   = document.getElementById('gastos-lista');
+    if (!resumenEl || !listaEl) return;
+
+    resumenEl.innerHTML = `
+      <div class="gastos-kpi">
+        <div class="gastos-kpi__val neutral">$${totalVentas.toFixed(2)}</div>
+        <div class="gastos-kpi__lbl">Ingresos del día</div>
+      </div>
+      <div class="gastos-kpi">
+        <div class="gastos-kpi__val red">$${totalGastos.toFixed(2)}</div>
+        <div class="gastos-kpi__lbl">Gastos del día</div>
+      </div>
+      <div class="gastos-kpi">
+        <div class="gastos-kpi__val ${ganancia >= 0 ? 'green' : 'red'}">$${ganancia.toFixed(2)}</div>
+        <div class="gastos-kpi__lbl">Ganancia neta</div>
+      </div>`;
+
+    if (!gastos.length) {
+      listaEl.innerHTML = `<p class="gastos-empty">No hay gastos registrados hoy.</p>`;
+      return;
+    }
+    listaEl.innerHTML = `<div class="gastos-lista">
+      ${[...gastos].reverse().map(g => `
+        <div class="gasto-row" data-gasto-id="${g.id}">
+          <span class="gasto-row__desc">${g.descripcion}</span>
+          <span class="gasto-row__hora">${g.hora}</span>
+          <span class="gasto-row__monto">−$${g.monto.toFixed(2)}</span>
+          <button class="gasto-row__del" data-del-id="${g.id}" aria-label="Eliminar gasto">✕</button>
+        </div>`).join('')}
+    </div>`;
+
+    listaEl.querySelectorAll('[data-del-id]').forEach(btn => {
+      btn.onclick = () => {
+        const id = Number(btn.dataset.delId);
+        guardarGastos(leerGastos().filter(g => g.id !== id));
+        renderGastos();
+      };
+    });
+  }
+
   function renderCajeroView() {
     const pedidos = leerCaja();
     const totalPorCobrar = pedidos.reduce((s,p) => s + p.total, 0);
@@ -1682,6 +1831,7 @@
     statPedidos.textContent = pedidos.length;
     statTotal.textContent   = `$${totalPorCobrar.toFixed(2)}`;
     renderResumenDia();
+    renderGastos();
 
     // Actualiza badge botón caja en header
     if (cajaBadge) {
@@ -2317,6 +2467,30 @@
       toast('Pedidos actualizados', 'success');
     });
   }
+
+  document.getElementById('btn-add-gasto').addEventListener('click', () => {
+    const descEl   = document.getElementById('gasto-desc');
+    const montoEl  = document.getElementById('gasto-monto');
+    const desc  = descEl.value.trim();
+    const monto = parseFloat(montoEl.value);
+    if (!desc) { descEl.style.borderColor = '#dc2626'; descEl.focus(); setTimeout(() => descEl.style.borderColor = '', 1500); return; }
+    if (!monto || monto <= 0) { montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
+    const hoy  = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
+    const hora = new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
+    const gastos = leerGastos();
+    gastos.push({ id: Date.now(), descripcion: desc, monto, fecha: hoy, hora });
+    guardarGastos(gastos);
+    descEl.value  = '';
+    montoEl.value = '';
+    descEl.focus();
+    renderGastos();
+    toast(`Gasto "${ desc }" registrado`, 'success');
+  });
+
+  // Permitir Enter en el campo monto para registrar
+  document.getElementById('gasto-monto').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('btn-add-gasto').click();
+  });
 
   /* ══════════════════════════════════════════════════
      AUTH UI — tabs, login, register, logout
