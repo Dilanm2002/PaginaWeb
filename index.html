@@ -611,8 +611,8 @@
     .gasto-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
     .gastos-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
     @media (max-width: 600px) {
-      .gastos-tabla .td-hora,
-      .gastos-tabla th:nth-child(2) { display: none; }
+      .gastos-tabla { font-size: .75rem; }
+      .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }
       .gastos-form { grid-template-columns: 1fr; }
       .gastos-resumen { grid-template-columns: 1fr 1fr; }
     }
@@ -2436,6 +2436,25 @@
         toast(`Ítems agregados a Mesa ${mesaNum} ✓`, 'success');
         return;
       }
+    }
+
+    // Validar: si ya hay pedido activo para esa mesa, fusionar en vez de duplicar
+    const pedidoExistente = leerCaja().find(p => String(p.mesa) === String(mesa));
+    if (pedidoExistente) {
+      items.forEach(nuevoItem => {
+        const existente = pedidoExistente.items.find(x => x.id === nuevoItem.id);
+        if (existente) existente.cantidad += nuevoItem.cantidad;
+        else pedidoExistente.items.push({ ...nuevoItem });
+      });
+      actualizarPedido(pedidoExistente.id, pedidoExistente.items);
+      vaciarCarrito();
+      renderCarrito();
+      renderCajeroView();
+      renderMesasActivas();
+      cerrarModalMesa();
+      cerrarCarrito();
+      toast(`Ítems añadidos al pedido existente de Mesa ${mesa} ✓`, 'success');
+      return;
     }
 
     enviarACaja({ mesa, nombreUsuario, rol, items });
