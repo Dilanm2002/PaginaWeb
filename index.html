@@ -586,24 +586,30 @@
     .gastos-kpi__val.red   { color: #dc2626; }
     .gastos-kpi__val.neutral { color: var(--cinnamon); }
     .gastos-kpi__lbl { font-size: .72rem; font-weight: 600; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); }
-    .gastos-lista { display: flex; flex-direction: column; gap: .4rem; }
-    .gasto-row {
-      display: flex; align-items: center; gap: .75rem;
-      background: var(--white); border: 1px solid var(--border);
-      border-radius: var(--radius-sm); padding: .55rem .85rem;
-      font-size: .84rem;
+    .gastos-tabla { width: 100%; border-collapse: collapse; font-size: .83rem; }
+    .gastos-tabla th {
+      background: var(--brown-dark); color: var(--cream);
+      text-align: left; padding: .5rem .85rem; font-size: .72rem;
+      text-transform: uppercase; letter-spacing: .06em;
     }
-    .gasto-row__desc { flex: 1; color: var(--text); }
-    .gasto-row__monto { font-weight: 700; color: #dc2626; min-width: 70px; text-align: right; }
-    .gasto-row__hora  { font-size: .72rem; color: var(--text-muted); }
-    .gasto-row__del {
+    .gastos-tabla th:last-child { text-align: right; }
+    .gastos-tabla td { padding: .5rem .85rem; border-bottom: 1px solid var(--border); }
+    .gastos-tabla tr:last-child td { border-bottom: none; }
+    .gastos-tabla tr:nth-child(even) td { background: var(--cream); }
+    .gastos-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; }
+    .gastos-tabla .td-monto { font-weight: 700; color: #dc2626; text-align: right; }
+    .gastos-tabla .td-del   { width: 32px; text-align: center; }
+    .gasto-del-btn {
       width: 22px; height: 22px; border-radius: 50%;
       border: 1.5px solid #e0b0b0; background: #fdf0f0; color: #c0392b;
-      font-size: .72rem; cursor: pointer; display: flex; align-items: center;
-      justify-content: center; flex-shrink: 0; transition: all .15s;
+      font-size: .7rem; cursor: pointer; display: inline-flex; align-items: center;
+      justify-content: center; transition: all .15s;
     }
-    .gasto-row__del:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
+    .gasto-del-btn:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
     .gastos-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
+    @media (max-width: 600px) {
+      .gastos-tabla .td-hora { display: none; }
+    }
     @media (max-width: 600px) {
       .gastos-form { grid-template-columns: 1fr; }
       .gastos-resumen { grid-template-columns: 1fr 1fr; }
@@ -1805,17 +1811,28 @@
       listaEl.innerHTML = `<p class="gastos-empty">No hay gastos registrados hoy.</p>`;
       return;
     }
-    listaEl.innerHTML = `<div class="gastos-lista">
-      ${[...gastos].reverse().map(g => `
-        <div class="gasto-row" data-gasto-id="${g.id}">
-          <span class="gasto-row__desc">${g.descripcion}</span>
-          <span class="gasto-row__hora">${g.hora}</span>
-          <span class="gasto-row__monto">−$${g.monto.toFixed(2)}</span>
-          <button class="gasto-row__del" data-del-id="${g.id}" aria-label="Eliminar gasto">✕</button>
-        </div>`).join('')}
-    </div>`;
+    listaEl.innerHTML = `
+      <table class="gastos-tabla">
+        <thead>
+          <tr>
+            <th>Descripción</th>
+            <th>Hora</th>
+            <th style="text-align:right">Monto</th>
+            <th></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${[...gastos].reverse().map(g => `
+            <tr>
+              <td>${g.descripcion}</td>
+              <td class="td-hora">${g.hora}</td>
+              <td class="td-monto">−$${g.monto.toFixed(2)}</td>
+              <td class="td-del"><button class="gasto-del-btn" data-del-id="${g.id}" aria-label="Eliminar gasto">✕</button></td>
+            </tr>`).join('')}
+        </tbody>
+      </table>`;
 
-    listaEl.querySelectorAll('[data-del-id]').forEach(btn => {
+    listaEl.querySelectorAll('.gasto-del-btn').forEach(btn => {
       btn.onclick = () => {
         const id = Number(btn.dataset.delId);
         guardarGastos(leerGastos().filter(g => g.id !== id));
