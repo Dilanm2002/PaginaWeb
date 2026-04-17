@@ -1402,7 +1402,8 @@
         </div>
         <div class="mesa-field">
           <label for="mesa-input">Número de Mesa</label>
-          <input type="number" id="mesa-input" min="1" max="12" placeholder="Ej: 5" />
+          <input type="number" id="mesa-input" min="1" max="12" placeholder="Ej: 5" autocomplete="off" />
+          <span id="mesa-input-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
         </div>
         <div class="mesa-order-preview" id="mesa-preview"></div>
         <button id="btn-confirmar-mesa" class="btn-confirmar-mesa">✓ Enviar a Caja</button>
@@ -2324,6 +2325,9 @@
     const totales = calcularTotales(items);
 
     // Si el mesero tiene una mesa activa seleccionada, pre-llenar el número
+    const mesaErrEl = document.getElementById('mesa-input-error');
+    if (mesaErrEl) { mesaErrEl.textContent = ''; mesaErrEl.style.display = 'none'; }
+    mesaInput.style.borderColor = '';
     if (meseroMesaTarget) {
       mesaInput.value = meseroMesaTarget.mesa;
       mesaInput.readOnly = true;
@@ -2438,22 +2442,16 @@
       }
     }
 
-    // Validar: si ya hay pedido activo para esa mesa, fusionar en vez de duplicar
+    // Validar: bloquear si ya hay pedido activo para esa mesa
     const pedidoExistente = leerCaja().find(p => String(p.mesa) === String(mesa));
-    if (pedidoExistente) {
-      items.forEach(nuevoItem => {
-        const existente = pedidoExistente.items.find(x => x.id === nuevoItem.id);
-        if (existente) existente.cantidad += nuevoItem.cantidad;
-        else pedidoExistente.items.push({ ...nuevoItem });
-      });
-      actualizarPedido(pedidoExistente.id, pedidoExistente.items);
-      vaciarCarrito();
-      renderCarrito();
-      renderCajeroView();
-      renderMesasActivas();
-      cerrarModalMesa();
-      cerrarCarrito();
-      toast(`Ítems añadidos al pedido existente de Mesa ${mesa} ✓`, 'success');
+    if (pedidoExistente && !meseroMesaTarget) {
+      mesaInput.style.borderColor = '#dc2626';
+      const mesaErrEl2 = document.getElementById('mesa-input-error');
+      if (mesaErrEl2) {
+        mesaErrEl2.textContent = `Mesa ${mesa} ya tiene un pedido activo. Selecciónala desde "Mesas Activas" para agregar ítems.`;
+        mesaErrEl2.style.display = 'block';
+      }
+      mesaInput.focus();
       return;
     }
 
