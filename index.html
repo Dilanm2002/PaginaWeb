@@ -625,7 +625,8 @@
       text-transform: uppercase; color: var(--text-muted);
       margin-bottom: .75rem;
     }
-    .mesero-mesas-list { display: flex; flex-wrap: wrap; gap: .6rem; }
+    .mesero-mesas-list { display: block; }
+    .mesero-mesas-chips { display: flex; flex-wrap: wrap; gap: .6rem; }
     .mesero-mesa-card {
       border: 2px solid var(--border); border-radius: var(--radius-sm);
       padding: .55rem .9rem; background: var(--white); cursor: pointer;
@@ -646,6 +647,38 @@
     }
     .mesero-mesa-card.selected .mesero-mesa-card__badge { display: inline; }
     .mesero-mesa-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
+    .mesero-mesa-detalle {
+      margin-top: .85rem;
+      background: var(--white); border: 2px solid var(--cinnamon);
+      border-radius: var(--radius); overflow: hidden;
+      animation: slideDown .18s ease;
+    }
+    @keyframes slideDown {
+      from { opacity: 0; transform: translateY(-6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .mesero-mesa-detalle__head {
+      background: var(--brown-dark); color: var(--cream);
+      padding: .55rem 1rem;
+      display: flex; justify-content: space-between; align-items: center;
+      font-size: .82rem; font-weight: 700;
+    }
+    .mesero-mesa-detalle__total {
+      color: var(--cinnamon-lt); font-size: .9rem;
+    }
+    .mesero-mesa-detalle__body { padding: .5rem 1rem .6rem; }
+    .mesero-mesa-detalle__row {
+      display: flex; align-items: center; gap: .5rem;
+      padding: .3rem 0; border-bottom: 1px solid var(--border);
+      font-size: .83rem;
+    }
+    .mesero-mesa-detalle__row:last-child { border-bottom: none; }
+    .mesero-mesa-detalle__qty {
+      font-weight: 800; color: var(--cinnamon);
+      min-width: 1.5rem; font-size: .78rem;
+    }
+    .mesero-mesa-detalle__nombre { flex: 1; color: var(--text); font-weight: 500; }
+    .mesero-mesa-detalle__precio { color: var(--text-muted); font-size: .78rem; }
     .mesero-mesa-target {
       margin-bottom: 1.25rem; padding: .6rem 1rem;
       background: #fef3ec; border: 1.5px solid var(--cinnamon);
@@ -1768,7 +1801,11 @@
     if (!pedidos.length) {
       seccion.innerHTML = `<p class="mesero-mesa-empty">No hay mesas activas en este momento.</p>`;
     } else {
-      seccion.innerHTML = pedidos.map(p => `
+      const pedidoSeleccionado = meseroMesaTarget
+        ? pedidos.find(p => String(p.id) === String(meseroMesaTarget.id))
+        : null;
+
+      const chips = pedidos.map(p => `
         <div class="mesero-mesa-card${meseroMesaTarget && String(meseroMesaTarget.id) === String(p.id) ? ' selected' : ''}"
              data-pedido-id="${p.id}" data-mesa="${p.mesa}">
           <span class="mesero-mesa-card__num">Mesa ${p.mesa}</span>
@@ -1776,7 +1813,25 @@
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
         </div>`).join('');
 
-      seccion.querySelectorAll('.mesero-mesa-card').forEach(card => {
+      const detalle = pedidoSeleccionado ? `
+        <div class="mesero-mesa-detalle">
+          <div class="mesero-mesa-detalle__head">
+            <span>Pedido actual — Mesa ${pedidoSeleccionado.mesa}</span>
+            <span class="mesero-mesa-detalle__total">$${pedidoSeleccionado.total.toFixed(2)}</span>
+          </div>
+          <div class="mesero-mesa-detalle__body">
+            ${pedidoSeleccionado.items.map(i => `
+              <div class="mesero-mesa-detalle__row">
+                <span class="mesero-mesa-detalle__qty">${i.cantidad}×</span>
+                <span class="mesero-mesa-detalle__nombre">${i.nombre}</span>
+                <span class="mesero-mesa-detalle__precio">$${(i.precio * i.cantidad).toFixed(2)}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : '';
+
+      seccion.innerHTML = `<div class="mesero-mesas-chips">${chips}</div>${detalle}`;
+
+      seccion.querySelector('.mesero-mesas-chips').querySelectorAll('.mesero-mesa-card').forEach(card => {
         card.addEventListener('click', () => {
           const pid  = card.dataset.pedidoId;
           const mesa = card.dataset.mesa;
