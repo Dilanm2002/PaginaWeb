@@ -849,25 +849,14 @@
     .mesero-ing-pop {
       position: absolute; bottom: calc(100% + 8px); right: 0;
       background: var(--brown-dark); color: var(--cream);
-      border-radius: var(--radius-sm); padding: .75rem 1rem;
-      font-size: .78rem; line-height: 1.6; white-space: normal; max-width: 260px;
+      border-radius: var(--radius-sm); padding: .65rem .9rem;
+      font-size: .78rem; line-height: 1.6; white-space: nowrap;
       box-shadow: 0 6px 20px rgba(20,8,2,.35); z-index: 300;
       pointer-events: none; opacity: 0;
       transform: translateY(4px);
       transition: opacity .18s, transform .18s;
     }
     .mesero-ing-pop.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
-    .mesero-ing-pop__desc {
-      display: block; color: #f5e6d3; font-size: .77rem; line-height: 1.5;
-      margin-bottom: .6rem; padding-bottom: .55rem;
-      border-bottom: 1px solid rgba(255,255,255,.15); font-style: italic;
-    }
-    .mesero-ing-pop__close {
-      display: none; position: absolute; top: .5rem; right: .5rem;
-      background: rgba(255,255,255,.15); border: none; color: var(--cream);
-      width: 22px; height: 22px; border-radius: 50%; font-size: .7rem;
-      cursor: pointer; align-items: center; justify-content: center;
-    }
     .mesero-ing-pop strong { display: block; color: var(--cinnamon-lt); margin-bottom: .3rem; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
     .mesero-ing-pop::after {
       content: ''; position: absolute; top: 100%; right: 10px;
@@ -1135,8 +1124,6 @@
       }
       .mesero-ing-pop.visible { transform: translateY(-50%); opacity: 1; }
       .mesero-ing-pop::after { display: none; }
-      .mesero-ing-pop__close { display: flex; }
-      .mesero-ing-pop { padding-top: 1.8rem; }
 
       /* ── Header: forzar una sola fila sin desbordarse ── */
       .site-header .wrap > div[style] {
@@ -2199,8 +2186,6 @@
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
-                    <button class="mesero-ing-pop__close" aria-label="Cerrar">✕</button>
-                    ${p.descripcion ? `<span class="mesero-ing-pop__desc">${p.descripcion}</span>` : ''}
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.join(' · ')}
                   </div>
@@ -2220,22 +2205,20 @@
     // Sincronizar contadores: si hay mesa seleccionada muestra cantidades de esa mesa, si no del carrito
     syncQtys();
 
-    const closeAllPops = () => document.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
-
     // Popover ingredientes (onclick reemplaza listener anterior, evita acumulación)
     grid.onclick = e => {
-      if (e.target.closest('.mesero-ing-pop__close')) { closeAllPops(); return; }
       const infoBtn = e.target.closest('.mesero-info-btn');
       if (infoBtn) {
         e.stopPropagation();
         const pop = infoBtn.querySelector('.mesero-ing-pop');
         const isOpen = pop.classList.contains('visible');
-        closeAllPops();
+        // Cerrar todos
+        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
         if (!isOpen) pop.classList.add('visible');
         return;
       }
       // Cerrar popover al hacer click fuera
-      closeAllPops();
+      grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
 
       const btn = e.target.closest('.mesero-qty__btn');
       if (!btn) return;
@@ -2796,13 +2779,6 @@
 
   document.getElementById('btn-cerrar-auth').addEventListener('click', () => {
     limpiarFormAuth(); authBackdrop.classList.remove('open');
-  });
-
-  // Cerrar popovers al tocar fuera (una sola vez a nivel documento)
-  document.addEventListener('click', e => {
-    if (!e.target.closest('.mesero-info-btn')) {
-      document.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
-    }
   });
 
   const sesionActual = getSession();
