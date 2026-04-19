@@ -1639,6 +1639,11 @@
   const invitadoNombre  = document.getElementById('invitado-nombre');
   const btnConfirmarMesa= document.getElementById('btn-confirmar-mesa');
   const btnCloseMesa    = document.getElementById('btn-close-mesa');
+  mesaInput.addEventListener('input', () => {
+    mesaInput.style.borderColor = '';
+    const err = document.getElementById('mesa-input-error');
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
+  });
   const cajeroView      = document.getElementById('cajero-view');
   const menuView        = document.getElementById('menu-view');
   const cajeroGrid      = document.getElementById('cajero-grid');
@@ -2423,8 +2428,12 @@
     const mesa = Number(mesaInput.value.trim());
     if (!mesa || mesa < 1 || mesa > 12) {
       mesaInput.style.borderColor = '#dc2626';
+      const mesaErrRango = document.getElementById('mesa-input-error');
+      if (mesaErrRango) {
+        mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 12.';
+        mesaErrRango.style.display = 'block';
+      }
       mesaInput.focus();
-      setTimeout(() => mesaInput.style.borderColor = '', 1500);
       return;
     }
     let nombreUsuario, rol;
