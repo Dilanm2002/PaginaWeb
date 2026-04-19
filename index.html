@@ -849,14 +849,19 @@
     .mesero-ing-pop {
       position: absolute; bottom: calc(100% + 8px); right: 0;
       background: var(--brown-dark); color: var(--cream);
-      border-radius: var(--radius-sm); padding: .65rem .9rem;
-      font-size: .78rem; line-height: 1.6; white-space: nowrap;
+      border-radius: var(--radius-sm); padding: .75rem 1rem;
+      font-size: .78rem; line-height: 1.6; white-space: normal; max-width: 260px;
       box-shadow: 0 6px 20px rgba(20,8,2,.35); z-index: 300;
       pointer-events: none; opacity: 0;
       transform: translateY(4px);
       transition: opacity .18s, transform .18s;
     }
     .mesero-ing-pop.visible { opacity: 1; transform: translateY(0); pointer-events: auto; }
+    .mesero-ing-pop__desc {
+      display: block; color: #f5e6d3; font-size: .77rem; line-height: 1.5;
+      margin-bottom: .6rem; padding-bottom: .55rem;
+      border-bottom: 1px solid rgba(255,255,255,.15); font-style: italic;
+    }
     .mesero-ing-pop strong { display: block; color: var(--cinnamon-lt); margin-bottom: .3rem; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
     .mesero-ing-pop::after {
       content: ''; position: absolute; top: 100%; right: 10px;
@@ -2186,6 +2191,7 @@
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
+                    ${p.descripcion ? `<span class="mesero-ing-pop__desc">${p.descripcion}</span>` : ''}
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.join(' · ')}
                   </div>
