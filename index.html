@@ -862,6 +862,12 @@
       margin-bottom: .6rem; padding-bottom: .55rem;
       border-bottom: 1px solid rgba(255,255,255,.15); font-style: italic;
     }
+    .mesero-ing-pop__close {
+      display: none; position: absolute; top: .5rem; right: .5rem;
+      background: rgba(255,255,255,.15); border: none; color: var(--cream);
+      width: 22px; height: 22px; border-radius: 50%; font-size: .7rem;
+      cursor: pointer; align-items: center; justify-content: center;
+    }
     .mesero-ing-pop strong { display: block; color: var(--cinnamon-lt); margin-bottom: .3rem; font-size: .72rem; letter-spacing: .06em; text-transform: uppercase; }
     .mesero-ing-pop::after {
       content: ''; position: absolute; top: 100%; right: 10px;
@@ -1129,6 +1135,8 @@
       }
       .mesero-ing-pop.visible { transform: translateY(-50%); opacity: 1; }
       .mesero-ing-pop::after { display: none; }
+      .mesero-ing-pop__close { display: flex; }
+      .mesero-ing-pop { padding-top: 1.8rem; }
 
       /* ── Header: forzar una sola fila sin desbordarse ── */
       .site-header .wrap > div[style] {
@@ -2191,6 +2199,7 @@
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
+                    <button class="mesero-ing-pop__close" aria-label="Cerrar">✕</button>
                     ${p.descripcion ? `<span class="mesero-ing-pop__desc">${p.descripcion}</span>` : ''}
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.join(' · ')}
@@ -2211,20 +2220,22 @@
     // Sincronizar contadores: si hay mesa seleccionada muestra cantidades de esa mesa, si no del carrito
     syncQtys();
 
+    const closeAllPops = () => document.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+
     // Popover ingredientes (onclick reemplaza listener anterior, evita acumulación)
     grid.onclick = e => {
+      if (e.target.closest('.mesero-ing-pop__close')) { closeAllPops(); return; }
       const infoBtn = e.target.closest('.mesero-info-btn');
       if (infoBtn) {
         e.stopPropagation();
         const pop = infoBtn.querySelector('.mesero-ing-pop');
         const isOpen = pop.classList.contains('visible');
-        // Cerrar todos
-        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+        closeAllPops();
         if (!isOpen) pop.classList.add('visible');
         return;
       }
       // Cerrar popover al hacer click fuera
-      grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+      closeAllPops();
 
       const btn = e.target.closest('.mesero-qty__btn');
       if (!btn) return;
@@ -2785,6 +2796,13 @@
 
   document.getElementById('btn-cerrar-auth').addEventListener('click', () => {
     limpiarFormAuth(); authBackdrop.classList.remove('open');
+  });
+
+  // Cerrar popovers al tocar fuera (una sola vez a nivel documento)
+  document.addEventListener('click', e => {
+    if (!e.target.closest('.mesero-info-btn')) {
+      document.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+    }
   });
 
   const sesionActual = getSession();
