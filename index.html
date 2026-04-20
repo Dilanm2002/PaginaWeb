@@ -189,8 +189,8 @@
     ════════════════════════════════════════ */
     .site-header {
       position: sticky; top: 0; z-index: 100;
-      background: var(--brown-dark);
-      box-shadow: 0 2px 16px rgba(59,26,8,.35);
+      background: #2a1006;
+      box-shadow: 0 2px 16px rgba(20,6,1,.5);
     }
     .site-header .wrap {
       display: flex; align-items: center; gap: .75rem;
@@ -279,14 +279,12 @@
        HERO + FILTROS
     ════════════════════════════════════════ */
     .hero {
-      background: #1c0a02;
+      background: #2a1006;
       padding: 4.5rem 0 0; position: relative; overflow: hidden;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
-      background:
-        radial-gradient(ellipse 80% 120% at 50% -10%, rgba(107,48,21,.85) 0%, transparent 65%),
-        radial-gradient(ellipse 50% 60% at 50% 100%, rgba(90,30,8,.4) 0%, transparent 70%);
+      background: radial-gradient(ellipse 70% 130% at 50% 30%, rgba(140,55,15,.45) 0%, transparent 70%);
     }
     .hero .wrap { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .hero-top-orn {
@@ -332,9 +330,10 @@
 
     .filter-bar-wrap {
       position: sticky; top: 64px; z-index: 90;
-      background: #7A3818; padding: .75rem 0;
-      border-bottom: 2px solid rgba(255,255,255,.08);
-      box-shadow: 0 3px 14px rgba(59,26,8,.30);
+      background: #4a1e08; padding: .75rem 0;
+      border-top: 1px solid rgba(255,255,255,.06);
+      border-bottom: 2px solid rgba(255,255,255,.07);
+      box-shadow: 0 4px 18px rgba(20,6,1,.4);
     }
     .filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; padding: 0 1.5rem; }
 
