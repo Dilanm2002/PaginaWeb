@@ -279,34 +279,34 @@
        HERO + FILTROS
     ════════════════════════════════════════ */
     .hero {
-      background: linear-gradient(160deg, #150600 0%, #2a1005 50%, #4a1e0a 100%);
+      background: #1c0a02;
       padding: 4.5rem 0 0; position: relative; overflow: hidden;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0; pointer-events: none;
       background:
-        radial-gradient(ellipse 55% 80% at 50% 40%, rgba(200,86,26,.13) 0%, transparent 70%),
-        radial-gradient(ellipse 30% 50% at 15% 80%, rgba(200,86,26,.07) 0%, transparent 60%);
+        radial-gradient(ellipse 80% 120% at 50% -10%, rgba(107,48,21,.85) 0%, transparent 65%),
+        radial-gradient(ellipse 50% 60% at 50% 100%, rgba(90,30,8,.4) 0%, transparent 70%);
     }
     .hero .wrap { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
     .hero-top-orn {
       display: flex; align-items: center; gap: .85rem; margin-bottom: 1.4rem;
     }
-    .hero-top-orn__line { flex: 1; max-width: 60px; height: 1px; background: linear-gradient(90deg, transparent, rgba(224,123,58,.6)); }
-    .hero-top-orn__line:last-child { background: linear-gradient(270deg, transparent, rgba(224,123,58,.6)); }
-    .hero-top-orn__star { color: var(--cinnamon-lt); font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
+    .hero-top-orn__line { flex: 1; max-width: 60px; height: 1px; background: linear-gradient(90deg, transparent, rgba(212,149,106,.5)); }
+    .hero-top-orn__line:last-child { background: linear-gradient(270deg, transparent, rgba(212,149,106,.5)); }
+    .hero-top-orn__star { color: #d4956a; font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
     .hero h1 {
       font-family: 'Dancing Script', cursive;
       font-size: clamp(2.8rem, 6vw, 4.8rem);
       color: var(--cream); line-height: 1.05; margin-bottom: 0; font-weight: 700;
     }
-    .hero h1 em { color: var(--cinnamon-lt); font-style: normal; display: block; }
+    .hero h1 em { color: #d4956a; font-style: normal; display: block; }
     .hero-sep {
       display: flex; align-items: center; gap: .75rem; margin: 1.2rem 0;
     }
-    .hero-sep__line { width: 48px; height: 1px; background: rgba(224,123,58,.45); }
+    .hero-sep__line { width: 48px; height: 1px; background: rgba(212,149,106,.4); }
     .hero-sep__gem {
-      width: 7px; height: 7px; background: var(--cinnamon-lt);
+      width: 7px; height: 7px; background: #d4956a;
       transform: rotate(45deg); border-radius: 1px;
     }
     .hero-desc { color: var(--cream-dk); font-size: 1rem; opacity: .75; line-height: 1.7; max-width: 440px; margin-bottom: 0; }
@@ -320,8 +320,8 @@
       border-right: 1px solid rgba(255,255,255,.07);
     }
     .hero-stat:last-child { border-right: none; }
-    .hero-stat strong { font-size: 1.4rem; font-weight: 800; color: var(--cinnamon-lt); line-height: 1; }
-    .hero-stat span { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(253,246,238,.45); font-weight: 600; }
+    .hero-stat strong { font-size: 1.4rem; font-weight: 800; color: #d4956a; line-height: 1; }
+    .hero-stat span { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(253,246,238,.5); font-weight: 600; }
     @media (max-width: 600px) {
       .hero { padding: 3rem 0 0; }
       .hero h1 { font-size: 2.5rem; }
