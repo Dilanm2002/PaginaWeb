@@ -279,68 +279,55 @@
        HERO + FILTROS
     ════════════════════════════════════════ */
     .hero {
-      background: linear-gradient(120deg, #2a1005 0%, var(--brown-dark) 45%, var(--brown-mid) 100%);
-      padding: 4.5rem 0 3.5rem; position: relative; overflow: hidden;
+      background: linear-gradient(160deg, #150600 0%, #2a1005 50%, #4a1e0a 100%);
+      padding: 4.5rem 0 0; position: relative; overflow: hidden;
     }
     .hero::before {
-      content: ''; position: absolute; inset: 0;
-      background: radial-gradient(ellipse 70% 120% at 80% 50%, rgba(200,86,26,.18) 0%, transparent 70%);
-      pointer-events: none;
+      content: ''; position: absolute; inset: 0; pointer-events: none;
+      background:
+        radial-gradient(ellipse 55% 80% at 50% 40%, rgba(200,86,26,.13) 0%, transparent 70%),
+        radial-gradient(ellipse 30% 50% at 15% 80%, rgba(200,86,26,.07) 0%, transparent 60%);
     }
-    .hero::after {
-      content: ''; position: absolute; inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='40' cy='40' r='1' fill='%23ffffff' fill-opacity='0.04'/%3E%3C/svg%3E");
-      pointer-events: none;
+    .hero .wrap { position: relative; display: flex; flex-direction: column; align-items: center; text-align: center; }
+    .hero-top-orn {
+      display: flex; align-items: center; gap: .85rem; margin-bottom: 1.4rem;
     }
-    .hero .wrap { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2rem; }
-    .hero-text { position: relative; }
-    .hero-label {
-      display: inline-flex; align-items: center; gap: .6rem;
-      color: var(--cinnamon-lt); font-size: .72rem; letter-spacing: .2em;
-      text-transform: uppercase; font-weight: 700; margin-bottom: 1.1rem;
-      padding: .3rem .85rem; border: 1px solid rgba(224,123,58,.35);
-      border-radius: 999px; background: rgba(200,86,26,.12);
-    }
+    .hero-top-orn__line { flex: 1; max-width: 60px; height: 1px; background: linear-gradient(90deg, transparent, rgba(224,123,58,.6)); }
+    .hero-top-orn__line:last-child { background: linear-gradient(270deg, transparent, rgba(224,123,58,.6)); }
+    .hero-top-orn__star { color: var(--cinnamon-lt); font-size: .7rem; letter-spacing: .18em; text-transform: uppercase; font-weight: 700; white-space: nowrap; }
     .hero h1 {
       font-family: 'Dancing Script', cursive;
-      font-size: clamp(2.6rem, 5.5vw, 4.2rem);
-      color: var(--cream); line-height: 1.08; margin-bottom: 0;
+      font-size: clamp(2.8rem, 6vw, 4.8rem);
+      color: var(--cream); line-height: 1.05; margin-bottom: 0; font-weight: 700;
     }
     .hero h1 em { color: var(--cinnamon-lt); font-style: normal; display: block; }
-    .hero-divider {
-      width: 52px; height: 2px; margin: 1.1rem 0;
-      background: linear-gradient(90deg, var(--cinnamon-lt), transparent);
-      border-radius: 2px;
+    .hero-sep {
+      display: flex; align-items: center; gap: .75rem; margin: 1.2rem 0;
     }
-    .hero p { color: var(--cream-dk); font-size: 1rem; opacity: .8; margin-bottom: 1.5rem; line-height: 1.65; max-width: 420px; }
-    .hero-cta {
-      display: inline-flex; align-items: center; gap: .5rem;
-      background: var(--cinnamon); color: #fff;
-      padding: .65rem 1.4rem; border-radius: 999px;
-      font-size: .88rem; font-weight: 700; text-decoration: none;
-      box-shadow: 0 4px 18px rgba(200,86,26,.4);
-      transition: background .2s, transform .15s, box-shadow .15s;
-      cursor: pointer; border: none;
+    .hero-sep__line { width: 48px; height: 1px; background: rgba(224,123,58,.45); }
+    .hero-sep__gem {
+      width: 7px; height: 7px; background: var(--cinnamon-lt);
+      transform: rotate(45deg); border-radius: 1px;
     }
-    .hero-cta:hover { background: #a84310; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(200,86,26,.5); }
-    .hero-deco {
-      width: 220px; height: 220px; flex-shrink: 0;
-      border-radius: 50%; border: 1px solid rgba(255,255,255,.08);
-      display: flex; align-items: center; justify-content: center;
-      position: relative;
-      background: radial-gradient(circle, rgba(200,86,26,.15) 0%, transparent 70%);
+    .hero-desc { color: var(--cream-dk); font-size: 1rem; opacity: .75; line-height: 1.7; max-width: 440px; margin-bottom: 0; }
+    .hero-stats {
+      display: flex; align-items: stretch; gap: 0;
+      margin-top: 3rem; width: 100%; border-top: 1px solid rgba(255,255,255,.07);
     }
-    .hero-deco::before {
-      content: ''; position: absolute; inset: 12px; border-radius: 50%;
-      border: 1px dashed rgba(224,123,58,.3);
+    .hero-stat {
+      flex: 1; padding: 1.1rem .5rem; display: flex; flex-direction: column;
+      align-items: center; gap: .2rem;
+      border-right: 1px solid rgba(255,255,255,.07);
     }
-    .hero-deco-inner {
-      font-size: 4.5rem; line-height: 1;
-      filter: drop-shadow(0 4px 16px rgba(0,0,0,.4));
-    }
-    @media (max-width: 768px) {
-      .hero .wrap { grid-template-columns: 1fr; }
-      .hero-deco { display: none; }
+    .hero-stat:last-child { border-right: none; }
+    .hero-stat strong { font-size: 1.4rem; font-weight: 800; color: var(--cinnamon-lt); line-height: 1; }
+    .hero-stat span { font-size: .68rem; text-transform: uppercase; letter-spacing: .1em; color: rgba(253,246,238,.45); font-weight: 600; }
+    @media (max-width: 600px) {
+      .hero { padding: 3rem 0 0; }
+      .hero h1 { font-size: 2.5rem; }
+      .hero-desc { font-size: .88rem; }
+      .hero-stat strong { font-size: 1.1rem; }
+      .hero-stat span { font-size: .6rem; }
     }
 
     .filter-bar-wrap {
@@ -1119,12 +1106,7 @@
       .user-chip__rol { display: none; }
       .user-chip__name { font-size: .72rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-      /* ── Hero ── */
-      .hero { padding: 2.5rem 0 2rem; }
-      .hero h1 { font-size: 2.4rem; }
-      .hero p { font-size: .88rem; }
-      .hero-label { font-size: .68rem; margin-bottom: .75rem; }
-      .hero-cta { font-size: .82rem; padding: .55rem 1.1rem; }
+      /* ── Hero ── (overrides handled in hero CSS block) */
 
       /* ── Filter bar ── */
       .filter-bar-wrap { top: 54px; }
@@ -1330,17 +1312,23 @@
     <div id="menu-view">
       <section class="hero" aria-labelledby="hero-title">
         <div class="wrap">
-          <div class="hero-text">
-            <p class="hero-label" aria-hidden="true">✦ Bienvenido a nuestra mesa</p>
-            <h1 id="hero-title">Sabor que<em>enamora el alma</em></h1>
-            <div class="hero-divider" aria-hidden="true"></div>
-            <p>Cocina de la abuela con ingredientes frescos, recetas con historia y sazón de verdad.</p>
-            <button class="hero-cta" onclick="document.querySelector('.filter-bar-wrap').scrollIntoView({behavior:'smooth'})">
-              Ver menú &darr;
-            </button>
+          <div class="hero-top-orn" aria-hidden="true">
+            <span class="hero-top-orn__line"></span>
+            <span class="hero-top-orn__star">✦ Bienvenido a nuestra mesa ✦</span>
+            <span class="hero-top-orn__line"></span>
           </div>
-          <div class="hero-deco" aria-hidden="true">
-            <span class="hero-deco-inner">🍽️</span>
+          <h1 id="hero-title">Sabor que<em>enamora el alma</em></h1>
+          <div class="hero-sep" aria-hidden="true">
+            <span class="hero-sep__line"></span>
+            <span class="hero-sep__gem"></span>
+            <span class="hero-sep__line"></span>
+          </div>
+          <p class="hero-desc">Cocina de la abuela con ingredientes frescos, recetas con historia y sazón de verdad.</p>
+          <div class="hero-stats" aria-label="Datos del restaurante">
+            <div class="hero-stat"><strong>15+</strong><span>Platos únicos</span></div>
+            <div class="hero-stat"><strong>100%</strong><span>Ingredientes frescos</span></div>
+            <div class="hero-stat"><strong>4</strong><span>Categorías</span></div>
+            <div class="hero-stat"><strong>IVA</strong><span>Incluido</span></div>
           </div>
         </div>
       </section>
