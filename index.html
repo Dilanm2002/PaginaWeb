@@ -279,18 +279,69 @@
        HERO + FILTROS
     ════════════════════════════════════════ */
     .hero {
-      background: linear-gradient(135deg, var(--brown-dark) 0%, var(--brown-mid) 60%, var(--cinnamon) 100%);
-      padding: 5rem 0 4rem; position: relative; overflow: hidden;
+      background: linear-gradient(120deg, #2a1005 0%, var(--brown-dark) 45%, var(--brown-mid) 100%);
+      padding: 4.5rem 0 3.5rem; position: relative; overflow: hidden;
     }
     .hero::before {
       content: ''; position: absolute; inset: 0;
-      background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+      background: radial-gradient(ellipse 70% 120% at 80% 50%, rgba(200,86,26,.18) 0%, transparent 70%);
+      pointer-events: none;
     }
-    .hero .wrap { position: relative; }
-    .hero-label { color: var(--cinnamon-lt); font-size: .8rem; letter-spacing: .15em; text-transform: uppercase; font-weight: 600; margin-bottom: .75rem; }
-    .hero h1 { font-family: 'Dancing Script', cursive; font-size: clamp(2.4rem, 5vw, 3.8rem); color: var(--cream); line-height: 1.1; margin-bottom: 1rem; }
-    .hero h1 em { color: var(--cinnamon-lt); font-style: normal; }
-    .hero p { color: var(--cream-dk); font-size: 1.05rem; opacity: .85; margin-bottom: 0; }
+    .hero::after {
+      content: ''; position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Ccircle cx='40' cy='40' r='1' fill='%23ffffff' fill-opacity='0.04'/%3E%3C/svg%3E");
+      pointer-events: none;
+    }
+    .hero .wrap { position: relative; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 2rem; }
+    .hero-text { position: relative; }
+    .hero-label {
+      display: inline-flex; align-items: center; gap: .6rem;
+      color: var(--cinnamon-lt); font-size: .72rem; letter-spacing: .2em;
+      text-transform: uppercase; font-weight: 700; margin-bottom: 1.1rem;
+      padding: .3rem .85rem; border: 1px solid rgba(224,123,58,.35);
+      border-radius: 999px; background: rgba(200,86,26,.12);
+    }
+    .hero h1 {
+      font-family: 'Dancing Script', cursive;
+      font-size: clamp(2.6rem, 5.5vw, 4.2rem);
+      color: var(--cream); line-height: 1.08; margin-bottom: 0;
+    }
+    .hero h1 em { color: var(--cinnamon-lt); font-style: normal; display: block; }
+    .hero-divider {
+      width: 52px; height: 2px; margin: 1.1rem 0;
+      background: linear-gradient(90deg, var(--cinnamon-lt), transparent);
+      border-radius: 2px;
+    }
+    .hero p { color: var(--cream-dk); font-size: 1rem; opacity: .8; margin-bottom: 1.5rem; line-height: 1.65; max-width: 420px; }
+    .hero-cta {
+      display: inline-flex; align-items: center; gap: .5rem;
+      background: var(--cinnamon); color: #fff;
+      padding: .65rem 1.4rem; border-radius: 999px;
+      font-size: .88rem; font-weight: 700; text-decoration: none;
+      box-shadow: 0 4px 18px rgba(200,86,26,.4);
+      transition: background .2s, transform .15s, box-shadow .15s;
+      cursor: pointer; border: none;
+    }
+    .hero-cta:hover { background: #a84310; transform: translateY(-1px); box-shadow: 0 6px 22px rgba(200,86,26,.5); }
+    .hero-deco {
+      width: 220px; height: 220px; flex-shrink: 0;
+      border-radius: 50%; border: 1px solid rgba(255,255,255,.08);
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      background: radial-gradient(circle, rgba(200,86,26,.15) 0%, transparent 70%);
+    }
+    .hero-deco::before {
+      content: ''; position: absolute; inset: 12px; border-radius: 50%;
+      border: 1px dashed rgba(224,123,58,.3);
+    }
+    .hero-deco-inner {
+      font-size: 4.5rem; line-height: 1;
+      filter: drop-shadow(0 4px 16px rgba(0,0,0,.4));
+    }
+    @media (max-width: 768px) {
+      .hero .wrap { grid-template-columns: 1fr; }
+      .hero-deco { display: none; }
+    }
 
     .filter-bar-wrap {
       position: sticky; top: 64px; z-index: 90;
@@ -1069,10 +1120,11 @@
       .user-chip__name { font-size: .72rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
       /* ── Hero ── */
-      .hero { padding: 2rem 0 1.75rem; }
-      .hero h1 { font-size: 2.2rem; margin-bottom: .6rem; }
+      .hero { padding: 2.5rem 0 2rem; }
+      .hero h1 { font-size: 2.4rem; }
       .hero p { font-size: .88rem; }
-      .hero-label { font-size: .7rem; margin-bottom: .5rem; }
+      .hero-label { font-size: .68rem; margin-bottom: .75rem; }
+      .hero-cta { font-size: .82rem; padding: .55rem 1.1rem; }
 
       /* ── Filter bar ── */
       .filter-bar-wrap { top: 54px; }
@@ -1278,9 +1330,18 @@
     <div id="menu-view">
       <section class="hero" aria-labelledby="hero-title">
         <div class="wrap">
-          <p class="hero-label" aria-hidden="true">✦ Bienvenido a nuestra mesa</p>
-          <h1 id="hero-title">Sabor que<br><em>enamora el alma</em></h1>
-          <p>Cocina de la abuela con ingredientes frescos, recetas con historia y sazón de verdad.</p>
+          <div class="hero-text">
+            <p class="hero-label" aria-hidden="true">✦ Bienvenido a nuestra mesa</p>
+            <h1 id="hero-title">Sabor que<em>enamora el alma</em></h1>
+            <div class="hero-divider" aria-hidden="true"></div>
+            <p>Cocina de la abuela con ingredientes frescos, recetas con historia y sazón de verdad.</p>
+            <button class="hero-cta" onclick="document.querySelector('.filter-bar-wrap').scrollIntoView({behavior:'smooth'})">
+              Ver menú &darr;
+            </button>
+          </div>
+          <div class="hero-deco" aria-hidden="true">
+            <span class="hero-deco-inner">🍽️</span>
+          </div>
         </div>
       </section>
 
