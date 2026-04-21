@@ -909,14 +909,15 @@
 
     /* Banner legacy — oculto, reemplazado por CTA integrado */
     .mesero-mesa-target { display: none !important; }
-    .mesero-cat-section { margin-bottom: 2rem; }
+    .mesero-cat-section { margin-bottom: 1.5rem; }
     .mesero-cat-title {
       display: flex; align-items: center; gap: .6rem;
-      font-size: .75rem; font-weight: 700; letter-spacing: .1em;
+      font-size: .72rem; font-weight: 700; letter-spacing: .1em;
       text-transform: uppercase; color: #fff;
-      padding: .5rem 1rem; border-radius: var(--radius-sm);
-      margin-bottom: .75rem;
+      padding: .45rem 1rem; border-radius: var(--radius-sm);
+      margin-bottom: .6rem;
     }
+    .mesero-cat-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.25); }
     .mesero-cat-title[data-cat="Desayunos"]       { background: var(--cat-desayunos); }
     .mesero-cat-title[data-cat="Entradas"]        { background: var(--cat-entradas); }
     .mesero-cat-title[data-cat="Almuerzos"]       { background: var(--cat-almuerzos); }
@@ -925,17 +926,21 @@
     .mesero-cat-title[data-cat="Bebidas Calientes"]{ background: var(--cat-bcalientes); }
     .mesero-cat-title[data-cat="Bebidas Frías"]   { background: var(--cat-bfrias); }
 
-    .mesero-list { display: flex; flex-direction: column; gap: .5rem; }
+    .mesero-list { display: flex; flex-direction: column; gap: .35rem; }
     .mesero-row {
-      display: flex; align-items: center; gap: 1rem;
+      display: flex; align-items: center; gap: .85rem;
       background: var(--white); border-radius: var(--radius-sm);
-      border: 1px solid var(--border);
-      padding: .7rem 1rem;
-      transition: box-shadow .15s;
+      border: 1px solid var(--border); border-left: 3px solid transparent;
+      padding: .6rem .9rem;
+      transition: box-shadow .15s, border-color .2s, background .2s;
     }
-    .mesero-row:hover { box-shadow: 0 2px 10px rgba(59,26,8,.10); }
-    .mesero-row__name { flex: 1; font-size: .92rem; font-weight: 600; color: var(--brown-dark); }
-    .mesero-row__price { font-size: .88rem; font-weight: 700; color: var(--cinnamon); min-width: 56px; text-align: right; }
+    .mesero-row:hover { box-shadow: 0 2px 10px rgba(59,26,8,.10); border-left-color: rgba(185,85,40,.3); }
+    .mesero-row.has-qty {
+      border-left-color: var(--cinnamon); background: #fef9f5;
+    }
+    .mesero-row__name { flex: 1; font-size: .9rem; font-weight: 600; color: var(--brown-dark); }
+    .mesero-row.has-qty .mesero-row__name { color: var(--cinnamon); }
+    .mesero-row__price { font-size: .88rem; font-weight: 700; color: var(--cinnamon); min-width: 50px; text-align: right; }
 
     /* Botón info ingredientes */
     .mesero-info-btn {
@@ -978,8 +983,13 @@
     .mesero-qty__btn.add { background: var(--cinnamon); border-color: var(--cinnamon); color: #fff; }
     .mesero-qty__btn.add:hover { background: var(--cinnamon-lt); border-color: var(--cinnamon-lt); }
     .mesero-qty__val {
-      min-width: 24px; text-align: center;
+      min-width: 26px; text-align: center;
       font-size: .9rem; font-weight: 700; color: var(--brown-dark);
+      background: var(--cream-dk); border-radius: 4px; padding: .05rem .2rem;
+      transition: background .15s, color .15s;
+    }
+    .mesero-row.has-qty .mesero-qty__val {
+      background: var(--cinnamon); color: #fff;
     }
 
     /* ════════════════════════════════════════
@@ -2344,7 +2354,12 @@
     }
     PRODUCTOS.forEach(p => {
       const el = document.getElementById(`mqty-${p.id}`);
-      if (el) { const item = fuente.find(x => x.id === p.id); el.textContent = item ? item.cantidad : 0; }
+      if (!el) return;
+      const item = fuente.find(x => x.id === p.id);
+      const qty = item ? item.cantidad : 0;
+      el.textContent = qty;
+      const row = el.closest('.mesero-row');
+      if (row) row.classList.toggle('has-qty', qty > 0);
     });
   }
 
