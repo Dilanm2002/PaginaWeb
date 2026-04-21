@@ -1484,7 +1484,7 @@
     <div class="cart-panel__foot">
       <div class="cart-summary">
         <div class="cart-row"><span>Subtotal</span><span id="cart-subtotal">$0.00</span></div>
-        <div class="cart-row"><span>IVA (15&nbsp;%)</span><span id="cart-iva">$0.00</span></div>
+        <div class="cart-row"><span>IVA incluido (15&nbsp;%)</span><span id="cart-iva">$0.00</span></div>
         <div class="cart-row total"><span>Total</span><span id="cart-total">$0.00</span></div>
       </div>
       <button id="btn-checkout" class="btn-checkout" disabled>🍽️ Enviar a Caja</button>
@@ -1653,9 +1653,10 @@
   }
   function vaciarCarrito() { guardarCarrito([]); return []; }
   function calcularTotales(items) {
-    const subtotal = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
-    const iva = subtotal * IVA;
-    return { subtotal, iva, total: subtotal + iva, nItems: items.reduce((s,i) => s + i.cantidad, 0) };
+    const total    = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
+    const iva      = total * (IVA / (1 + IVA));
+    const subtotal = total - iva;
+    return { subtotal, iva, total, nItems: items.reduce((s,i) => s + i.cantidad, 0) };
   }
 
   /* ══════════════════════════════════════════════════
@@ -1706,11 +1707,11 @@
     const idx = pedidos.findIndex(p => String(p.id) === String(pedidoId));
     if (idx < 0) return;
     if (!nuevoItems.length) { guardarCaja(pedidos.filter(p => String(p.id) !== String(pedidoId))); return; }
-    const subtotal = nuevoItems.reduce((s,i) => s + i.precio * i.cantidad, 0);
+    const total = nuevoItems.reduce((s,i) => s + i.precio * i.cantidad, 0);
     pedidos[idx].items = nuevoItems;
-    pedidos[idx].subtotal = subtotal;
-    pedidos[idx].iva      = subtotal * IVA;
-    pedidos[idx].total    = subtotal * (1 + IVA);
+    pedidos[idx].total    = total;
+    pedidos[idx].iva      = total * (IVA / (1 + IVA));
+    pedidos[idx].subtotal = total - pedidos[idx].iva;
     guardarCaja(pedidos);
   }
 
