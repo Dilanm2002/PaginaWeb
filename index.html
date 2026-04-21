@@ -811,33 +811,41 @@
     .mesero-view { padding: 2rem 0 5rem; }
 
     /* ── Mesas Activas (mesero) ── */
-    .mesero-mesas-section { margin-bottom: 2rem; }
+    .mesero-mesas-section { margin-bottom: 1.5rem; }
     .mesero-mesas-title {
-      font-size: .75rem; font-weight: 700; letter-spacing: .1em;
+      font-size: .72rem; font-weight: 700; letter-spacing: .12em;
       text-transform: uppercase; color: var(--text-muted);
-      margin-bottom: .75rem;
+      margin-bottom: .9rem; display: flex; align-items: center; gap: .7rem;
     }
+    .mesero-mesas-title::after { content:''; flex:1; height:1px; background: var(--border); }
     .mesero-mesas-list { display: block; }
-    .mesero-mesas-chips { display: flex; flex-wrap: wrap; gap: .5rem; margin-bottom: .75rem; }
+    .mesero-mesas-chips { display: flex; flex-wrap: wrap; gap: .65rem; margin-bottom: 1rem; }
     .mesero-mesa-card {
       border: 2px solid var(--border); border-radius: var(--radius);
-      padding: .5rem .85rem; background: var(--white); cursor: pointer;
-      display: flex; flex-direction: column; gap: .15rem;
-      font-size: .84rem; transition: border-color .15s, background .15s, box-shadow .15s;
-      min-width: 100px;
+      padding: .7rem 1rem .6rem; background: var(--white); cursor: pointer;
+      display: flex; flex-direction: column; gap: .18rem;
+      transition: border-color .18s, background .18s, box-shadow .18s, transform .15s;
+      min-width: 120px; position: relative; overflow: hidden;
     }
-    .mesero-mesa-card:hover { border-color: var(--cinnamon); box-shadow: 0 2px 8px rgba(185,85,40,.15); }
+    .mesero-mesa-card::after {
+      content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
+      background: var(--border); transition: background .18s;
+    }
+    .mesero-mesa-card:hover { border-color: var(--cinnamon); box-shadow: 0 3px 12px rgba(185,85,40,.15); transform: translateY(-2px); }
+    .mesero-mesa-card:hover::after { background: var(--cinnamon); }
     .mesero-mesa-card.selected {
-      border-color: var(--cinnamon); background: #fef3ec;
-      box-shadow: 0 2px 10px rgba(185,85,40,.2);
+      border-color: var(--cinnamon); background: #fef7f2;
+      box-shadow: 0 4px 18px rgba(185,85,40,.22); transform: translateY(-2px);
     }
-    .mesero-mesa-card__num { font-weight: 800; color: var(--brown-dark); font-size: .88rem; }
-    .mesero-mesa-card__items { color: var(--text-muted); font-size: .72rem; }
+    .mesero-mesa-card.selected::after { background: var(--cinnamon); }
+    .mesero-mesa-card__num { font-weight: 800; color: var(--brown-dark); font-size: .95rem; }
+    .mesero-mesa-card__items { color: var(--text-muted); font-size: .71rem; }
+    .mesero-mesa-card__total { color: var(--cinnamon); font-size: .8rem; font-weight: 700; margin-top: .1rem; }
     .mesero-mesa-card__badge {
       background: var(--cinnamon); color: #fff;
-      font-size: .6rem; font-weight: 700; align-self: flex-start;
-      padding: .1rem .4rem; border-radius: 999px; margin-top: .1rem;
-      display: none;
+      font-size: .58rem; font-weight: 700; align-self: flex-start;
+      padding: .15rem .5rem; border-radius: 999px; margin-top: .25rem;
+      display: none; letter-spacing: .04em;
     }
     .mesero-mesa-card.selected .mesero-mesa-card__badge { display: inline; }
     .mesero-mesa-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
@@ -846,47 +854,52 @@
     .mesero-mesa-detalle {
       background: var(--white); border: 2px solid var(--cinnamon);
       border-radius: var(--radius); overflow: hidden;
-      animation: slideDown .18s ease;
+      animation: slideDown .2s ease;
       margin-bottom: .75rem;
+      box-shadow: 0 6px 24px rgba(185,85,40,.12);
     }
     @keyframes slideDown {
-      from { opacity: 0; transform: translateY(-6px); }
+      from { opacity: 0; transform: translateY(-8px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .mesero-mesa-detalle__head {
-      background: var(--brown-dark); color: var(--cream);
-      padding: .6rem 1rem;
+      background: linear-gradient(135deg, var(--brown-dark) 0%, #3d1408 100%);
+      color: var(--cream); padding: .8rem 1.1rem;
       display: flex; justify-content: space-between; align-items: center; gap: .5rem;
     }
-    .mesero-mesa-detalle__head-left { display: flex; flex-direction: column; gap: .1rem; }
-    .mesero-mesa-detalle__title { font-size: .9rem; font-weight: 800; }
-    .mesero-mesa-detalle__cliente { font-size: .72rem; color: var(--cream-dk); opacity: .8; }
-    .mesero-mesa-detalle__total { color: var(--cinnamon-lt); font-size: 1rem; font-weight: 800; }
-    .mesero-mesa-detalle__body { padding: .45rem 1rem .55rem; }
+    .mesero-mesa-detalle__head-left { display: flex; flex-direction: column; gap: .15rem; }
+    .mesero-mesa-detalle__title { font-size: 1rem; font-weight: 800; letter-spacing: .02em; }
+    .mesero-mesa-detalle__cliente { font-size: .73rem; color: rgba(253,246,238,.6); }
+    .mesero-mesa-detalle__total { color: var(--cinnamon-lt); font-size: 1.15rem; font-weight: 800; }
+    .mesero-mesa-detalle__body { padding: .25rem 1.1rem .55rem; }
     .mesero-mesa-detalle__row {
-      display: flex; align-items: center; gap: .5rem;
-      padding: .28rem 0; border-bottom: 1px solid var(--border);
-      font-size: .82rem;
+      display: flex; align-items: center; gap: .6rem;
+      padding: .42rem 0; border-bottom: 1px solid var(--border);
+      font-size: .83rem;
     }
     .mesero-mesa-detalle__row:last-child { border-bottom: none; }
-    .mesero-mesa-detalle__qty { font-weight: 800; color: var(--cinnamon); min-width: 1.6rem; font-size: .76rem; }
-    .mesero-mesa-detalle__nombre { flex: 1; color: var(--text); }
-    .mesero-mesa-detalle__precio { color: var(--text-muted); font-size: .76rem; min-width: 48px; text-align: right; }
-    .mesero-det-ctrl { display: flex; align-items: center; gap: .25rem; margin-left: .5rem; }
+    .mesero-mesa-detalle__qty {
+      background: var(--cinnamon); color: #fff;
+      font-size: .68rem; font-weight: 800; min-width: 1.8rem;
+      text-align: center; padding: .12rem .3rem; border-radius: 4px; flex-shrink: 0;
+    }
+    .mesero-mesa-detalle__nombre { flex: 1; color: var(--text); font-weight: 500; }
+    .mesero-mesa-detalle__precio { color: var(--brown-dark); font-size: .83rem; font-weight: 700; min-width: 52px; text-align: right; }
+    .mesero-det-ctrl { display: flex; align-items: center; gap: .25rem; margin-left: .4rem; }
     .mesero-det-btn {
-      width: 24px; height: 24px; border-radius: 50%;
+      width: 26px; height: 26px; border-radius: 50%;
       border: 1.5px solid var(--border); background: var(--cream-dk);
       color: var(--brown-dark); font-size: .85rem; font-weight: 700;
       cursor: pointer; display: flex; align-items: center; justify-content: center;
       transition: all .15s; flex-shrink: 0; line-height: 1;
     }
-    .mesero-det-btn:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
+    .mesero-det-btn:hover { border-color: var(--cinnamon); color: var(--cinnamon); background: #fef3ec; }
     .mesero-det-btn.del { border-color: #e0b0b0; background: #fdf0f0; color: #c0392b; font-size: .75rem; }
     .mesero-det-btn.del:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
     .mesero-mesa-detalle__cta {
       display: flex; align-items: center; justify-content: space-between;
-      padding: .55rem 1rem; background: #fef3ec;
-      border-top: 1px solid #f5c9a8; font-size: .8rem; color: var(--cinnamon);
+      padding: .6rem 1.1rem; background: #fef3ec;
+      border-top: 1px solid #f5c9a8; font-size: .79rem; color: var(--cinnamon);
       font-weight: 600;
     }
     .mesero-mesa-detalle__cta-cancel {
@@ -2209,8 +2222,9 @@
       const chips = pedidos.map(p => `
         <div class="mesero-mesa-card${meseroMesaTarget && String(meseroMesaTarget.id) === String(p.id) ? ' selected' : ''}"
              data-pedido-id="${p.id}" data-mesa="${p.mesa}">
-          <span class="mesero-mesa-card__num">Mesa ${p.mesa}</span>
-          <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''} · $${p.total.toFixed(2)}</span>
+          <span class="mesero-mesa-card__num">🍽️ Mesa ${p.mesa}</span>
+          <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
+          <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
         </div>`).join('');
 
