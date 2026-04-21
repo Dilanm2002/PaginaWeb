@@ -2166,8 +2166,9 @@
 
     const searchEl = document.getElementById('menu-search');
     if (searchEl) {
+      const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       searchEl.oninput = () => {
-        const q = searchEl.value.trim().toLowerCase();
+        const q = norm(searchEl.value.trim());
         if (!q) {
           setFiltroActivo('Destacados');
           actualizarTitulo('Platos Destacados');
@@ -2176,7 +2177,7 @@
         }
         filterBar.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
         const res = PRODUCTOS.filter(p =>
-          p.nombre.toLowerCase().includes(q) || p.descripcion.toLowerCase().includes(q) || p.categoria.toLowerCase().includes(q)
+          norm(p.nombre).includes(q) || norm(p.descripcion).includes(q) || norm(p.categoria).includes(q)
         );
         actualizarTitulo(`Resultados para "${searchEl.value.trim()}"`);
         renderProductos(res.length ? res : []);
