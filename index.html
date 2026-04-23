@@ -355,31 +355,37 @@
 
     .filter-bar-wrap {
       position: sticky; top: 64px; z-index: 90;
-      background: #4a1e08; padding: .55rem 1.5rem;
+      background: #4a1e08;
       border-top: 1px solid rgba(255,255,255,.06);
       border-bottom: 2px solid rgba(255,255,255,.07);
       box-shadow: 0 4px 18px rgba(20,6,1,.4);
-      display: flex; align-items: center; gap: 1rem;
+      display: flex; flex-direction: column; gap: 0;
     }
     .search-wrap {
-      position: relative; flex-shrink: 0;
+      position: relative; padding: .5rem 1.5rem;
+      border-bottom: 1px solid rgba(255,255,255,.06);
     }
     .search-icon {
-      position: absolute; left: .85rem; top: 50%; transform: translateY(-50%);
+      position: absolute; left: 2.3rem; top: 50%; transform: translateY(-50%);
       color: rgba(255,255,255,.5); pointer-events: none; display: flex;
     }
     .menu-search {
-      width: 240px;
+      width: 100%; max-width: 420px;
       background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.2);
-      border-radius: 999px; padding: .38rem 1rem .38rem 2.3rem;
-      color: #fff; font-size: .82rem; outline: none;
-      transition: border-color .2s, background .2s, width .25s;
+      border-radius: 999px; padding: .4rem 1rem .4rem 2.3rem;
+      color: #fff; font-size: .83rem; outline: none;
+      transition: border-color .2s, background .2s;
     }
-    .menu-search:focus { width: 300px; border-color: rgba(212,149,106,.7); background: rgba(255,255,255,.15); }
+    .menu-search:focus { border-color: rgba(212,149,106,.7); background: rgba(255,255,255,.15); }
     .menu-search::placeholder { color: rgba(255,255,255,.45); }
     .menu-search::-webkit-search-cancel-button { cursor: pointer; }
-    .filter-bar-divider { width: 1px; height: 22px; background: rgba(255,255,255,.15); flex-shrink: 0; }
-    .filter-bar { display: flex; flex-wrap: wrap; gap: .5rem; flex: 1; min-width: 0; }
+    .filter-bar-divider { display: none; }
+    .filter-bar {
+      display: flex; flex-wrap: nowrap; overflow-x: auto;
+      gap: .5rem; padding: .5rem 1.5rem;
+      scrollbar-width: none;
+    }
+    .filter-bar::-webkit-scrollbar { display: none; }
 
     .filter-btn {
       padding: .4rem 1.1rem; border-radius: 999px;
@@ -1201,13 +1207,9 @@
       /* ── Hero ── (overrides handled in hero CSS block) */
 
       /* ── Filter bar ── */
-      .filter-bar-wrap { top: 54px; flex-direction: column; gap: .4rem; padding: .5rem .85rem; }
-      .filter-bar-divider { display: none; }
-      .menu-search { width: 100%; }
-      .search-wrap { width: 100%; }
-      .filter-bar { flex-wrap: nowrap; overflow-x: auto; padding-bottom: .2rem; gap: .35rem; }
-      .filter-bar::-webkit-scrollbar { height: 3px; }
-      .filter-bar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.2); }
+      .filter-bar-wrap { top: 54px; }
+      .search-wrap { padding: .45rem .85rem; }
+      .filter-bar { padding: .4rem .85rem; gap: .35rem; }
       .filter-btn { font-size: .73rem; padding: .3rem .7rem; white-space: nowrap; }
 
       /* ── Menú productos ── */
