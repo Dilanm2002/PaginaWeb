@@ -1089,7 +1089,7 @@
       transform: translateY(20px) scale(.97); transition: transform .3s cubic-bezier(.4,0,.2,1);
     }
     .modal-backdrop.open .modal-box { transform: none; }
-    .modal-img { width: 100%; height: 220px; object-fit: cover; border-radius: var(--radius) var(--radius) 0 0; }
+    .modal-img { width: 100%; aspect-ratio: 16/9; object-fit: cover; object-position: center; border-radius: var(--radius) var(--radius) 0 0; display: block; }
     .modal-body { padding: 1.5rem; }
     .modal-badge { display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: .25rem .7rem; border-radius: 999px; color: #fff; margin-bottom: .75rem; }
     .modal-badge[data-cat="Desayunos"]        { background: var(--cat-desayunos); }
@@ -1103,8 +1103,7 @@
     .modal-desc { font-size: .9rem; color: var(--text-muted); line-height: 1.6; margin-bottom: 1.25rem; }
     .modal-ingredients-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--cinnamon); margin-bottom: .65rem; display: flex; align-items: center; gap: .5rem; }
     .modal-ingredients-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
-    .modal-ingredients { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
-    .ing-tag { background: var(--cream-dk); color: var(--text-muted); font-size: .78rem; padding: .25rem .65rem; border-radius: 999px; border: 1px solid var(--border); }
+    .modal-ingredients { margin-bottom: 1.5rem; font-size: .86rem; color: var(--text-muted); line-height: 1.7; }
     .modal-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); gap: 1rem; }
     .modal-price { font-size: 1.4rem; font-weight: 700; color: var(--cinnamon); }
     .modal-price small { font-size: .72rem; color: var(--text-muted); font-weight: 400; }
@@ -2568,7 +2567,7 @@
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
         <p class="modal-ingredients-title">Ingredientes</p>
-        <div class="modal-ingredients">${p.ingredientes.map(i => `<span class="ing-tag">${i}</span>`).join('')}</div>
+        <p class="modal-ingredients">${p.ingredientes.join(' &nbsp;·&nbsp; ')}</p>
         <div class="modal-footer">
           <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
