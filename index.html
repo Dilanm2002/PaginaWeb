@@ -380,12 +380,22 @@
     .menu-search::placeholder { color: rgba(255,255,255,.45); }
     .menu-search::-webkit-search-cancel-button { cursor: pointer; }
     .filter-bar-divider { display: none; }
+    .filter-bar-scroll-wrap {
+      position: relative; overflow: hidden;
+    }
+    .filter-bar-scroll-wrap::after {
+      content: ''; position: absolute; top: 0; right: 0; bottom: 0; width: 48px; pointer-events: none;
+      background: linear-gradient(to left, #4a1e08 0%, transparent 100%);
+      z-index: 1;
+    }
     .filter-bar {
       display: flex; flex-wrap: nowrap; overflow-x: auto;
-      gap: .5rem; padding: .5rem 1.5rem;
-      scrollbar-width: none;
+      gap: .5rem; padding: .5rem 1.5rem .35rem;
+      scrollbar-width: thin; scrollbar-color: rgba(212,149,106,.5) transparent;
     }
-    .filter-bar::-webkit-scrollbar { display: none; }
+    .filter-bar::-webkit-scrollbar { height: 3px; }
+    .filter-bar::-webkit-scrollbar-track { background: transparent; }
+    .filter-bar::-webkit-scrollbar-thumb { background: rgba(212,149,106,.5); border-radius: 999px; }
 
     .filter-btn {
       padding: .4rem 1.1rem; border-radius: 999px;
@@ -1427,8 +1437,9 @@
           </span>
           <input type="search" id="menu-search" class="menu-search" placeholder="Buscar platillo o bebida…" autocomplete="off" aria-label="Buscar en el menú">
         </div>
-        <div class="filter-bar-divider" aria-hidden="true"></div>
-        <div id="filter-bar" class="filter-bar"></div>
+        <div class="filter-bar-scroll-wrap">
+          <div id="filter-bar" class="filter-bar"></div>
+        </div>
       </div>
 
       <section id="menu" aria-labelledby="menu-titulo">
