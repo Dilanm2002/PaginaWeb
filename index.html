@@ -918,9 +918,18 @@
       font-size: .72rem; font-weight: 700; letter-spacing: .1em;
       text-transform: uppercase; color: #fff;
       padding: .45rem 1rem; border-radius: var(--radius-sm);
-      margin-bottom: .6rem;
+      margin-bottom: .6rem; cursor: pointer; user-select: none;
     }
     .mesero-cat-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.25); }
+    .mesero-cat-chevron {
+      margin-left: auto; font-size: .8rem; opacity: .8;
+      transition: transform .22s ease; flex-shrink: 0;
+    }
+    .mesero-cat-title.collapsed .mesero-cat-chevron { transform: rotate(-90deg); }
+    .mesero-list {
+      transition: opacity .2s ease;
+    }
+    .mesero-list.hidden { display: none; }
     .mesero-cat-title[data-cat="Desayunos"]       { background: var(--cat-desayunos); }
     .mesero-cat-title[data-cat="Entradas"]        { background: var(--cat-entradas); }
     .mesero-cat-title[data-cat="Almuerzos"]       { background: var(--cat-almuerzos); }
@@ -2390,7 +2399,10 @@
       const prods = PRODUCTOS.filter(p => p.categoria === cat);
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title" data-cat="${cat}">${cat}</div>
+          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+            ${cat}
+            <span class="mesero-cat-chevron">▾</span>
+          </div>
           <div class="mesero-list">
             ${prods.map(p => `
               <div class="mesero-row" data-id="${p.id}">
@@ -2414,6 +2426,17 @@
     }).join('');
 
     renderMesasActivas();
+
+    // Acordeón de categorías
+    grid.querySelectorAll('.mesero-cat-title').forEach(title => {
+      title.addEventListener('click', e => {
+        if (e.target.closest('.mesero-qty__btn') || e.target.closest('.mesero-info-btn')) return;
+        const list = title.nextElementSibling;
+        const isCollapsed = title.classList.toggle('collapsed');
+        title.setAttribute('aria-expanded', String(!isCollapsed));
+        list.classList.toggle('hidden', isCollapsed);
+      });
+    });
 
     // Sincronizar contadores: si hay mesa seleccionada muestra cantidades de esa mesa, si no del carrito
     syncQtys();
