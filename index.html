@@ -922,10 +922,13 @@
     }
     .mesero-cat-title::after { content: ''; flex: 1; height: 1px; background: rgba(255,255,255,.25); }
     .mesero-cat-chevron {
-      margin-left: auto; font-size: .8rem; opacity: .8;
-      transition: transform .22s ease; flex-shrink: 0;
+      margin-left: .5rem; flex-shrink: 0;
+      width: 22px; height: 22px; border-radius: 50%;
+      background: rgba(255,255,255,.25); display: flex; align-items: center; justify-content: center;
+      font-size: .85rem; transition: transform .22s ease, background .18s;
     }
-    .mesero-cat-title.collapsed .mesero-cat-chevron { transform: rotate(-90deg); }
+    .mesero-cat-title:hover .mesero-cat-chevron { background: rgba(255,255,255,.4); }
+    .mesero-cat-title.collapsed .mesero-cat-chevron { transform: rotate(-90deg); background: rgba(255,255,255,.15); }
     .mesero-list {
       transition: opacity .2s ease;
     }
