@@ -2224,7 +2224,7 @@
         }
         filterBar.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
         const res = PRODUCTOS.filter(p =>
-          norm(p.nombre).includes(q) || norm(p.descripcion).includes(q) || norm(p.categoria).includes(q)
+          norm(p.nombre).includes(q) || norm(p.categoria).includes(q)
         );
         actualizarTitulo(`Resultados para "${searchEl.value.trim()}"`);
         renderProductos(res.length ? res : []);
