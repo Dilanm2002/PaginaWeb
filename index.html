@@ -9,6 +9,7 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="stylesheet" href="assets/styles.css">
   <style>
     /* ── Reset & Variables ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -353,26 +354,23 @@
       .hero-corners { inset: .6rem; }
     }
 
-    /* Buscador dentro del hero */
-    .hero-search-wrap {
-      position: relative; margin-top: 1.8rem;
-      width: 100%; max-width: 460px;
-      animation: heroUp .7s ease both .8s;
+    /* Buscador en el header */
+    .header-search-wrap {
+      position: relative; flex: 1; max-width: 420px; margin: 0 0 0 auto;
     }
-    .hero-search-icon {
-      position: absolute; left: 1.1rem; top: 50%; transform: translateY(-50%);
-      color: rgba(255,255,255,.55); pointer-events: none; display: flex;
+    .header-search-icon {
+      position: absolute; left: .9rem; top: 50%; transform: translateY(-50%);
+      color: rgba(255,255,255,.5); pointer-events: none; display: flex;
     }
     .menu-search {
       width: 100%;
-      background: rgba(255,255,255,.12); border: 1.5px solid rgba(255,255,255,.25);
-      border-radius: 999px; padding: .75rem 1.2rem .75rem 2.8rem;
-      color: #fff; font-size: .95rem; outline: none;
-      transition: border-color .2s, background .2s;
-      backdrop-filter: blur(6px);
+      background: rgba(255,255,255,.1); border: 1.5px solid rgba(255,255,255,.18);
+      border-radius: 999px; padding: .52rem 1.1rem .52rem 2.5rem;
+      color: #fff; font-size: .92rem; outline: none;
+      transition: border-color .2s, background .2s, box-shadow .2s;
     }
-    .menu-search:focus { border-color: rgba(212,149,106,.8); background: rgba(255,255,255,.18); }
-    .menu-search::placeholder { color: rgba(255,255,255,.5); }
+    .menu-search:focus { border-color: rgba(212,149,106,.7); background: rgba(255,255,255,.15); box-shadow: 0 0 0 3px rgba(212,149,106,.15); }
+    .menu-search::placeholder { color: rgba(255,255,255,.42); }
     .menu-search::-webkit-search-cancel-button { cursor: pointer; }
 
     .filter-bar-wrap {
@@ -1376,6 +1374,19 @@
         </div>
       </a>
 
+      <!-- Navegación principal -->
+      <nav class="main-nav" aria-label="Navegación principal">
+        <a href="#contacto">Contacto</a>
+      </nav>
+
+      <!-- Buscador central del header -->
+      <div class="header-search-wrap" id="header-search-wrap">
+        <span class="header-search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <input type="search" id="menu-search" class="menu-search" placeholder="Buscar platillo o bebida…" autocomplete="off" aria-label="Buscar en el menú">
+      </div>
+
       <!-- Acciones del lado derecho -->
       <div style="margin-left:auto;display:flex;align-items:center;gap:.75rem;flex-wrap:wrap">
 
@@ -1432,12 +1443,6 @@
             <span class="hero-sep__line"></span>
           </div>
           <p class="hero-desc">Cocina de la abuela con ingredientes frescos, recetas con historia y sazón de verdad.</p>
-          <div class="hero-search-wrap">
-            <span class="hero-search-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="17" height="17"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-            </span>
-            <input type="search" id="menu-search" class="menu-search" placeholder="¿Qué deseas ordenar?" autocomplete="off" aria-label="Buscar en el menú">
-          </div>
         </div>
       </section>
 
@@ -1542,6 +1547,9 @@
 
   </main>
 
+  <!-- ══ SECCIÓN CONTACTO (renderizada por ViewModule) ══ -->
+  <div id="seccion-contacto"></div>
+
   <footer class="site-footer" role="contentinfo">
     <div class="wrap">
       <p id="footer-text">© 2025 <em>Sal y Canela</em> · Hecho con amor y buena sazón</p>
@@ -1605,6 +1613,12 @@
   </div>
 
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
+
+  <!-- ══ MÓDULOS JS EXTERNOS ══ -->
+  <script src="js/repo.js"></script>
+  <script src="js/cart.js"></script>
+  <script src="js/view.js"></script>
+  <script src="js/app.js"></script>
 
   <script>
   'use strict';
@@ -1774,8 +1788,11 @@
     if (cobrado) {
       const historial = leerHistorial();
       const hoy = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
-      historial.push({ ...cobrado, fecha: hoy, cobradoEn: new Date().toISOString() });
+      const entrada = { ...cobrado, fecha: hoy, cobradoEn: new Date().toISOString() };
+      historial.push(entrada);
       guardarHistorial(historial);
+      /* Archivar también en IndexedDB */
+      CartIDB.guardar(entrada).catch(function () {});
     }
     const restantes = todos.filter(x => String(x.id) !== String(id));
     guardarCaja(restantes);
@@ -2213,6 +2230,7 @@
       const btn = e.target.closest('.filter-btn');
       if (!btn) return;
       setFiltroActivo(btn.dataset.cat);
+      AppModule.guardarFiltroSesion(btn.dataset.cat);
       const searchEl = document.getElementById('menu-search');
       if (searchEl) searchEl.value = '';
       onSelect(btn.dataset.cat);
@@ -2855,11 +2873,18 @@
     const errEl     = document.getElementById('register-error');
 
     const campos = ['reg-nombre','reg-apellido','reg-email','reg-telefono','reg-usuario','reg-password','reg-password2'];
-    campos.forEach(id => { document.getElementById(id).style.borderColor = ''; });
+    campos.forEach(id => {
+      const el = document.getElementById(id);
+      el.style.borderColor = '';
+      el.removeAttribute('aria-invalid');
+    });
 
     const markInvalid = (id, msg) => {
-      document.getElementById(id).style.borderColor = '#dc2626';
-      document.getElementById(id).focus();
+      const el = document.getElementById(id);
+      el.style.borderColor = '#dc2626';
+      el.setAttribute('aria-invalid', 'true');
+      el.setAttribute('aria-describedby', 'register-error');
+      el.focus();
       errEl.textContent = msg; errEl.classList.add('visible');
     };
     const show = msg => { errEl.textContent = msg; errEl.classList.add('visible'); };
@@ -2992,6 +3017,11 @@
      INIT
   ══════════════════════════════════════════════════ */
   seedUsers();
+
+  /* ── Módulos externos ── */
+  AppModule.registrarVisita();
+  CartIDB.abrir().catch(function () {});
+  ViewModule.renderContacto('seccion-contacto');
 
   function limpiarFormAuth() {
     ['login-usuario','login-password'].forEach(id => {

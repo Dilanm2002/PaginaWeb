@@ -1,0 +1,177 @@
+/*
+ * styles.css — Estilos complementarios de Sal y Canela
+ * Contiene: sección de contacto, formulario validado con ARIA,
+ * y ajustes de accesibilidad adicionales.
+ *
+ * Los estilos principales (reset, variables, header, hero, carrito, etc.)
+ * se encuentran en el bloque <style> de index.html para garantizar
+ * compatibilidad con la carga de un único archivo estático.
+ */
+
+/* ═══════════════════════════════════════════
+   SECCIÓN CONTACTO — contenedor principal
+═══════════════════════════════════════════ */
+.contacto-section {
+  background: #fff;
+  border-top: 2px solid var(--border, #E0C9B0);
+  padding: 4rem 0 5rem;
+}
+
+.contacto-desc {
+  color: var(--text-muted, #7A5640);
+  font-size: .97rem;
+  max-width: 560px;
+  margin: .35rem 0 2.5rem;
+  line-height: 1.65;
+}
+
+/* ═══════════════════════════════════════════
+   FORMULARIO DE CONTACTO
+═══════════════════════════════════════════ */
+.contacto-form {
+  max-width: 680px;
+}
+
+/* Fila de dos columnas */
+.cf-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+@media (max-width: 560px) {
+  .cf-row { grid-template-columns: 1fr; }
+}
+
+/* Campo individual */
+.cf-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 1.1rem;
+}
+
+.cf-field label {
+  font-size: .78rem;
+  font-weight: 600;
+  color: var(--text-muted, #7A5640);
+  text-transform: uppercase;
+  letter-spacing: .06em;
+  margin-bottom: .38rem;
+}
+
+.cf-field small {
+  font-size: .73rem;
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0;
+  color: var(--text-muted, #7A5640);
+  opacity: .7;
+}
+
+.cf-req { color: #dc2626; margin-left: .15rem; }
+
+/* Inputs y textarea */
+.cf-field input,
+.cf-field textarea {
+  width: 100%;
+  padding: .6rem .9rem;
+  border: 1.5px solid var(--border, #E0C9B0);
+  border-radius: 8px;
+  font-size: .92rem;
+  font-family: 'Inter', sans-serif;
+  color: var(--text, #2C1505);
+  background: var(--cream, #FDF6EE);
+  transition: border-color .18s, box-shadow .18s;
+  resize: vertical;
+}
+
+.cf-field input:focus,
+.cf-field textarea:focus {
+  outline: none;
+  border-color: var(--cinnamon, #C8561A);
+  box-shadow: 0 0 0 3px rgba(200, 86, 26, .13);
+}
+
+/* Estado inválido (aria-invalid="true" + clase .cf-invalid) */
+.cf-field input.cf-invalid,
+.cf-field textarea.cf-invalid {
+  border-color: #dc2626;
+  background: #fff5f5;
+}
+.cf-field input.cf-invalid:focus,
+.cf-field textarea.cf-invalid:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, .12);
+}
+
+/* Mensaje de error accesible (role="alert") */
+.cf-err {
+  display: none;
+  font-size: .77rem;
+  color: #dc2626;
+  margin-top: .3rem;
+  line-height: 1.4;
+}
+
+/* ═══════════════════════════════════════════
+   BOTÓN ENVIAR
+═══════════════════════════════════════════ */
+.cf-actions {
+  margin-top: .5rem;
+}
+
+.cf-submit {
+  display: inline-flex;
+  align-items: center;
+  gap: .5rem;
+  background: var(--cinnamon, #C8561A);
+  color: #fff;
+  border: none;
+  border-radius: 8px;
+  padding: .7rem 1.8rem;
+  font-size: .95rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: background .2s, transform .15s, box-shadow .2s;
+  font-family: 'Inter', sans-serif;
+}
+
+.cf-submit:hover {
+  background: var(--cinnamon-lt, #E07B3A);
+  transform: translateY(-1px);
+  box-shadow: 0 4px 14px rgba(200, 86, 26, .28);
+}
+
+.cf-submit:focus-visible {
+  outline: 3px solid var(--cinnamon, #C8561A);
+  outline-offset: 3px;
+}
+
+/* ═══════════════════════════════════════════
+   MENSAJE DE ÉXITO
+═══════════════════════════════════════════ */
+.cf-success {
+  margin-top: 1.1rem;
+  padding: .85rem 1.1rem;
+  background: #f0fdf4;
+  border: 1.5px solid #86efac;
+  border-radius: 8px;
+  color: #166534;
+  font-size: .9rem;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+/* ═══════════════════════════════════════════
+   ACCESIBILIDAD — foco visible global
+═══════════════════════════════════════════ */
+:focus-visible {
+  outline: 3px solid var(--cinnamon, #C8561A);
+  outline-offset: 2px;
+}
+
+/* Reduce motion */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    transition-duration: .01ms !important;
+  }
+}
