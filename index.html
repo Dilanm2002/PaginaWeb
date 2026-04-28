@@ -2958,6 +2958,12 @@
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
     }
 
+    /* Sección contacto: solo para usuario e invitado */
+    const contactoEl = document.getElementById('seccion-contacto');
+    if (contactoEl) {
+      contactoEl.style.display = (session.rol === 'cajero' || session.rol === 'mesero') ? 'none' : '';
+    }
+
     if (session.rol === 'cajero') {
       // Solo cajero: muestra vista de caja, oculta menú y botón Mi Orden
       menuView.style.display  = 'none';
