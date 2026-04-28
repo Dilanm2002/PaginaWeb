@@ -2233,6 +2233,8 @@
       AppModule.guardarFiltroSesion(btn.dataset.cat);
       const searchEl = document.getElementById('menu-search');
       if (searchEl) searchEl.value = '';
+      const contactoEl = document.getElementById('seccion-contacto');
+      if (contactoEl) contactoEl.style.display = btn.dataset.cat === 'Destacados' ? '' : 'none';
       onSelect(btn.dataset.cat);
     };
 
@@ -2241,12 +2243,15 @@
       const norm = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       searchEl.oninput = () => {
         const q = norm(searchEl.value.trim());
+        const contactoEl2 = document.getElementById('seccion-contacto');
         if (!q) {
           setFiltroActivo('Destacados');
           actualizarTitulo('Platos Destacados');
           renderProductos(PRODUCTOS.filter(p => p.destacado));
+          if (contactoEl2) contactoEl2.style.display = '';
           return;
         }
+        if (contactoEl2) contactoEl2.style.display = 'none';
         filterBar.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('active'); b.setAttribute('aria-pressed','false'); });
         const res = PRODUCTOS.filter(p =>
           norm(p.nombre).includes(q) || norm(p.categoria).includes(q)
