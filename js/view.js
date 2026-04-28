@@ -57,7 +57,7 @@ window.ViewModule = (function () {
       '            <div class="ci-item__icon">📞</div>',
       '            <div class="ci-item__text">',
       '              <span class="ci-item__label">Teléfono</span>',
-      '              <span class="ci-item__val">0991 234 567</span>',
+      '              <span class="ci-item__val">0960 227 340</span>',
       '            </div>',
       '          </div>',
       '          <div class="ci-item">',
