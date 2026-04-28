@@ -2963,10 +2963,14 @@
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
     }
 
-    /* Sección contacto: solo para usuario e invitado */
+    /* Sección contacto y buscador: solo para usuario e invitado */
     const contactoEl = document.getElementById('seccion-contacto');
     if (contactoEl) {
       contactoEl.style.display = (session.rol === 'cajero' || session.rol === 'mesero') ? 'none' : '';
+    }
+    const headerSearch = document.getElementById('header-search-wrap');
+    if (headerSearch) {
+      headerSearch.style.display = (session.rol === 'cajero' || session.rol === 'mesero') ? 'none' : '';
     }
 
     if (session.rol === 'cajero') {
