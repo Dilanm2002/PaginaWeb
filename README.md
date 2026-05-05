@@ -15,10 +15,12 @@ public/
 ├── data/
 │   └── productos.json      ← Catálogo de 30 productos en formato JSON
 ├── js/
-│   ├── repo.js             ← Módulo de carga de datos (fetch + fallback)
-│   ├── cart.js             ← Módulo IndexedDB para historial de pedidos
-│   ├── view.js             ← Módulo de renderizado (formulario de contacto)
-│   └── app.js              ← Módulo coordinador (cookies + sessionStorage)
+│   ├── repositorio.js      ← Módulo de carga de datos (fetch + fallback)
+│   ├── carrito.js          ← Módulo IndexedDB para historial de pedidos
+│   ├── logica-carrito.js   ← Módulo CRUD del carrito (localStorage)
+│   ├── autenticacion.js    ← Módulo de login y sesión de usuario
+│   ├── vista.js            ← Módulo de renderizado (formulario de contacto)
+│   └── aplicacion.js       ← Módulo coordinador (cookies + sessionStorage)
 └── README.md               ← Este archivo
 ```
 
@@ -55,8 +57,8 @@ public/
 
 ## Explicación técnica
 
-### Carga de datos (repo.js)
-`RepoModule.cargar()` intenta hacer `fetch('data/productos.json')`. Si falla (protocolo `file://` o sin red), usa el array `PRODUCTOS` definido inline en `index.html` como fallback. Esto garantiza que el sitio funcione tanto localmente como en servidor.
+### Carga de datos (repositorio.js)
+`ModuloRepositorio.cargar()` intenta hacer `fetch('data/productos.json')`. Si falla (protocolo `file://` o sin red), usa el array `PRODUCTOS` definido inline en `index.html` como fallback. Esto garantiza que el sitio funcione tanto localmente como en servidor.
 
 ### Persistencia — cuatro mecanismos
 
@@ -76,7 +78,7 @@ public/
 | Cookies | `sc_primer_visita` | Fecha de primer acceso (365 días) |
 | Cookies | `sc_ultima_visita` | Fecha del último acceso (30 días) |
 
-### Validaciones con Regex (view.js + index.html)
+### Validaciones con Regex (vista.js + index.html)
 
 | Campo | Expresión regular | Criterio |
 |---|---|---|

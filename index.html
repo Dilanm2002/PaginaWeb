@@ -1374,6 +1374,11 @@
         </div>
       </a>
 
+      <nav aria-label="Navegación principal">
+        <div class="main-nav">
+        </div>
+      </nav>
+
       <!-- Buscador central del header -->
       <div class="header-search-wrap" id="header-search-wrap">
         <span class="header-search-icon" aria-hidden="true">
@@ -1542,7 +1547,7 @@
 
   </main>
 
-  <!-- ══ SECCIÓN CONTACTO (renderizada por ViewModule) ══ -->
+  <!-- ══ SECCIÓN CONTACTO (renderizada por ModuloVista) ══ -->
   <div id="seccion-contacto"></div>
 
   <footer class="site-footer" role="contentinfo">
@@ -1610,10 +1615,25 @@
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ══ MÓDULOS JS EXTERNOS ══ -->
-  <script src="js/repo.js"></script>
-  <script src="js/cart.js"></script>
-  <script src="js/view.js"></script>
-  <script src="js/app.js"></script>
+  <script>
+  /* Configuración compartida entre módulos */
+  window.SC_CONFIG = {
+    LS_USERS    : 'salycanela_users',
+    LS_SESSION  : 'salycanela_session',
+    LS_CARRITO  : 'salycanela_orden',
+    LS_UPDATED  : 'salycanela_last_updated',
+    LS_CAJA     : 'salycanela_caja',
+    LS_HISTORIAL: 'salycanela_historial',
+    LS_GASTOS   : 'salycanela_gastos',
+    IVA         : 0.15
+  };
+  </script>
+  <script src="js/repositorio.js"></script>
+  <script src="js/autenticacion.js"></script>
+  <script src="js/logica-carrito.js"></script>
+  <script src="js/carrito.js"></script>
+  <script src="js/vista.js"></script>
+  <script src="js/aplicacion.js"></script>
 
   <script>
   'use strict';
@@ -1621,7 +1641,7 @@
   /* ══════════════════════════════════════════════════
      DATOS
   ══════════════════════════════════════════════════ */
-  const PRODUCTOS = [
+  window.PRODUCTOS = [
     // ── DESAYUNOS ──
     { id:1,  nombre:'Desayuno Continental',    descripcion:'Jugo natural + café o aromática + pan tostado con mantequilla y mermelada.',               precio:2.50, imagen:'https://images.unsplash.com/photo-1484723091739-30a097e8f929?w=400&h=300&fit=crop', categoria:'Desayunos',        tag:'🥐 Ligero',      ingredientes:['Jugo natural','Pan tostado','Mantequilla','Mermelada','Café o aromática'] },
     { id:2,  nombre:'Desayuno Americano', destacado:true,      descripcion:'Huevos fritos o revueltos + tostadas + jugo natural + café.',                              precio:3.50, imagen:'https://images.unsplash.com/photo-1533089860892-a7c6f0a88666?w=400&h=300&fit=crop', categoria:'Desayunos',        tag:'🍳 Clásico',     ingredientes:['Huevos','Pan tostado','Mantequilla','Jugo natural','Café'] },
@@ -1676,76 +1696,11 @@
   /* ══════════════════════════════════════════════════
      AUTH — usuarios
   ══════════════════════════════════════════════════ */
-  function seedUsers() {
-    const users = leerUsuarios();
-    const tieneDefaults = users.some(u => u.usuario === 'caja' || u.usuario === 'mesero');
-    if (!tieneDefaults) {
-      users.push(
-        { id:1, nombre:'Cajero Principal', usuario:'caja',   password:'1234', rol:'cajero' },
-        { id:2, nombre:'Mesero Demo',       usuario:'mesero', password:'1234', rol:'mesero' }
-      );
-      localStorage.setItem(LS_USERS, JSON.stringify(users));
-    }
-  }
-  function leerUsuarios() {
-    try { return JSON.parse(localStorage.getItem(LS_USERS)) ?? []; }
-    catch { return []; }
-  }
-  function getSession() {
-    try { return JSON.parse(sessionStorage.getItem(LS_SESSION)) ?? null; }
-    catch { return null; }
-  }
-  function setSession(data) { sessionStorage.setItem(LS_SESSION, JSON.stringify(data)); }
-  function clearSession()   { sessionStorage.removeItem(LS_SESSION); }
+  /* seedUsers, leerUsuarios, getSession, setSession, clearSession, login, registrar
+     → movidas a js/autenticacion.js (ModuloAutenticacion) */
 
-  function login(usuario, password) {
-    const users = leerUsuarios();
-    return users.find(u => u.usuario === usuario && u.password === password) ?? null;
-  }
-  function registrar(nombre, apellido, email, telefono, usuario, password, rol) {
-    const users = leerUsuarios();
-    if (users.find(u => u.usuario === usuario)) return { ok: false, msg: 'Ese nombre de usuario ya existe.' };
-    if (users.find(u => u.email === email)) return { ok: false, msg: 'Ya existe una cuenta con ese correo.' };
-    if (password.length < 4) return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
-    const nuevo = { id: Date.now(), nombre, apellido, email, telefono, usuario, password, rol };
-    users.push(nuevo);
-    localStorage.setItem(LS_USERS, JSON.stringify(users));
-    return { ok: true, user: nuevo };
-  }
-
-  /* ══════════════════════════════════════════════════
-     CARRITO
-  ══════════════════════════════════════════════════ */
-  function leerCarrito() {
-    try { return JSON.parse(localStorage.getItem(LS_CARRITO)) ?? []; }
-    catch { return []; }
-  }
-  function guardarCarrito(items) {
-    localStorage.setItem(LS_CARRITO, JSON.stringify(items));
-    localStorage.setItem(LS_UPDATED, new Date().toISOString());
-  }
-  function agregarItem(producto) {
-    const items = leerCarrito();
-    const idx   = items.findIndex(i => i.id === producto.id);
-    if (idx >= 0) items[idx].cantidad += 1;
-    else items.push({ id:producto.id, nombre:producto.nombre, precio:producto.precio, imagen:producto.imagen, cantidad:1 });
-    guardarCarrito(items); return items;
-  }
-  function eliminarItem(id) { const items = leerCarrito().filter(i => i.id !== id); guardarCarrito(items); return items; }
-  function cambiarCantidad(id, cantidad) {
-    if (cantidad <= 0) return eliminarItem(id);
-    const items = leerCarrito();
-    const idx   = items.findIndex(i => i.id === id);
-    if (idx >= 0) items[idx].cantidad = cantidad;
-    guardarCarrito(items); return items;
-  }
-  function vaciarCarrito() { guardarCarrito([]); return []; }
-  function calcularTotales(items) {
-    const total    = items.reduce((s,i) => s + i.precio * i.cantidad, 0);
-    const iva      = total * (IVA / (1 + IVA));
-    const subtotal = total - iva;
-    return { subtotal, iva, total, nItems: items.reduce((s,i) => s + i.cantidad, 0) };
-  }
+  /* leerCarrito, guardarCarrito, agregarItem, eliminarItem, cambiarCantidad,
+     vaciarCarrito, calcularTotales → movidas a js/logica-carrito.js (LogicaCarrito) */
 
   /* ══════════════════════════════════════════════════
      CAJA
@@ -1757,7 +1712,7 @@
   function guardarCaja(p) { localStorage.setItem(LS_CAJA, JSON.stringify(p)); }
   function enviarACaja({ mesa, nombreUsuario, rol, items }) {
     const pedidos  = leerCaja();
-    const totales  = calcularTotales(items);
+    const totales  = LogicaCarrito.calcularTotales(items);
     pedidos.push({
       id: Date.now(),
       mesa,
@@ -1787,7 +1742,7 @@
       historial.push(entrada);
       guardarHistorial(historial);
       /* Archivar también en IndexedDB */
-      CartIDB.guardar(entrada).catch(function () {});
+      CarritoIDB.guardar(entrada).catch(function () {});
     }
     const restantes = todos.filter(x => String(x.id) !== String(id));
     guardarCaja(restantes);
@@ -1871,8 +1826,8 @@
      RENDER CARRITO
   ══════════════════════════════════════════════════ */
   function renderCarrito() {
-    const items   = leerCarrito();
-    const totales = calcularTotales(items);
+    const items   = LogicaCarrito.leerCarrito();
+    const totales = LogicaCarrito.calcularTotales(items);
     const ultima  = localStorage.getItem(LS_UPDATED);
 
     cartCount.textContent   = totales.nItems;
@@ -1923,11 +1878,11 @@
         const id = Number(btn.dataset.id);
         if (btn.classList.contains('btn-remove')) {
           const nombre = items.find(i => i.id === id)?.nombre ?? 'Platillo';
-          eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
+          LogicaCarrito.eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
         } else if (btn.dataset.action === 'inc') {
-          cambiarCantidad(id, items.find(i => i.id === id).cantidad + 1); renderCarrito();
+          LogicaCarrito.cambiarCantidad(id, items.find(i => i.id === id).cantidad + 1); renderCarrito();
         } else if (btn.dataset.action === 'dec') {
-          cambiarCantidad(id, items.find(i => i.id === id).cantidad - 1); renderCarrito();
+          LogicaCarrito.cambiarCantidad(id, items.find(i => i.id === id).cantidad - 1); renderCarrito();
         }
       };
     }
@@ -2206,9 +2161,9 @@
   }
 
   function getListaByCat(cat) {
-    if (cat === 'Destacados') return PRODUCTOS.filter(p => p.destacado);
-    if (cat === 'Todos')      return PRODUCTOS;
-    return PRODUCTOS.filter(p => p.categoria === cat);
+    if (cat === 'Destacados') return ModuloRepositorio.destacados();
+    if (cat === 'Todos')      return ModuloRepositorio.todos();
+    return ModuloRepositorio.porCategoria(cat);
   }
 
   function actualizarTitulo(texto) {
@@ -2217,7 +2172,7 @@
   }
 
   function renderFiltros(onSelect) {
-    const cats = ['Destacados', 'Todos', ...[...new Set(PRODUCTOS.map(p => p.categoria))]];
+    const cats = ['Destacados', 'Todos', ...[...new Set(ModuloRepositorio.todos().map(p => p.categoria))]];
     filterBar.innerHTML = cats.map((cat,i) => `
       <button class="filter-btn${i===0?' active':''}" data-cat="${cat}" aria-pressed="${i===0}">${cat === 'Destacados' ? '⭐ Destacados' : cat}</button>
     `).join('');
@@ -2225,7 +2180,7 @@
       const btn = e.target.closest('.filter-btn');
       if (!btn) return;
       setFiltroActivo(btn.dataset.cat);
-      AppModule.guardarFiltroSesion(btn.dataset.cat);
+      ModuloApp.guardarFiltroSesion(btn.dataset.cat);
       const searchEl = document.getElementById('menu-search');
       if (searchEl) searchEl.value = '';
       const contactoEl = document.getElementById('seccion-contacto');
@@ -2242,7 +2197,7 @@
         if (!q) {
           setFiltroActivo('Destacados');
           actualizarTitulo('Platos Destacados');
-          renderProductos(PRODUCTOS.filter(p => p.destacado));
+          renderProductos(ModuloRepositorio.destacados());
           if (contactoEl2) contactoEl2.style.display = '';
           return;
         }
@@ -2331,7 +2286,7 @@
               const p2 = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
               fuente = p2 ? p2.items : [];
             } else {
-              fuente = leerCarrito();
+              fuente = LogicaCarrito.leerCarrito();
             }
             PRODUCTOS.forEach(prod => {
               const el = document.getElementById(`mqty-${prod.id}`);
@@ -2348,7 +2303,7 @@
       btnCancel.onclick = () => {
         meseroMesaTarget = null;
         renderMesasActivas();
-        const carrito = leerCarrito();
+        const carrito = LogicaCarrito.leerCarrito();
         PRODUCTOS.forEach(prod => {
           const el = document.getElementById(`mqty-${prod.id}`);
           if (el) { const it = carrito.find(x => x.id === prod.id); el.textContent = it ? it.cantidad : 0; }
@@ -2392,7 +2347,7 @@
       const ped = pedidos.find(p => String(p.id) === String(meseroMesaTarget.id));
       fuente = ped ? ped.items : [];
     } else {
-      fuente = leerCarrito();
+      fuente = LogicaCarrito.leerCarrito();
     }
     PRODUCTOS.forEach(p => {
       const el = document.getElementById(`mqty-${p.id}`);
@@ -2517,12 +2472,12 @@
 
       // Sin mesa seleccionada → flujo normal de carrito
       if (btn.classList.contains('add')) {
-        agregarItem(prod);
+        LogicaCarrito.agregarItem(prod);
         toast(`"${prod.nombre}" agregado`, 'success');
       } else {
-        const carrito = leerCarrito();
+        const carrito = LogicaCarrito.leerCarrito();
         const item = carrito.find(x => x.id === prod.id);
-        if (item) cambiarCantidad(prod.id, item.cantidad - 1);
+        if (item) LogicaCarrito.cambiarCantidad(prod.id, item.cantidad - 1);
       }
       syncQtys();
       renderCarrito();
@@ -2569,7 +2524,7 @@
         e.stopPropagation();
         const prod = PRODUCTOS.find(x => x.id === Number(btnAdd.dataset.id));
         if (!prod) return;
-        agregarItem(prod); renderCarrito();
+        LogicaCarrito.agregarItem(prod); renderCarrito();
         toast(`"${prod.nombre}" agregado a tu orden 🍽️`, 'success');
         return;
       }
@@ -2610,12 +2565,14 @@
 
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
-      agregarItem(p); renderCarrito();
+      LogicaCarrito.agregarItem(p); renderCarrito();
       toast(`"${p.nombre}" agregado a tu orden 🍽️`, 'success');
       cerrarModalProducto();
     };
+    setTimeout(function() { trapProducto.activar(); }, 0);
   }
   function cerrarModalProducto() {
+    trapProducto.desactivar();
     modalBackdrop.classList.remove('open');
     modalBackdrop.setAttribute('aria-hidden','true');
     document.body.style.overflow = '';
@@ -2626,9 +2583,9 @@
      MODAL CONFIRMAR PEDIDO
   ══════════════════════════════════════════════════ */
   function abrirModalMesa() {
-    const session = getSession();
-    const items   = leerCarrito();
-    const totales = calcularTotales(items);
+    const session = ModuloAutenticacion.getSession();
+    const items   = LogicaCarrito.leerCarrito();
+    const totales = LogicaCarrito.calcularTotales(items);
 
     // Si el mesero tiene una mesa activa seleccionada, pre-llenar el número
     const mesaErrEl = document.getElementById('mesa-input-error');
@@ -2675,11 +2632,10 @@
 
     mesaBackdrop.classList.add('open');
     mesaBackdrop.setAttribute('aria-hidden','false');
-    // Enfocar nombre si es invitado, sino la mesa
-    const campoNombreVisible = campoInvitado && campoInvitado.style.display !== 'none';
-    setTimeout(() => { (campoNombreVisible ? invitadoNombre : mesaInput).focus(); }, 50);
+    setTimeout(function() { trapMesa.activar(); }, 50);
   }
   function cerrarModalMesa() {
+    trapMesa.desactivar();
     mesaBackdrop.classList.remove('open');
     mesaBackdrop.setAttribute('aria-hidden','true');
   }
@@ -2687,7 +2643,7 @@
   mesaBackdrop.addEventListener('click', e => { if (e.target === mesaBackdrop) cerrarModalMesa(); });
 
   btnConfirmarMesa.addEventListener('click', () => {
-    const session = getSession();
+    const session = ModuloAutenticacion.getSession();
     const mesa = Number(mesaInput.value.trim());
     if (!mesa || mesa < 1 || mesa > 12) {
       mesaInput.style.borderColor = '#dc2626';
@@ -2723,7 +2679,7 @@
       rol = 'invitado';
     }
 
-    const items = leerCarrito();
+    const items = LogicaCarrito.leerCarrito();
 
     // Si el mesero seleccionó una mesa activa, agregar ítems al pedido existente
     if (meseroMesaTarget) {
@@ -2739,7 +2695,7 @@
           }
         });
         actualizarPedido(ped.id, ped.items);
-        vaciarCarrito();
+        LogicaCarrito.vaciarCarrito();
         renderCarrito();
         renderCajeroView();
         const mesaNum = meseroMesaTarget.mesa;
@@ -2766,7 +2722,7 @@
     }
 
     enviarACaja({ mesa, nombreUsuario, rol, items });
-    vaciarCarrito();
+    LogicaCarrito.vaciarCarrito();
     renderCarrito();
     renderCajeroView();
     renderMesasActivas();
@@ -2774,6 +2730,52 @@
     cerrarCarrito();
     toast('Pedido enviado exitosamente', 'success');
   });
+
+  /* ══════════════════════════════════════════════════
+     FOCUS TRAP — accesibilidad en modales
+  ══════════════════════════════════════════════════ */
+  /**
+   * Crea un focus trap reutilizable para un modal.
+   * @param {HTMLElement} modalEl — Elemento raíz del modal.
+   * @returns {{ activar: Function, desactivar: Function }}
+   */
+  function crearFocusTrap(modalEl) {
+    var FOCUSABLES = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+    var elementoRetorno = null;
+    var manejadorTab = null;
+
+    function activar() {
+      elementoRetorno = document.activeElement;
+      manejadorTab = function(e) {
+        if (e.key !== 'Tab') return;
+        var lista = Array.from(modalEl.querySelectorAll(FOCUSABLES))
+          .filter(function(el) { return !el.disabled && el.offsetParent !== null; });
+        if (!lista.length) { e.preventDefault(); return; }
+        var primero = lista[0];
+        var ultimo  = lista[lista.length - 1];
+        if (e.shiftKey) {
+          if (document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }
+        } else {
+          if (document.activeElement === ultimo)  { e.preventDefault(); primero.focus(); }
+        }
+      };
+      document.addEventListener('keydown', manejadorTab);
+      var lista = Array.from(modalEl.querySelectorAll(FOCUSABLES))
+        .filter(function(el) { return !el.disabled && el.offsetParent !== null; });
+      if (lista.length) lista[0].focus();
+    }
+
+    function desactivar() {
+      if (manejadorTab) { document.removeEventListener('keydown', manejadorTab); manejadorTab = null; }
+      if (elementoRetorno && elementoRetorno.focus) { elementoRetorno.focus(); elementoRetorno = null; }
+    }
+
+    return { activar: activar, desactivar: desactivar };
+  }
+
+  var trapProducto = crearFocusTrap(document.getElementById('product-modal-backdrop'));
+  var trapMesa     = crearFocusTrap(document.getElementById('mesa-modal-backdrop'));
+  var trapAuth     = crearFocusTrap(document.getElementById('auth-backdrop'));
 
   /* ══════════════════════════════════════════════════
      PANEL CARRITO
@@ -2798,7 +2800,7 @@
     if (mesaBackdrop.classList.contains('open'))  { cerrarModalMesa(); return; }
     if (cartPanel.classList.contains('open')) cerrarCarrito();
   });
-  btnClear.addEventListener('click', () => { vaciarCarrito(); renderCarrito(); toast('Orden vaciada'); });
+  btnClear.addEventListener('click', () => { LogicaCarrito.vaciarCarrito(); renderCarrito(); toast('Orden vaciada'); });
   checkoutBtn.addEventListener('click', () => { cerrarCarrito(); abrirModalMesa(); });
 
   if (btnCaja) {
@@ -2853,11 +2855,11 @@
   document.getElementById('btn-login').addEventListener('click', () => {
     const usuario  = document.getElementById('login-usuario').value.trim();
     const password = document.getElementById('login-password').value;
-    const user     = login(usuario, password);
+    const user     = ModuloAutenticacion.login(usuario, password);
     const errEl    = document.getElementById('login-error');
     if (!user) { errEl.classList.add('visible'); return; }
     errEl.classList.remove('visible');
-    setSession({ id:user.id, nombre:user.nombre, usuario:user.usuario, rol:user.rol });
+    ModuloAutenticacion.setSession({ id:user.id, nombre:user.nombre, usuario:user.usuario, rol:user.rol });
     aplicarSesion();
   });
 
@@ -2916,17 +2918,17 @@
       return show('Las contraseñas no coinciden.');
     }
 
-    const res = registrar(nombre, apellido, email, telefono, usuario, password, rol);
+    const res = ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
     if (!res.ok) { show(res.msg); return; }
     limpiarFormAuth();
-    setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });
+    ModuloAutenticacion.setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });
     aplicarSesion();
   });
 
 
   btnLogout.addEventListener('click', () => {
-    clearSession(); vaciarCarrito();
-    setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
+    ModuloAutenticacion.clearSession(); LogicaCarrito.vaciarCarrito();
+    ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
     aplicarSesion();
   });
 
@@ -2934,10 +2936,11 @@
      APLICAR SESIÓN — controla qué ve cada rol
   ══════════════════════════════════════════════════ */
   function aplicarSesion() {
-    const session = getSession();
+    const session = ModuloAutenticacion.getSession();
     if (!session) return;
 
     // Ocultar modal auth
+    trapAuth.desactivar();
     authBackdrop.classList.remove('open');
 
     // Chip de usuario
@@ -2987,7 +2990,7 @@
 
       if (session.rol === 'mesero') {
         // Vista rápida sin fotos — limpiar carrito del cliente anterior
-        vaciarCarrito();
+        LogicaCarrito.vaciarCarrito();
         meseroMesaTarget = null;
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
@@ -2995,7 +2998,7 @@
         renderCarrito();
       } else {
         // Cliente / invitado: menú con fotos — limpiar carrito del mesero anterior
-        vaciarCarrito();
+        LogicaCarrito.vaciarCarrito();
         document.querySelector('.filter-bar-wrap').style.display = '';
         document.querySelector('.hero').style.display = '';
         grid.className = 'products-grid';
@@ -3016,7 +3019,7 @@
             renderProductos(getListaByCat(cat));
           });
           actualizarTitulo('Platos Destacados');
-          renderProductos(PRODUCTOS.filter(p => p.destacado));
+          renderProductos(ModuloRepositorio.destacados());
           renderCarrito();
         }, 600);
       }
@@ -3026,12 +3029,13 @@
   /* ══════════════════════════════════════════════════
      INIT
   ══════════════════════════════════════════════════ */
-  seedUsers();
+  ModuloAutenticacion.seedUsers();
 
   /* ── Módulos externos ── */
-  AppModule.registrarVisita();
-  CartIDB.abrir().catch(function () {});
-  ViewModule.renderContacto('seccion-contacto');
+  ModuloApp.registrarVisita();
+  CarritoIDB.abrir().catch(function () {});
+  ModuloRepositorio.cargar().catch(function () {});
+  ModuloVista.renderContacto('seccion-contacto');
 
   function limpiarFormAuth() {
     ['login-usuario','login-password'].forEach(id => {
@@ -3059,23 +3063,24 @@
   document.getElementById('btn-abrir-auth').addEventListener('click', () => {
     limpiarFormAuth();
     authBackdrop.classList.add('open');
+    setTimeout(function() { trapAuth.activar(); }, 0);
   });
 
   // Cerrar modal al hacer click en el backdrop (fuera del cuadro)
   authBackdrop.addEventListener('click', (e) => {
-    if (e.target === authBackdrop) { limpiarFormAuth(); authBackdrop.classList.remove('open'); }
+    if (e.target === authBackdrop) { trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open'); }
   });
 
   document.getElementById('btn-cerrar-auth').addEventListener('click', () => {
-    limpiarFormAuth(); authBackdrop.classList.remove('open');
+    trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open');
   });
 
-  const sesionActual = getSession();
+  const sesionActual = ModuloAutenticacion.getSession();
   if (sesionActual) {
     aplicarSesion();
   } else {
     // Sin sesión previa: arrancar como invitado para mostrar el menú directamente
-    setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
+    ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
     aplicarSesion();
   }
 
