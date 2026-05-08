@@ -14,7 +14,7 @@ window.ModuloAutenticacion = (function () {
     if (!tieneDefaults) {
       users.push(
         { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero' },
-        { id: 2, nombre: 'Mesero Demo',       usuario: 'mesero', password: '1234', rol: 'mesero' }
+        { id: 2, nombre: 'Mesero',       usuario: 'mesero', password: '1234', rol: 'mesero' }
       );
       localStorage.setItem(cfg.LS_USERS, JSON.stringify(users));
     }
