@@ -1880,9 +1880,11 @@
           const nombre = items.find(i => i.id === id)?.nombre ?? 'Platillo';
           LogicaCarrito.eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
         } else if (btn.dataset.action === 'inc') {
-          LogicaCarrito.cambiarCantidad(id, items.find(i => i.id === id).cantidad + 1); renderCarrito();
+          const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
+          if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad + 1); renderCarrito(); }
         } else if (btn.dataset.action === 'dec') {
-          LogicaCarrito.cambiarCantidad(id, items.find(i => i.id === id).cantidad - 1); renderCarrito();
+          const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
+          if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad - 1); renderCarrito(); }
         }
       };
     }
@@ -2483,10 +2485,13 @@
       renderCarrito();
     };
 
-    // Cerrar popover al hacer click fuera del grid
-    document.addEventListener('click', () => {
-      grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
-    }, { capture: true });
+    // Cerrar popover al hacer click fuera del grid (se registra una sola vez)
+    if (!renderProductosMesero._popoverListenerAdded) {
+      document.addEventListener('click', () => {
+        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+      }, { capture: true });
+      renderProductosMesero._popoverListenerAdded = true;
+    }
   }
 
   function renderProductos(lista) {
@@ -2611,12 +2616,13 @@
       invitadoNombre.style.borderColor = '';
       const nombreError = document.getElementById('nombre-error');
       if (nombreError) nombreError.style.display = 'none';
-      invitadoNombre.addEventListener('input', () => {
+      invitadoNombre.oninput = () => {
         if (invitadoNombre.value.trim()) {
           invitadoNombre.style.borderColor = '';
-          if (nombreError) nombreError.style.display = 'none';
+          const err = document.getElementById('nombre-error');
+          if (err) err.style.display = 'none';
         }
-      }, { once: true });
+      };
     }
 
     mesaPreviewEl.innerHTML = `
@@ -2978,8 +2984,9 @@
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none'; // cajero ya tiene su vista principal
       renderCajeroView();
-      // Auto-refresh cada 15s
-      setInterval(renderCajeroView, 15000);
+      // Auto-refresh cada 15s (se limpia si ya había uno activo)
+      if (aplicarSesion._cajeroInterval) clearInterval(aplicarSesion._cajeroInterval);
+      aplicarSesion._cajeroInterval = setInterval(renderCajeroView, 15000);
     } else {
       // Mesero / usuario / invitado: menú normal
       menuView.style.display  = '';
@@ -2988,17 +2995,21 @@
 
       btnCaja.style.display = 'none';
 
+      const prevRol = sessionStorage.getItem('sc_prev_rol');
+
       if (session.rol === 'mesero') {
-        // Vista rápida sin fotos — limpiar carrito del cliente anterior
-        LogicaCarrito.vaciarCarrito();
+        // Limpiar carrito solo si el rol cambió (no en simples recargas)
+        if (prevRol !== null && prevRol !== 'mesero') LogicaCarrito.vaciarCarrito();
+        sessionStorage.setItem('sc_prev_rol', 'mesero');
         meseroMesaTarget = null;
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
         renderProductosMesero();
         renderCarrito();
       } else {
-        // Cliente / invitado: menú con fotos — limpiar carrito del mesero anterior
-        LogicaCarrito.vaciarCarrito();
+        // Limpiar carrito solo si venía de sesión de mesero
+        if (prevRol === 'mesero') LogicaCarrito.vaciarCarrito();
+        sessionStorage.setItem('sc_prev_rol', session.rol ?? 'invitado');
         document.querySelector('.filter-bar-wrap').style.display = '';
         document.querySelector('.hero').style.display = '';
         grid.className = 'products-grid';
@@ -3014,12 +3025,14 @@
           </div>`).join('');
 
         setTimeout(() => {
+          const savedCat = ModuloApp.getFiltroSesion();
           renderFiltros(cat => {
             actualizarTitulo(cat === 'Destacados' ? 'Platos Destacados' : cat === 'Todos' ? 'Nuestro Menú' : cat);
             renderProductos(getListaByCat(cat));
           });
-          actualizarTitulo('Platos Destacados');
-          renderProductos(ModuloRepositorio.destacados());
+          setFiltroActivo(savedCat);
+          actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
+          renderProductos(getListaByCat(savedCat));
           renderCarrito();
         }, 600);
       }
