@@ -1185,6 +1185,79 @@
     @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
     @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(8px); } }
 
+    /* ════ VISTA PERFIL USUARIO ════ */
+    #usuario-view { display: none; }
+
+    .perfil-header { background: #2a1006; padding: 2rem 0 1.5rem; color: #fff; }
+    .perfil-header .wrap { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
+    .perfil-avatar-lg {
+      width: 72px; height: 72px; border-radius: 50%;
+      background: var(--cinnamon); color: #fff;
+      font-size: 2rem; font-weight: 700; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .perfil-info { flex: 1; min-width: 0; }
+    .perfil-nombre { font-size: 1.4rem; font-weight: 700; margin: 0 0 .15rem; }
+    .perfil-username { font-size: .85rem; color: rgba(255,255,255,.6); margin: 0 0 .5rem; }
+    .perfil-rol-badge {
+      display: inline-block; background: var(--cinnamon); color: #fff;
+      font-size: .7rem; font-weight: 700; letter-spacing: .05em;
+      padding: .18rem .65rem; border-radius: 999px; text-transform: uppercase;
+    }
+    .btn-ir-menu {
+      background: var(--cinnamon); color: #fff; border: none;
+      border-radius: 999px; padding: .6rem 1.3rem; font-size: .88rem;
+      font-weight: 600; cursor: pointer; transition: background .2s;
+      display: flex; align-items: center; gap: .45rem; white-space: nowrap;
+    }
+    .btn-ir-menu:hover { background: var(--cinnamon-lt); }
+
+    .perfil-stats {
+      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem 0;
+    }
+    .perfil-stat {
+      background: var(--cream-dk); border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.25rem; text-align: center;
+    }
+    .perfil-stat__val { display: block; font-size: 1.6rem; font-weight: 700; color: var(--cinnamon); }
+    .perfil-stat__lbl { font-size: .78rem; color: var(--text-muted); }
+
+    .perfil-section-title {
+      font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem;
+      padding-bottom: .5rem; border-bottom: 2px solid var(--cinnamon);
+    }
+    .perfil-historial { display: flex; flex-direction: column; gap: .85rem; padding-bottom: 3rem; }
+
+    .perfil-pedido-card {
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow);
+    }
+    .perfil-pedido-card__head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: .5rem; margin-bottom: .65rem;
+    }
+    .perfil-pedido-card__fecha { font-size: .8rem; color: var(--text-muted); }
+    .perfil-pedido-card__total { font-size: 1.05rem; font-weight: 700; color: var(--cinnamon); }
+    .perfil-pedido-card__items { margin: 0 0 .85rem; padding: 0; list-style: none; }
+    .perfil-pedido-card__items li {
+      font-size: .85rem; color: var(--text); padding: .15rem 0;
+      display: flex; gap: .4rem;
+    }
+    .perfil-pedido-card__items li::before { content: '•'; color: var(--cinnamon); flex-shrink: 0; }
+    .btn-volver-pedir {
+      width: 100%; background: transparent;
+      border: 1.5px solid var(--cinnamon); color: var(--cinnamon);
+      border-radius: 999px; padding: .5rem; font-size: .85rem; font-weight: 600;
+      cursor: pointer; transition: background .2s, color .2s;
+    }
+    .btn-volver-pedir:hover { background: var(--cinnamon); color: #fff; }
+
+    .perfil-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
+    .perfil-empty svg { margin-bottom: .75rem; opacity: .4; display: block; margin-inline: auto; }
+    .perfil-empty p { margin: 0; font-size: .95rem; }
+
+    #btn-mi-perfil { display: none; }
+
     /* Buscador móvil — entre hero y filtros, oculto en desktop */
     .mobile-search-wrap {
       display: none;
@@ -1458,6 +1531,7 @@
           <span id="cart-count" class="cart-count" aria-live="polite">0</span>
         </button>
 
+        <button id="btn-mi-perfil" class="btn-logout">Mi perfil</button>
         <button id="btn-abrir-auth" class="btn-logout">Iniciar Sesión</button>
         <button id="btn-logout" class="btn-logout" style="display:none">Salir</button>
 
@@ -1507,6 +1581,42 @@
                aria-live="polite" aria-busy="true"></div>
         </div>
       </section>
+    </div>
+
+    <!-- Vista Perfil (solo rol usuario) -->
+    <div id="usuario-view">
+      <section class="perfil-header" aria-labelledby="perfil-nombre">
+        <div class="wrap">
+          <div class="perfil-avatar-lg" id="perfil-avatar-lg" aria-hidden="true">?</div>
+          <div class="perfil-info">
+            <h2 class="perfil-nombre" id="perfil-nombre">—</h2>
+            <p class="perfil-username" id="perfil-username">@—</p>
+            <span class="perfil-rol-badge">Cliente</span>
+          </div>
+          <button class="btn-ir-menu" id="btn-ir-menu" aria-label="Ir al menú y realizar un pedido">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" aria-hidden="true">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 01-8 0"/>
+            </svg>
+            Ver menú y pedir
+          </button>
+        </div>
+      </section>
+      <div class="wrap">
+        <div class="perfil-stats" aria-label="Resumen de actividad">
+          <div class="perfil-stat">
+            <span class="perfil-stat__val" id="perfil-total-pedidos" aria-label="Pedidos realizados">0</span>
+            <span class="perfil-stat__lbl">Pedidos realizados</span>
+          </div>
+          <div class="perfil-stat">
+            <span class="perfil-stat__val" id="perfil-total-gastado" aria-label="Total gastado">$0.00</span>
+            <span class="perfil-stat__lbl">Total gastado</span>
+          </div>
+        </div>
+        <h3 class="perfil-section-title">Mis pedidos</h3>
+        <div id="perfil-historial" class="perfil-historial" aria-live="polite"></div>
+      </div>
     </div>
 
     <!-- Vista Cajero (solo cajero) -->
@@ -2999,6 +3109,97 @@
   /* ══════════════════════════════════════════════════
      APLICAR SESIÓN — controla qué ve cada rol
   ══════════════════════════════════════════════════ */
+  /* ══════════════════════════════════════════════════
+     PERFIL DE USUARIO
+  ══════════════════════════════════════════════════ */
+  function irAlMenu() {
+    document.getElementById('usuario-view').style.display = 'none';
+    document.getElementById('menu-view').style.display = '';
+    const btnMiPerfil = document.getElementById('btn-mi-perfil');
+    if (btnMiPerfil) btnMiPerfil.style.display = '';
+  }
+
+  function irAlPerfil() {
+    document.getElementById('menu-view').style.display = 'none';
+    document.getElementById('usuario-view').style.display = '';
+    const btnMiPerfil = document.getElementById('btn-mi-perfil');
+    if (btnMiPerfil) btnMiPerfil.style.display = 'none';
+    renderUsuarioView();
+  }
+
+  function renderUsuarioView() {
+    const session = ModuloAutenticacion.getSession();
+
+    const avatarEl   = document.getElementById('perfil-avatar-lg');
+    const nombreEl   = document.getElementById('perfil-nombre');
+    const usernameEl = document.getElementById('perfil-username');
+    if (avatarEl)   avatarEl.textContent   = session.nombre.charAt(0).toUpperCase();
+    if (nombreEl)   nombreEl.textContent   = session.nombre;
+    if (usernameEl) usernameEl.textContent = '@' + session.usuario;
+
+    const historial   = leerHistorial();
+    const misPedidos  = historial.filter(h => h.nombreUsuario === session.usuario);
+    const totalGastado = misPedidos.reduce((s, p) => s + (p.total || 0), 0);
+
+    const totalPedidosEl  = document.getElementById('perfil-total-pedidos');
+    const totalGastadoEl  = document.getElementById('perfil-total-gastado');
+    if (totalPedidosEl) totalPedidosEl.textContent = misPedidos.length;
+    if (totalGastadoEl) totalGastadoEl.textContent = '$' + totalGastado.toFixed(2);
+
+    const historialEl = document.getElementById('perfil-historial');
+    if (!historialEl) return;
+
+    if (!misPedidos.length) {
+      historialEl.innerHTML = `
+        <div class="perfil-empty">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="52" height="52" aria-hidden="true">
+            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+            <line x1="3" y1="6" x2="21" y2="6"/>
+            <path d="M16 10a4 4 0 01-8 0"/>
+          </svg>
+          <p>Aún no tienes pedidos. ¡Haz tu primer pedido!</p>
+        </div>`;
+      return;
+    }
+
+    const sorted = [...misPedidos].reverse();
+    historialEl.innerHTML = sorted.map((p, idx) => {
+      const hora  = p.cobradoEn
+        ? new Date(p.cobradoEn).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+        : (p.hora || '');
+      const items = (p.items || []).map(i => `<li>${i.cantidad}× ${i.nombre}</li>`).join('');
+      return `
+        <article class="perfil-pedido-card" aria-label="Pedido del ${p.fecha}">
+          <div class="perfil-pedido-card__head">
+            <span class="perfil-pedido-card__fecha">📅 ${p.fecha}${hora ? ' · ' + hora : ''}</span>
+            <span class="perfil-pedido-card__total">$${(p.total || 0).toFixed(2)}</span>
+          </div>
+          <ul class="perfil-pedido-card__items">${items}</ul>
+          <button class="btn-volver-pedir" data-idx="${idx}"
+                  aria-label="Volver a pedir lo mismo del ${p.fecha}">
+            🔄 Volver a pedir
+          </button>
+        </article>`;
+    }).join('');
+
+    historialEl.onclick = e => {
+      const btn = e.target.closest('.btn-volver-pedir');
+      if (!btn) return;
+      const pedido = sorted[Number(btn.dataset.idx)];
+      if (!pedido?.items?.length) return;
+      LogicaCarrito.vaciarCarrito();
+      pedido.items.forEach(item => {
+        for (let i = 0; i < item.cantidad; i++) LogicaCarrito.agregarItem(item);
+      });
+      irAlMenu();
+      setTimeout(() => {
+        renderCarrito();
+        const btnCart = document.getElementById('btn-cart');
+        if (btnCart) btnCart.click();
+      }, 80);
+    };
+  }
+
   function aplicarSesion() {
     const session = ModuloAutenticacion.getSession();
     if (!session) return;
@@ -3009,11 +3210,13 @@
 
     // Chip de usuario
     const btnAbrirAuth = document.getElementById('btn-abrir-auth');
+    const btnMiPerfil = document.getElementById('btn-mi-perfil');
     if (session.rol === 'invitado') {
       // Invitado: mostrar solo el botón "Iniciar Sesión", ocultar chip y Salir
       userChip.style.display  = 'none';
       btnLogout.style.display = 'none';
       if (btnAbrirAuth) btnAbrirAuth.style.display = '';
+      if (btnMiPerfil) btnMiPerfil.style.display = 'none';
     } else {
       // Sesión real: mostrar chip y Salir, ocultar "Iniciar Sesión"
       userChip.style.display = '';
@@ -3023,6 +3226,7 @@
       userRol.textContent     = ROL_LABEL[session.rol] ?? session.rol;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
+      if (btnMiPerfil) btnMiPerfil.style.display = session.rol === 'usuario' ? '' : 'none';
     }
 
     /* Sección contacto y buscador: solo para usuario e invitado */
@@ -3046,12 +3250,15 @@
       if (aplicarSesion._cajeroInterval) clearInterval(aplicarSesion._cajeroInterval);
       aplicarSesion._cajeroInterval = setInterval(renderCajeroView, 15000);
     } else {
-      // Mesero / usuario / invitado: menú normal
-      menuView.style.display  = '';
+      // Mesero / usuario / invitado
       cajeroView.classList.remove('visible');
       btnOpen.style.display   = '';
+      btnCaja.style.display   = 'none';
 
-      btnCaja.style.display = 'none';
+      // Reset vistas secundarias
+      const usuarioView = document.getElementById('usuario-view');
+      if (usuarioView && session.rol !== 'usuario') usuarioView.style.display = 'none';
+      menuView.style.display = session.rol === 'usuario' ? 'none' : '';
 
       const prevRol = sessionStorage.getItem('sc_prev_rol');
 
@@ -3092,6 +3299,8 @@
           actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
           renderProductos(getListaByCat(savedCat));
           renderCarrito();
+          // Rol usuario: mostrar perfil (menú ya listo en background)
+          if (session.rol === 'usuario') irAlPerfil();
         }, 600);
       }
     }
@@ -3129,6 +3338,12 @@
     document.querySelector('.auth-tab[data-tab="login"]').classList.add('active');
     document.getElementById('tab-login').classList.add('active');
   }
+
+  // Botón "Mi perfil" en header → vuelve a la vista de perfil
+  document.getElementById('btn-mi-perfil').addEventListener('click', () => irAlPerfil());
+
+  // Botón "Ver menú y pedir" dentro del perfil → va al menú
+  document.getElementById('btn-ir-menu').addEventListener('click', () => irAlMenu());
 
   // Botón "Iniciar Sesión" en header → abre modal
   document.getElementById('btn-abrir-auth').addEventListener('click', () => {
