@@ -104,7 +104,7 @@
     .auth-form-panel { display: none; }
     .auth-form-panel.active { display: block; }
 
-    .auth-field { margin-bottom: 1rem; }
+    .auth-field { margin-bottom: .75rem; }
     .auth-field label {
       display: block; font-size: .78rem; font-weight: 600;
       color: var(--text-muted); margin-bottom: .35rem;
@@ -115,10 +115,19 @@
       border: 1.5px solid var(--border); border-radius: var(--radius-sm);
       font-size: .9rem; font-family: 'Inter', sans-serif;
       background: var(--cream); color: var(--text);
-      transition: border-color .2s;
+      transition: border-color .2s, box-shadow .2s;
     }
     .auth-field input:focus, .auth-field select:focus {
       outline: none; border-color: var(--cinnamon);
+      box-shadow: 0 0 0 3px rgba(200,86,26,.12);
+    }
+    .auth-field input.valid   { border-color: #16a34a; }
+    .auth-field input.invalid { border-color: #dc2626; }
+    .auth-field input.valid:focus  { box-shadow: 0 0 0 3px rgba(22,163,74,.12); }
+    .auth-field input.invalid:focus { box-shadow: 0 0 0 3px rgba(220,38,38,.12); }
+    .field-error {
+      display: block; font-size: .73rem; color: #dc2626;
+      margin-top: .22rem; min-height: 1rem; line-height: 1.3;
     }
     .auth-field select { cursor: pointer; }
 
@@ -1437,33 +1446,47 @@
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
             <div class="auth-field">
               <label for="reg-nombre">Nombre <span style="color:#dc2626">*</span></label>
-              <input type="text" id="reg-nombre" placeholder="Ej: María" autocomplete="given-name" />
+              <input type="text" id="reg-nombre" placeholder="Ej: María" autocomplete="given-name"
+                     maxlength="60" aria-describedby="err-nombre" aria-required="true" />
+              <span class="field-error" id="err-nombre" role="alert" aria-live="polite"></span>
             </div>
             <div class="auth-field">
               <label for="reg-apellido">Apellido <span style="color:#dc2626">*</span></label>
-              <input type="text" id="reg-apellido" placeholder="Ej: López" autocomplete="family-name" />
+              <input type="text" id="reg-apellido" placeholder="Ej: López" autocomplete="family-name"
+                     maxlength="60" aria-describedby="err-apellido" aria-required="true" />
+              <span class="field-error" id="err-apellido" role="alert" aria-live="polite"></span>
             </div>
           </div>
           <div class="auth-field">
             <label for="reg-email">Correo electrónico <span style="color:#dc2626">*</span></label>
-            <input type="email" id="reg-email" placeholder="Ej: maria@gmail.com" autocomplete="email" />
+            <input type="email" id="reg-email" placeholder="Ej: maria@gmail.com" autocomplete="email"
+                   maxlength="100" aria-describedby="err-email" aria-required="true" />
+            <span class="field-error" id="err-email" role="alert" aria-live="polite"></span>
           </div>
           <div class="auth-field">
             <label for="reg-telefono">Teléfono <span style="color:#dc2626">*</span></label>
-            <input type="tel" id="reg-telefono" placeholder="Ej: 0991234567" autocomplete="tel" maxlength="15" />
+            <input type="tel" id="reg-telefono" placeholder="Ej: 0991234567" autocomplete="tel"
+                   maxlength="10" inputmode="numeric" aria-describedby="err-telefono" aria-required="true" />
+            <span class="field-error" id="err-telefono" role="alert" aria-live="polite"></span>
           </div>
           <div class="auth-field">
             <label for="reg-usuario">Usuario <span style="color:#dc2626">*</span></label>
-            <input type="text" id="reg-usuario" placeholder="Ej: maria123" autocomplete="username" />
+            <input type="text" id="reg-usuario" placeholder="Ej: maria_123" autocomplete="username"
+                   maxlength="20" aria-describedby="err-usuario" aria-required="true" />
+            <span class="field-error" id="err-usuario" role="alert" aria-live="polite"></span>
           </div>
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:.65rem">
             <div class="auth-field">
               <label for="reg-password">Contraseña <span style="color:#dc2626">*</span></label>
-              <input type="password" id="reg-password" placeholder="Mín. 4 caracteres" autocomplete="new-password" />
+              <input type="password" id="reg-password" placeholder="Mín. 6 caracteres" autocomplete="new-password"
+                     maxlength="40" aria-describedby="err-password" aria-required="true" />
+              <span class="field-error" id="err-password" role="alert" aria-live="polite"></span>
             </div>
             <div class="auth-field">
               <label for="reg-password2">Confirmar <span style="color:#dc2626">*</span></label>
-              <input type="password" id="reg-password2" placeholder="Repite la clave" autocomplete="new-password" />
+              <input type="password" id="reg-password2" placeholder="Repite la clave" autocomplete="new-password"
+                     maxlength="40" aria-describedby="err-password2" aria-required="true" />
+              <span class="field-error" id="err-password2" role="alert" aria-live="polite"></span>
             </div>
           </div>
           <button class="btn-auth" id="btn-register">Crear cuenta</button>
@@ -3037,6 +3060,108 @@
     aplicarSesion();
   });
 
+  /* ── Validación en tiempo real del formulario de registro ── */
+  (function () {
+    const RX = {
+      nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      apellido: /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      email:    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      telefono: /^(09\d{8}|0[2-7]\d{7})$/,
+      usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
+    };
+
+    function setState(inputId, errId, valid, msg) {
+      const el  = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      if (!el || !err) return;
+      el.classList.toggle('valid',   valid);
+      el.classList.toggle('invalid', !valid);
+      el.setAttribute('aria-invalid', String(!valid));
+      err.textContent = valid ? '' : msg;
+    }
+    function clearState(inputId, errId) {
+      const el  = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      if (!el || !err) return;
+      el.classList.remove('valid', 'invalid');
+      el.removeAttribute('aria-invalid');
+      err.textContent = '';
+    }
+
+    /* ── Nombre ── */
+    const inNombre = document.getElementById('reg-nombre');
+    inNombre.addEventListener('keydown', e => {
+      if (e.key.length === 1 && !/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]/.test(e.key)) e.preventDefault();
+    });
+    inNombre.addEventListener('input', () => {
+      const v = inNombre.value.trim();
+      if (!v) return clearState('reg-nombre', 'err-nombre');
+      setState('reg-nombre', 'err-nombre', RX.nombre.test(v), 'Solo letras y espacios, mínimo 2 caracteres.');
+    });
+
+    /* ── Apellido ── */
+    const inApellido = document.getElementById('reg-apellido');
+    inApellido.addEventListener('keydown', e => {
+      if (e.key.length === 1 && !/[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]/.test(e.key)) e.preventDefault();
+    });
+    inApellido.addEventListener('input', () => {
+      const v = inApellido.value.trim();
+      if (!v) return clearState('reg-apellido', 'err-apellido');
+      setState('reg-apellido', 'err-apellido', RX.apellido.test(v), 'Solo letras y espacios, mínimo 2 caracteres.');
+    });
+
+    /* ── Email ── */
+    const inEmail = document.getElementById('reg-email');
+    inEmail.addEventListener('input', () => {
+      const v = inEmail.value.trim();
+      if (!v) return clearState('reg-email', 'err-email');
+      setState('reg-email', 'err-email', RX.email.test(v), 'Formato inválido. Ej: nombre@gmail.com');
+    });
+
+    /* ── Teléfono (solo dígitos, máx 10) ── */
+    const inTel = document.getElementById('reg-telefono');
+    inTel.addEventListener('keydown', e => {
+      if (e.key.length === 1 && !/\d/.test(e.key)) e.preventDefault();
+    });
+    inTel.addEventListener('input', () => {
+      inTel.value = inTel.value.replace(/\D/g, '').slice(0, 10);
+      const v = inTel.value;
+      if (!v) return clearState('reg-telefono', 'err-telefono');
+      setState('reg-telefono', 'err-telefono', RX.telefono.test(v),
+        v.length < 10 ? `${v.length}/10 dígitos. Ej: 0991234567` : 'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).');
+    });
+
+    /* ── Usuario (sin espacios, alfanumérico + _ -) ── */
+    const inUsuario = document.getElementById('reg-usuario');
+    inUsuario.addEventListener('keydown', e => {
+      if (e.key === ' ') e.preventDefault();
+    });
+    inUsuario.addEventListener('input', () => {
+      inUsuario.value = inUsuario.value.replace(/\s/g, '');
+      const v = inUsuario.value;
+      if (!v) return clearState('reg-usuario', 'err-usuario');
+      setState('reg-usuario', 'err-usuario', RX.usuario.test(v),
+        'Letras, números, _ o - (3–20 caracteres, sin espacios).');
+    });
+
+    /* ── Contraseña ── */
+    const inPwd  = document.getElementById('reg-password');
+    const inPwd2 = document.getElementById('reg-password2');
+    inPwd.addEventListener('input', () => {
+      const v = inPwd.value;
+      if (!v) { clearState('reg-password', 'err-password'); return; }
+      setState('reg-password', 'err-password', v.length >= 6, 'Mínimo 6 caracteres.');
+      if (inPwd2.value) {
+        setState('reg-password2', 'err-password2', inPwd2.value === v, 'Las contraseñas no coinciden.');
+      }
+    });
+    inPwd2.addEventListener('input', () => {
+      const v = inPwd2.value;
+      if (!v) { clearState('reg-password2', 'err-password2'); return; }
+      setState('reg-password2', 'err-password2', v === inPwd.value, 'Las contraseñas no coinciden.');
+    });
+  })();
+
   document.getElementById('btn-register').addEventListener('click', () => {
     const nombre    = document.getElementById('reg-nombre').value.trim();
     const apellido  = document.getElementById('reg-apellido').value.trim();
@@ -3048,48 +3173,57 @@
     const rol       = 'usuario';
     const errEl     = document.getElementById('register-error');
 
-    const campos = ['reg-nombre','reg-apellido','reg-email','reg-telefono','reg-usuario','reg-password','reg-password2'];
-    campos.forEach(id => {
-      const el = document.getElementById(id);
-      el.style.borderColor = '';
-      el.removeAttribute('aria-invalid');
-    });
-
-    const markInvalid = (id, msg) => {
-      const el = document.getElementById(id);
-      el.style.borderColor = '#dc2626';
-      el.setAttribute('aria-invalid', 'true');
-      el.setAttribute('aria-describedby', 'register-error');
-      el.focus();
-      errEl.textContent = msg; errEl.classList.add('visible');
+    const RX = {
+      nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      apellido: /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      email:    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      telefono: /^(09\d{8}|0[2-7]\d{7})$/,
+      usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
     };
-    const show = msg => { errEl.textContent = msg; errEl.classList.add('visible'); };
 
-    if (!nombre || !apellido || !email || !telefono || !usuario || !password || !password2) {
-      campos.forEach(id => {
-        if (!document.getElementById(id).value.trim()) document.getElementById(id).style.borderColor = '#dc2626';
-      });
-      return show('Completa todos los campos obligatorios.');
+    const setState = (inputId, errId, valid, msg) => {
+      const el  = document.getElementById(inputId);
+      const err = document.getElementById(errId);
+      if (el) { el.classList.toggle('valid', valid); el.classList.toggle('invalid', !valid); el.setAttribute('aria-invalid', String(!valid)); }
+      if (err) err.textContent = valid ? '' : msg;
+    };
+
+    const show = msg => { errEl.textContent = msg; errEl.classList.add('visible'); };
+    errEl.classList.remove('visible');
+
+    // Validar todos los campos al enviar
+    let firstInvalid = null;
+    const check = (id, errId, val, rx, msg) => {
+      const ok = !!val && rx.test(val);
+      setState(id, errId, ok, msg);
+      if (!ok && !firstInvalid) firstInvalid = id;
+      return ok;
+    };
+
+    const ok = [
+      check('reg-nombre',   'err-nombre',   nombre,   RX.nombre,   'Solo letras y espacios, mínimo 2 caracteres.'),
+      check('reg-apellido', 'err-apellido', apellido, RX.apellido, 'Solo letras y espacios, mínimo 2 caracteres.'),
+      check('reg-email',    'err-email',    email,    RX.email,    'Formato inválido. Ej: nombre@gmail.com'),
+      check('reg-telefono', 'err-telefono', telefono, RX.telefono, 'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).'),
+      check('reg-usuario',  'err-usuario',  usuario,  RX.usuario,  'Letras, números, _ o - (3–20 caracteres, sin espacios).'),
+    ].every(Boolean);
+
+    if (password.length < 6) {
+      setState('reg-password', 'err-password', false, 'Mínimo 6 caracteres.');
+      if (!firstInvalid) firstInvalid = 'reg-password';
+    } else {
+      setState('reg-password', 'err-password', true, '');
     }
-    if (!/^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]{2,}$/.test(nombre)) {
-      return markInvalid('reg-nombre', 'El nombre solo puede contener letras (mín. 2 caracteres).');
+    if (!password2 || password2 !== password) {
+      setState('reg-password2', 'err-password2', false, 'Las contraseñas no coinciden.');
+      if (!firstInvalid) firstInvalid = 'reg-password2';
+    } else {
+      setState('reg-password2', 'err-password2', true, '');
     }
-    if (!/^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'-]{2,}$/.test(apellido)) {
-      return markInvalid('reg-apellido', 'El apellido solo puede contener letras (mín. 2 caracteres).');
-    }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      return markInvalid('reg-email', 'Ingresa un correo electrónico válido.');
-    }
-    if (!/^(09\d{8}|0[2-7]\d{7})$/.test(telefono)) {
-      return markInvalid('reg-telefono', 'Teléfono inválido. Usa formato ecuatoriano (ej: 0991234567).');
-    }
-    if (usuario.length < 3) {
-      return markInvalid('reg-usuario', 'El usuario debe tener al menos 3 caracteres.');
-    }
-    if (password !== password2) {
-      document.getElementById('reg-password').style.borderColor = '#dc2626';
-      document.getElementById('reg-password2').style.borderColor = '#dc2626';
-      return show('Las contraseñas no coinciden.');
+
+    if (!ok || password.length < 6 || password2 !== password) {
+      if (firstInvalid) document.getElementById(firstInvalid).focus();
+      return show('Corrige los campos marcados en rojo antes de continuar.');
     }
 
     const res = ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
@@ -3289,6 +3423,9 @@
             </div>
           </div>`).join('');
 
+        // Usuario: mostrar perfil ahora; el menú se inicializa en background
+        if (session.rol === 'usuario') irAlPerfil();
+
         setTimeout(() => {
           const savedCat = ModuloApp.getFiltroSesion();
           renderFiltros(cat => {
@@ -3299,8 +3436,6 @@
           actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
           renderProductos(getListaByCat(savedCat));
           renderCarrito();
-          // Rol usuario: mostrar perfil (menú ya listo en background)
-          if (session.rol === 'usuario') irAlPerfil();
         }, 600);
       }
     }
@@ -3327,7 +3462,11 @@
 
     ['reg-nombre','reg-apellido','reg-email','reg-telefono','reg-usuario','reg-password','reg-password2'].forEach(id => {
       const el = document.getElementById(id);
-      if (el) { el.value = ''; el.style.borderColor = ''; }
+      if (el) { el.value = ''; el.classList.remove('valid','invalid'); el.removeAttribute('aria-invalid'); }
+    });
+    ['err-nombre','err-apellido','err-email','err-telefono','err-usuario','err-password','err-password2'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = '';
     });
     const regErr = document.getElementById('register-error');
     if (regErr) { regErr.textContent = ''; regErr.classList.remove('visible'); }
