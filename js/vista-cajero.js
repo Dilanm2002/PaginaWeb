@@ -186,11 +186,11 @@ window.VistaCajero = (function () {
 
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+          <div class="mesero-cat-title collapsed" data-cat="${cat}" role="button" aria-expanded="false">
             ${cat}
             <span class="mesero-cat-chevron">▾</span>
           </div>
-          <div class="mesero-list stock-cat-list">
+          <div class="mesero-list stock-cat-list hidden">
             ${rows}
           </div>
         </div>`;
