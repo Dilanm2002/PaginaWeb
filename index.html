@@ -1266,6 +1266,8 @@
     .perfil-empty p { margin: 0; font-size: .95rem; }
 
     #btn-mi-perfil { display: none; }
+    .user-chip[style*="pointer"] { transition: opacity .15s; }
+    .user-chip[style*="pointer"]:hover { opacity: .82; }
 
     /* Buscador móvil — entre hero y filtros, oculto en desktop */
     .mobile-search-wrap {
@@ -3249,15 +3251,11 @@
   function irAlMenu() {
     document.getElementById('usuario-view').style.display = 'none';
     document.getElementById('menu-view').style.display = '';
-    const btnMiPerfil = document.getElementById('btn-mi-perfil');
-    if (btnMiPerfil) btnMiPerfil.style.display = '';
   }
 
   function irAlPerfil() {
     document.getElementById('menu-view').style.display = 'none';
     document.getElementById('usuario-view').style.display = 'block';
-    const btnMiPerfil = document.getElementById('btn-mi-perfil');
-    if (btnMiPerfil) btnMiPerfil.style.display = '';
     renderUsuarioView();
   }
 
@@ -3360,7 +3358,11 @@
       userRol.textContent     = ROL_LABEL[session.rol] ?? session.rol;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
-      if (btnMiPerfil) btnMiPerfil.style.display = session.rol === 'usuario' ? '' : 'none';
+      if (btnMiPerfil) btnMiPerfil.style.display = 'none';
+      // Chip clickeable solo para rol usuario → abre perfil
+      userChip.style.cursor  = session.rol === 'usuario' ? 'pointer' : 'default';
+      userChip.title         = session.rol === 'usuario' ? 'Ver mi perfil y pedidos' : '';
+      userChip.onclick       = session.rol === 'usuario' ? () => irAlPerfil() : null;
     }
 
     /* Sección contacto y buscador: solo para usuario e invitado */
@@ -3391,8 +3393,8 @@
 
       // Reset vistas secundarias
       const usuarioView = document.getElementById('usuario-view');
-      if (usuarioView && session.rol !== 'usuario') usuarioView.style.display = 'none';
-      menuView.style.display = session.rol === 'usuario' ? 'none' : '';
+      if (usuarioView) usuarioView.style.display = 'none';
+      menuView.style.display = '';
 
       const prevRol = sessionStorage.getItem('sc_prev_rol');
 
@@ -3422,9 +3424,6 @@
               <div class="skeleton-line xshort"></div>
             </div>
           </div>`).join('');
-
-        // Usuario: mostrar perfil ahora; el menú se inicializa en background
-        if (session.rol === 'usuario') irAlPerfil();
 
         setTimeout(() => {
           const savedCat = ModuloApp.getFiltroSesion();
