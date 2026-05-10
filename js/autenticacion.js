@@ -96,7 +96,8 @@ window.ModuloAutenticacion = (function () {
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 
-    const nuevo = { id: Date.now(), nombre, apellido, email, telefono, usuario, password, rol };
+    const id    = Math.max(0, ..._users.map(u => Number(u.id) || 0)) + 1;
+    const nuevo = { id, nombre, apellido, email, telefono, usuario, password, rol };
     _users.push(nuevo);
 
     /* Guardar en Supabase (fire-and-forget) */
