@@ -170,7 +170,10 @@ window.VistaMenu = (function () {
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     const modalBox      = document.getElementById('product-modal-box');
     modalBox.innerHTML = `
-      <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy">
+      <div class="modal-img-wrap">
+        <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
+        <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy">
+      </div>
       <div class="modal-body">
         <span class="modal-badge" data-cat="${p.categoria}">${p.categoria}</span>
         <h2 class="modal-title">${p.nombre}</h2>
