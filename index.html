@@ -1200,79 +1200,81 @@
     @keyframes toastIn  { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: none; } }
     @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateY(8px); } }
 
-    /* ════ VISTA PERFIL USUARIO ════ */
-    #usuario-view { display: none; }
+    /* ════ VISTA PERFIL USUARIO — estilo Uber Eats ════ */
+    #usuario-view { display: none; background: var(--cream); min-height: 60vh; }
 
-    .perfil-header { background: #2a1006; padding: 2rem 0 1.5rem; color: #fff; }
-    .perfil-header .wrap { display: flex; align-items: center; gap: 1.25rem; flex-wrap: wrap; }
-    .perfil-avatar-lg {
-      width: 72px; height: 72px; border-radius: 50%;
-      background: var(--cinnamon); color: #fff;
-      font-size: 2rem; font-weight: 700; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
+    /* Zona superior: nombre grande + avatar */
+    .perfil-top { background: #fff; padding: 2rem 0 1.75rem; border-bottom: 1px solid var(--border); }
+    .perfil-top .wrap { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
+    .perfil-top__left { flex: 1; min-width: 0; }
+    .perfil-top__nombre {
+      font-size: 2rem; font-weight: 800; color: var(--text);
+      margin: 0 0 .2rem; line-height: 1.15; word-break: break-word;
     }
-    .perfil-info { flex: 1; min-width: 0; }
-    .perfil-nombre { font-size: 1.4rem; font-weight: 700; margin: 0 0 .15rem; }
-    .perfil-username { font-size: .85rem; color: rgba(255,255,255,.6); margin: 0 0 .5rem; }
-    .perfil-rol-badge {
-      display: inline-block; background: var(--cinnamon); color: #fff;
-      font-size: .7rem; font-weight: 700; letter-spacing: .05em;
-      padding: .18rem .65rem; border-radius: 999px; text-transform: uppercase;
-    }
+    .perfil-top__username { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
     .btn-ir-menu {
+      display: inline-flex; align-items: center; gap: .4rem;
       background: var(--cinnamon); color: #fff; border: none;
-      border-radius: 999px; padding: .6rem 1.3rem; font-size: .88rem;
-      font-weight: 600; cursor: pointer; transition: background .2s;
-      display: flex; align-items: center; gap: .45rem; white-space: nowrap;
+      border-radius: 999px; padding: .55rem 1.3rem;
+      font-size: .85rem; font-weight: 600; cursor: pointer;
+      transition: background .2s, box-shadow .2s;
+      box-shadow: 0 2px 8px rgba(200,86,26,.3);
     }
-    .btn-ir-menu:hover { background: var(--cinnamon-lt); }
+    .btn-ir-menu:hover { background: var(--cinnamon-lt); box-shadow: 0 4px 14px rgba(200,86,26,.4); }
+    .perfil-avatar-lg {
+      width: 80px; height: 80px; border-radius: 50%;
+      background: var(--cinnamon); color: #fff;
+      font-size: 2.2rem; font-weight: 700; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 4px 16px rgba(200,86,26,.3);
+    }
 
-    .perfil-stats {
-      display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; padding: 1.25rem 0;
-    }
+    /* Tarjetas de estadísticas */
+    .perfil-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; padding: 1.25rem 0 .5rem; }
     .perfil-stat {
-      background: var(--cream-dk); border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem 1.25rem; text-align: center;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: var(--radius); padding: 1.1rem 1rem 1rem;
+      display: flex; flex-direction: column; align-items: center; gap: .1rem; text-align: center;
+      box-shadow: 0 1px 4px rgba(0,0,0,.06);
     }
-    .perfil-stat__val { display: block; font-size: 1.6rem; font-weight: 700; color: var(--cinnamon); }
-    .perfil-stat__lbl { font-size: .78rem; color: var(--text-muted); }
+    .perfil-stat__icon { font-size: 1.4rem; margin-bottom: .15rem; }
+    .perfil-stat__val { font-size: 1.45rem; font-weight: 800; color: var(--cinnamon); line-height: 1; }
+    .perfil-stat__lbl { font-size: .72rem; color: var(--text-muted); font-weight: 500; margin-top: .1rem; }
 
+    /* Historial de pedidos */
     .perfil-section-title {
-      font-size: 1.1rem; font-weight: 700; color: var(--text); margin: 0 0 1rem;
-      padding-bottom: .5rem; border-bottom: 2px solid var(--cinnamon);
+      font-size: 1rem; font-weight: 700; color: var(--text);
+      margin: 1.25rem 0 .75rem; letter-spacing: .01em;
     }
-    .perfil-historial { display: flex; flex-direction: column; gap: .85rem; padding-bottom: 3rem; }
+    .perfil-historial { display: flex; flex-direction: column; gap: 0; padding-bottom: 3rem; }
 
     .perfil-pedido-card {
-      background: #fff; border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1rem 1.25rem; box-shadow: var(--shadow);
+      background: #fff; border-bottom: 1px solid var(--border);
+      padding: 1rem 0; display: flex; flex-direction: column; gap: .5rem;
     }
+    .perfil-pedido-card:first-child { border-top: 1px solid var(--border); }
     .perfil-pedido-card__head {
-      display: flex; justify-content: space-between; align-items: flex-start;
-      gap: .5rem; margin-bottom: .65rem;
+      display: flex; justify-content: space-between; align-items: center; gap: .5rem;
     }
-    .perfil-pedido-card__fecha { font-size: .8rem; color: var(--text-muted); }
-    .perfil-pedido-card__total { font-size: 1.05rem; font-weight: 700; color: var(--cinnamon); }
-    .perfil-pedido-card__items { margin: 0 0 .85rem; padding: 0; list-style: none; }
+    .perfil-pedido-card__fecha { font-size: .78rem; color: var(--text-muted); }
+    .perfil-pedido-card__total { font-size: 1rem; font-weight: 700; color: var(--text); }
+    .perfil-pedido-card__items { margin: 0; padding: 0; list-style: none; }
     .perfil-pedido-card__items li {
-      font-size: .85rem; color: var(--text); padding: .15rem 0;
-      display: flex; gap: .4rem;
+      font-size: .88rem; color: var(--text); padding: .1rem 0;
     }
-    .perfil-pedido-card__items li::before { content: '•'; color: var(--cinnamon); flex-shrink: 0; }
     .btn-volver-pedir {
-      width: 100%; background: transparent;
-      border: 1.5px solid var(--cinnamon); color: var(--cinnamon);
-      border-radius: 999px; padding: .5rem; font-size: .85rem; font-weight: 600;
+      align-self: flex-start;
+      background: transparent; border: 1.5px solid var(--cinnamon); color: var(--cinnamon);
+      border-radius: 999px; padding: .42rem 1.1rem; font-size: .82rem; font-weight: 600;
       cursor: pointer; transition: background .2s, color .2s;
     }
     .btn-volver-pedir:hover { background: var(--cinnamon); color: #fff; }
 
-    .perfil-empty { text-align: center; padding: 2.5rem 1rem; color: var(--text-muted); }
-    .perfil-empty svg { margin-bottom: .75rem; opacity: .4; display: block; margin-inline: auto; }
-    .perfil-empty p { margin: 0; font-size: .95rem; }
+    .perfil-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .perfil-empty svg { margin-bottom: .85rem; opacity: .35; display: block; margin-inline: auto; }
+    .perfil-empty p { margin: 0; font-size: .92rem; }
 
     #btn-mi-perfil { display: none; }
-    .user-chip[style*="pointer"] { transition: opacity .15s; }
     .user-chip[style*="pointer"]:hover { opacity: .82; }
 
     /* Buscador móvil — entre hero y filtros, oculto en desktop */
@@ -1616,36 +1618,38 @@
 
     <!-- Vista Perfil (solo rol usuario) -->
     <div id="usuario-view">
-      <section class="perfil-header" aria-labelledby="perfil-nombre">
+
+      <!-- Nombre grande + avatar (estilo Uber Eats) -->
+      <section class="perfil-top" aria-labelledby="perfil-nombre">
         <div class="wrap">
-          <div class="perfil-avatar-lg" id="perfil-avatar-lg" aria-hidden="true">?</div>
-          <div class="perfil-info">
-            <h2 class="perfil-nombre" id="perfil-nombre">—</h2>
-            <p class="perfil-username" id="perfil-username">@—</p>
-            <span class="perfil-rol-badge">Cliente</span>
+          <div class="perfil-top__left">
+            <h2 class="perfil-top__nombre" id="perfil-nombre">—</h2>
+            <p class="perfil-top__username" id="perfil-username">@—</p>
+            <button class="btn-ir-menu" id="btn-ir-menu" aria-label="Volver al menú">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+              Ver menú y pedir
+            </button>
           </div>
-          <button class="btn-ir-menu" id="btn-ir-menu" aria-label="Ir al menú y realizar un pedido">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="17" height="17" aria-hidden="true">
-              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <path d="M16 10a4 4 0 01-8 0"/>
-            </svg>
-            Ver menú y pedir
-          </button>
+          <div class="perfil-avatar-lg" id="perfil-avatar-lg" aria-hidden="true">?</div>
         </div>
       </section>
+
+      <!-- Stats + historial -->
       <div class="wrap">
         <div class="perfil-stats" aria-label="Resumen de actividad">
           <div class="perfil-stat">
-            <span class="perfil-stat__val" id="perfil-total-pedidos" aria-label="Pedidos realizados">0</span>
-            <span class="perfil-stat__lbl">Pedidos realizados</span>
+            <span class="perfil-stat__icon" aria-hidden="true">🛍️</span>
+            <span class="perfil-stat__val" id="perfil-total-pedidos">0</span>
+            <span class="perfil-stat__lbl">Pedidos</span>
           </div>
           <div class="perfil-stat">
-            <span class="perfil-stat__val" id="perfil-total-gastado" aria-label="Total gastado">$0.00</span>
+            <span class="perfil-stat__icon" aria-hidden="true">💰</span>
+            <span class="perfil-stat__val" id="perfil-total-gastado">$0.00</span>
             <span class="perfil-stat__lbl">Total gastado</span>
           </div>
         </div>
-        <h3 class="perfil-section-title">Mis pedidos</h3>
+
+        <h3 class="perfil-section-title">Pedidos anteriores</h3>
         <div id="perfil-historial" class="perfil-historial" aria-live="polite"></div>
       </div>
     </div>
@@ -3257,22 +3261,43 @@
   function irAlMenu() {
     document.getElementById('usuario-view').style.display = 'none';
     document.getElementById('menu-view').style.display = '';
+    const hs = document.getElementById('header-search-wrap');
+    const ms = document.getElementById('mobile-search-wrap');
+    const ct = document.getElementById('seccion-contacto');
+    if (hs) hs.style.display = '';
+    if (ms) ms.style.display = '';
+    if (ct) ct.style.display = '';
   }
 
   function irAlPerfil() {
     document.getElementById('menu-view').style.display = 'none';
     document.getElementById('usuario-view').style.display = 'block';
+    const hs = document.getElementById('header-search-wrap');
+    const ms = document.getElementById('mobile-search-wrap');
+    const ct = document.getElementById('seccion-contacto');
+    if (hs) hs.style.display = 'none';
+    if (ms) ms.style.display = 'none';
+    if (ct) ct.style.display = 'none';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     renderUsuarioView();
   }
 
   function renderUsuarioView() {
     const session = ModuloAutenticacion.getSession();
 
+    // Buscar datos completos del usuario para mostrar nombre + apellido
+    let nombreCompleto = session.nombre;
+    try {
+      const users = JSON.parse(localStorage.getItem('salycanela_users') || '[]');
+      const u = users.find(x => x.id === session.id || x.usuario === session.usuario);
+      if (u) nombreCompleto = u.nombre + (u.apellido ? ' ' + u.apellido : '');
+    } catch (_) {}
+
     const avatarEl   = document.getElementById('perfil-avatar-lg');
     const nombreEl   = document.getElementById('perfil-nombre');
     const usernameEl = document.getElementById('perfil-username');
-    if (avatarEl)   avatarEl.textContent   = session.nombre.charAt(0).toUpperCase();
-    if (nombreEl)   nombreEl.textContent   = session.nombre;
+    if (avatarEl)   avatarEl.textContent   = nombreCompleto.charAt(0).toUpperCase();
+    if (nombreEl)   nombreEl.textContent   = nombreCompleto;
     if (usernameEl) usernameEl.textContent = '@' + session.usuario;
 
     const historial   = leerHistorial();
