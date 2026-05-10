@@ -145,40 +145,65 @@ window.VistaCajero = (function () {
     const productos = SC.getProductosMergeados();
     const MAX_STOCK = 20;
 
-    listaEl.innerHTML = productos.map(p => {
-      const s      = SC.getStock(p.id);
-      const qty    = s.stock;
-      const esCero = qty <= 0;
-      const esBajo = !esCero && qty <= 5;
-      const pct    = Math.min(100, Math.round((qty / MAX_STOCK) * 100));
-      const rowMod    = esCero ? 'stock-row--cero' : esBajo ? 'stock-row--bajo' : '';
-      const statusMod = esCero ? 'stock-row__status--cero' : esBajo ? 'stock-row__status--bajo' : '';
-      const barMod    = esCero ? 'stock-row__bar--cero' : esBajo ? 'stock-row__bar--bajo' : '';
-      const statusTxt = esCero ? '🔴 Agotado' : esBajo ? '⚠️ Stock bajo' : '✅ Disponible';
-      return `
-        <div class="stock-row ${rowMod}" data-id="${p.id}">
-          <div class="stock-row__header">
-            <span class="stock-row__nombre">${p.nombre}</span>
-            <span class="stock-row__status ${statusMod}">${statusTxt}</span>
-          </div>
-          <div class="stock-row__bar-wrap">
-            <div class="stock-row__bar ${barMod}" style="width:${pct}%"></div>
-          </div>
-          <div class="stock-row__controls">
-            <div class="stock-input-wrap">
-              <div class="stock-input-left">
-                <span class="stock-current">${qty}</span>
-                <span class="stock-input-label">uds. actuales</span>
-              </div>
-              <div class="stock-input-left">
-                <span class="stock-arrow">→</span>
-                <input class="stock-input" type="number" min="0" value="${qty}" data-id="${p.id}" data-original="${qty}" aria-label="Nuevo stock de ${p.nombre}">
-                <button class="stock-btn stock-btn--set" data-action="set" data-id="${p.id}">Guardar</button>
+    const cats = [...new Set(productos.map(p => p.categoria))];
+
+    listaEl.innerHTML = cats.map(cat => {
+      const prods = productos.filter(p => p.categoria === cat);
+      const rows = prods.map(p => {
+        const s      = SC.getStock(p.id);
+        const qty    = s.stock;
+        const esCero = qty <= 0;
+        const esBajo = !esCero && qty <= 5;
+        const pct    = Math.min(100, Math.round((qty / MAX_STOCK) * 100));
+        const rowMod    = esCero ? 'stock-row--cero' : esBajo ? 'stock-row--bajo' : '';
+        const statusMod = esCero ? 'stock-row__status--cero' : esBajo ? 'stock-row__status--bajo' : '';
+        const barMod    = esCero ? 'stock-row__bar--cero' : esBajo ? 'stock-row__bar--bajo' : '';
+        const statusTxt = esCero ? '🔴 Agotado' : esBajo ? '⚠️ Stock bajo' : '✅ Disponible';
+        return `
+          <div class="stock-row ${rowMod}" data-id="${p.id}">
+            <div class="stock-row__header">
+              <span class="stock-row__nombre">${p.nombre}</span>
+              <span class="stock-row__status ${statusMod}">${statusTxt}</span>
+            </div>
+            <div class="stock-row__bar-wrap">
+              <div class="stock-row__bar ${barMod}" style="width:${pct}%"></div>
+            </div>
+            <div class="stock-row__controls">
+              <div class="stock-input-wrap">
+                <div class="stock-input-left">
+                  <span class="stock-current">${qty}</span>
+                  <span class="stock-input-label">uds. actuales</span>
+                </div>
+                <div class="stock-input-left">
+                  <span class="stock-arrow">→</span>
+                  <input class="stock-input" type="number" min="0" value="${qty}" data-id="${p.id}" data-original="${qty}" aria-label="Nuevo stock de ${p.nombre}">
+                  <button class="stock-btn stock-btn--set" data-action="set" data-id="${p.id}">Guardar</button>
+                </div>
               </div>
             </div>
+          </div>`;
+      }).join('');
+
+      return `
+        <div class="mesero-cat-section">
+          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+            ${cat}
+            <span class="mesero-cat-chevron">▾</span>
+          </div>
+          <div class="mesero-list stock-cat-list">
+            ${rows}
           </div>
         </div>`;
     }).join('');
+
+    listaEl.querySelectorAll('.mesero-cat-title').forEach(title => {
+      title.addEventListener('click', () => {
+        const list = title.nextElementSibling;
+        const isCollapsed = title.classList.toggle('collapsed');
+        title.setAttribute('aria-expanded', String(!isCollapsed));
+        list.classList.toggle('hidden', isCollapsed);
+      });
+    });
 
     listaEl.querySelectorAll('.stock-input').forEach(inp => {
       inp.addEventListener('input', () => {
@@ -193,6 +218,7 @@ window.VistaCajero = (function () {
     });
 
     listaEl.onclick = async e => {
+      if (e.target.closest('.mesero-cat-title')) return;
       const btn = e.target.closest('.stock-btn');
       if (!btn) return;
       const id  = Number(btn.dataset.id);

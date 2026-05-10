@@ -7,9 +7,10 @@
   <meta name="description" content="Ordena en línea en Sal y Canela. Sabores auténticos con alma artesanal." />
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="preconnect" href="https://aagcxtggeqkzfngzfqne.supabase.co" crossorigin>
+  <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css">
   <style>
     /* ── Reset & Variables ── */
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -684,10 +685,11 @@
     .gastos-section {
       margin-top: 2.5rem; border-top: 2px solid var(--border); padding-top: 2rem;
     }
-    .stock-lista {
+    .stock-lista { margin-top: 1rem; }
+    .stock-cat-list {
       display: grid;
       grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-      gap: 1rem; margin-top: 1rem;
+      gap: 1rem; padding: 1rem 0;
     }
     .stock-row {
       background: #fff; border: 1px solid var(--border); border-radius: var(--radius);
@@ -2191,7 +2193,7 @@
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ══ SUPABASE CLIENT ══ -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
   <script>
     const SUPABASE_URL = 'https://aagcxtggeqkzfngzfqne.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2N4dGdnZXFremZuZ3pmcW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzIyMDYsImV4cCI6MjA5Mzk0ODIwNn0.Byyo-cRfRvZ4ww7dBNF1dPK51rYAFjjpw-JnEzg7-G8';
@@ -3284,7 +3286,7 @@
       userChip.style.display = '';
       userAvatar.textContent  = session.nombre.charAt(0).toUpperCase();
       userAvatar.className    = `user-chip__avatar ${session.rol}`;
-      userName.textContent    = session.nombre;
+      userName.textContent    = ROL_LABEL[session.rol] ?? session.nombre;
       userRol.textContent     = ROL_LABEL[session.rol] ?? session.rol;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
