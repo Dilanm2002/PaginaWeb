@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <!-- Fondo circular café oscuro -->
+  <circle cx="32" cy="32" r="32" fill="#3B1A08"/>
+
+  <!-- Vapor (3 líneas onduladas) -->
+  <path d="M22 18 Q21 14 22 10" fill="none" stroke="#FDF6EE" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M32 16 Q31 12 32 8"  fill="none" stroke="#FDF6EE" stroke-width="2.2" stroke-linecap="round"/>
+  <path d="M42 18 Q41 14 42 10" fill="none" stroke="#FDF6EE" stroke-width="2.2" stroke-linecap="round"/>
+
+  <!-- Taza: cuerpo -->
+  <path d="M16 22 L20 42 Q20 44 32 44 Q44 44 44 42 L48 22 Z" fill="#C8561A"/>
+  <path d="M16 22 L48 22" stroke="#FDF6EE" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- Asa de la taza -->
+  <path d="M44 28 Q54 28 54 35 Q54 42 44 42" fill="none" stroke="#FDF6EE" stroke-width="2.5" stroke-linecap="round"/>
+
+  <!-- Platillo -->
+  <ellipse cx="32" cy="46" rx="20" ry="3.5" fill="#6B3015"/>
+
+  <!-- Palito de canela cruzado -->
+  <line x1="20" y1="52" x2="44" y2="56" stroke="#C8561A" stroke-width="3.5" stroke-linecap="round"/>
+  <line x1="23" y1="56" x2="47" y2="52" stroke="#E07B3A" stroke-width="2"   stroke-linecap="round"/>
+</svg>
