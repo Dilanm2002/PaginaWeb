@@ -1,95 +1,117 @@
 'use strict';
 /**
  * autenticacion.js — Módulo de autenticación y sesión de usuario.
- * Gestiona usuarios en localStorage y la sesión activa en sessionStorage.
- * Requiere window.SC_CONFIG con las claves LS_USERS y LS_SESSION.
+ * Gestiona usuarios en Supabase (con fallback a localStorage).
+ * Requiere window.SC_CONFIG y window.db (cliente Supabase).
  */
 window.ModuloAutenticacion = (function () {
   const cfg = window.SC_CONFIG;
 
-  /** Crea los usuarios por defecto (cajero/mesero) si no existen aún. */
-  const seedUsers = () => {
-    const users        = leerUsuarios();
-    const tieneDefaults = users.some(u => u.usuario === 'caja' || u.usuario === 'mesero');
-    if (!tieneDefaults) {
-      users.push(
-        { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero' },
-        { id: 2, nombre: 'Mesero',       usuario: 'mesero', password: '1234', rol: 'mesero' }
-      );
-      localStorage.setItem(cfg.LS_USERS, JSON.stringify(users));
+  /* ── Cache local de usuarios (se llena al iniciar) ── */
+  let _users = [];
+
+  /** Carga usuarios desde Supabase (o localStorage como fallback). */
+  const cargarUsuarios = async () => {
+    try {
+      const { data, error } = await window.db.from('usuarios').select('data');
+      if (error) throw error;
+      _users = (data || []).map(r => r.data);
+
+      /* Fusionar usuarios de localStorage que no llegaron a Supabase (insert fallido) */
+      try {
+        const local = JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? [];
+        for (const lu of local) {
+          if (!lu.usuario) continue;
+          if (!_users.some(u => u.usuario === lu.usuario)) {
+            _users.push(lu);
+            /* Re-intentar upsert en Supabase */
+            window.db.from('usuarios')
+              .upsert({ id: lu.id, data: lu, usuario: lu.usuario, email: lu.email || '' })
+              .catch(() => {});
+          }
+        }
+      } catch (_le) { /* localStorage no disponible */ }
+
+      /* Asegurar que existan cajero/mesero/admin en Supabase */
+      await seedUsers();
+      /* Sincronizar localStorage con el estado final */
+      localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
+    } catch (_e) {
+      _users = (() => { try { return JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? []; } catch { return []; } })();
+      seedUsersLocal();
     }
   };
 
-  /**
-   * Lee todos los usuarios registrados desde localStorage.
-   * @returns {Array}
-   */
-  const leerUsuarios = () => {
-    try { return JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? []; }
-    catch (_e) { return []; }
+  const seedUsersLocal = () => {
+    const defaults = [
+      { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero' },
+      { id: 2, nombre: 'Mesero',           usuario: 'mesero', password: '1234', rol: 'mesero' },
+      { id: 3, nombre: 'Administrador',    usuario: 'admin',  password: '1234', rol: 'administrador' }
+    ];
+    let changed = false;
+    defaults.forEach(u => {
+      if (!_users.some(x => x.usuario === u.usuario)) { _users.push(u); changed = true; }
+    });
+    if (changed) localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
   };
 
-  /**
-   * Obtiene la sesión activa desde sessionStorage.
-   * @returns {Object|null}
-   */
+  const seedUsers = async () => {
+    const defaults = [
+      { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero',        email: 'caja@salycanela.ec',   telefono: '' },
+      { id: 2, nombre: 'Mesero',           usuario: 'mesero', password: '1234', rol: 'mesero',        email: 'mesero@salycanela.ec', telefono: '' },
+      { id: 3, nombre: 'Administrador',    usuario: 'admin',  password: '1234', rol: 'administrador', email: 'admin@salycanela.ec',  telefono: '' }
+    ];
+    for (const u of defaults) {
+      if (!_users.some(x => x.usuario === u.usuario)) {
+        await window.db.from('usuarios').upsert({ id: u.id, data: u, usuario: u.usuario, email: u.email });
+        _users.push(u);
+      }
+    }
+  };
+
+  const leerUsuarios = () => _users;
+
   const getSession = () => {
     try { return JSON.parse(sessionStorage.getItem(cfg.LS_SESSION)) ?? null; }
     catch (_e) { return null; }
   };
 
-  /**
-   * Guarda datos de sesión en sessionStorage.
-   * @param {Object} data — Objeto con id, nombre, usuario, rol.
-   */
   const setSession = data => {
     sessionStorage.setItem(cfg.LS_SESSION, JSON.stringify(data));
   };
 
-  /** Elimina la sesión activa de sessionStorage. */
   const clearSession = () => {
     sessionStorage.removeItem(cfg.LS_SESSION);
   };
 
-  /**
-   * Verifica credenciales y devuelve el usuario encontrado o null.
-   * @param {string} usuario
-   * @param {string} password
-   * @returns {Object|null}
-   */
   const login = (usuario, password) => {
-    const users = leerUsuarios();
-    return users.find(u => u.usuario === usuario && u.password === password) ?? null;
+    return _users.find(u => u.usuario === usuario && u.password === password) ?? null;
   };
 
-  /**
-   * Registra un nuevo usuario en localStorage.
-   * @param {string} nombre
-   * @param {string} apellido
-   * @param {string} email
-   * @param {string} telefono
-   * @param {string} usuario
-   * @param {string} password
-   * @param {string} rol
-   * @returns {{ ok: boolean, msg?: string, user?: Object }}
-   */
   const registrar = (nombre, apellido, email, telefono, usuario, password, rol) => {
-    const users = leerUsuarios();
-    if (users.find(u => u.usuario === usuario))
+    if (_users.find(u => u.usuario === usuario))
       return { ok: false, msg: 'Ese nombre de usuario ya existe.' };
-    if (users.find(u => u.email === email))
+    if (_users.find(u => u.email === email))
       return { ok: false, msg: 'Ya existe una cuenta con ese correo.' };
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 
     const nuevo = { id: Date.now(), nombre, apellido, email, telefono, usuario, password, rol };
-    users.push(nuevo);
-    localStorage.setItem(cfg.LS_USERS, JSON.stringify(users));
+    _users.push(nuevo);
+
+    /* Guardar en Supabase (fire-and-forget) */
+    window.db.from('usuarios')
+      .upsert({ id: nuevo.id, data: nuevo, usuario: nuevo.usuario, email: nuevo.email })
+      .then(({ error }) => { if (error) console.error('Supabase registrar:', error); });
+
+    /* Fallback localStorage */
+    localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
+
     return { ok: true, user: nuevo };
   };
 
   return {
-    seedUsers,
+    cargarUsuarios,
     leerUsuarios,
     getSession,
     setSession,
