@@ -2386,8 +2386,8 @@
     const nuevoStock = Math.max(0, actual.stock - cantidad);
     const disponible = nuevoStock > 0;
     _stock[productoId] = { stock: nuevoStock, disponible };
-    await db.from('productos').update({ stock: nuevoStock, disponible, updated_at: new Date().toISOString() })
-      .eq('id', productoId);
+    const { error } = await db.from('productos').update({ stock: nuevoStock, disponible, updated_at: new Date().toISOString() }).eq('id', productoId);
+    if (error) console.error('Supabase actualizarStock:', error);
     return nuevoStock;
   }
 
@@ -2395,8 +2395,8 @@
     const actual = getStock(productoId);
     const nuevoStock = actual.stock + cantidad;
     _stock[productoId] = { stock: nuevoStock, disponible: true };
-    await db.from('productos').update({ stock: nuevoStock, disponible: true, updated_at: new Date().toISOString() })
-      .eq('id', productoId);
+    const { error } = await db.from('productos').update({ stock: nuevoStock, disponible: true, updated_at: new Date().toISOString() }).eq('id', productoId);
+    if (error) console.error('Supabase reponerStock:', error);
     return nuevoStock;
   }
 
@@ -2429,8 +2429,9 @@
       id_usuario: pedido.idUsuario,
       mesa:       pedido.mesa
     }).then(({ error }) => { if (error) console.error('Supabase insert pedido:', error); });
-    /* Descontar stock por cada ítem del pedido */
-    pedido.items.forEach(i => actualizarStock(i.id, i.cantidad));
+    /* Descontar stock por cada ítem del pedido (en paralelo) */
+    Promise.all(pedido.items.map(i => actualizarStock(i.id, i.cantidad)))
+      .catch(e => console.error('Error actualizando stock del pedido:', e));
     return _caja;
   }
 
@@ -2630,18 +2631,44 @@
     return Math.max(100, ...ids) + 1;
   }
 
+  async function subirImagenStorage(base64, itemId) {
+    if (!base64 || !base64.startsWith('data:image')) return base64;
+    try {
+      const [meta, data] = base64.split(',');
+      const mime = meta.match(/:(.*?);/)[1];
+      const ext  = mime.split('/')[1] === 'jpeg' ? 'jpg' : mime.split('/')[1];
+      const byteStr = atob(data);
+      const arr = new Uint8Array(byteStr.length);
+      for (let i = 0; i < byteStr.length; i++) arr[i] = byteStr.charCodeAt(i);
+      const blob = new Blob([arr], { type: mime });
+      const path = `menu/${itemId}.${ext}`;
+      const { error } = await db.storage.from('menu-imagenes').upload(path, blob, { upsert: true, contentType: mime });
+      if (error) throw error;
+      const { data: { publicUrl } } = db.storage.from('menu-imagenes').getPublicUrl(path);
+      return publicUrl;
+    } catch (e) {
+      console.error('Storage upload imagen:', e);
+      return base64;
+    }
+  }
+
   async function guardarMenuItemDB(item) {
+    /* Subir imagen a Storage si es base64 */
+    if (item.imagen?.startsWith('data:image')) {
+      item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id) };
+    }
     _menuItems = _menuItems.filter(m => m.id !== item.id);
     _menuItems.push(item);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-    const { stock_inicial, ...itemDB } = item; // stock_inicial no es columna de menu_items
+    const { stock_inicial, ...itemDB } = item;
     const { error } = await db.from('menu_items').upsert(itemDB);
     if (error) console.error('Supabase menu_items upsert:', error);
     /* Asegurar fila de stock para productos nuevos */
     if (!_stock[item.id]) {
       const stockInicial = item.stock_inicial ?? 20;
       _stock[item.id] = { stock: stockInicial, disponible: stockInicial > 0 };
-      await db.from('productos').upsert({ id: item.id, stock: stockInicial, disponible: stockInicial > 0 });
+      const { error: errStock } = await db.from('productos').upsert({ id: item.id, stock: stockInicial, disponible: stockInicial > 0 });
+      if (errStock) console.error('Supabase productos upsert:', errStock);
     }
   }
 
@@ -2652,7 +2679,8 @@
     } else {
       _menuItems = _menuItems.filter(m => m.id !== id);
       localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-      await db.from('menu_items').delete().eq('id', id);
+      const { error: errDel } = await db.from('menu_items').delete().eq('id', id);
+      if (errDel) console.error('Supabase delete menu_item:', errDel);
     }
   }
 

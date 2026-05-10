@@ -27,7 +27,7 @@ window.ModuloAutenticacion = (function () {
             /* Re-intentar upsert en Supabase */
             window.db.from('usuarios')
               .upsert({ id: lu.id, data: lu, usuario: lu.usuario, email: lu.email || '' })
-              .catch(() => {});
+              .catch(e => console.warn('Supabase sync usuario local:', e?.message));
           }
         }
       } catch (_le) { /* localStorage no disponible */ }
@@ -63,8 +63,10 @@ window.ModuloAutenticacion = (function () {
     ];
     for (const u of defaults) {
       if (!_users.some(x => x.usuario === u.usuario)) {
-        await window.db.from('usuarios').upsert({ id: u.id, data: u, usuario: u.usuario, email: u.email });
-        _users.push(u);
+        try {
+          await window.db.from('usuarios').upsert({ id: u.id, data: u, usuario: u.usuario, email: u.email });
+          _users.push(u);
+        } catch (e) { console.warn('seedUsers upsert:', e?.message); }
       }
     }
   };

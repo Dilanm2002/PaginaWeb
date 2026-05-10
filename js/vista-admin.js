@@ -115,7 +115,8 @@ window.VistaAdmin = (function () {
     el.querySelectorAll('.admin-msg-btn-leido').forEach(btn => {
       btn.onclick = async () => {
         const id = Number(btn.dataset.id);
-        await window.db.from('mensajes').update({ leido: true }).eq('id', id);
+        const { error } = await window.db.from('mensajes').update({ leido: true }).eq('id', id);
+        if (error) { window.SC?.toast('Error al marcar el mensaje', 'error'); return; }
         renderMensajes();
       };
     });
