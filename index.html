@@ -788,6 +788,25 @@
     .btn-admin-card--del:hover  { background: #b91c1c; }
     .admin-card-inactive .product-card { opacity: .4; }
 
+    /* ── Mensajes de contacto (admin) ── */
+    .admin-msg-card {
+      background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--cinnamon);
+      border-radius: var(--radius); padding: 1rem 1.1rem; margin-bottom: .75rem;
+    }
+    .admin-msg-card.leido { border-left-color: var(--border); opacity: .7; }
+    .admin-msg-head { display: flex; justify-content: space-between; align-items: center; gap: .5rem; margin-bottom: .35rem; flex-wrap: wrap; }
+    .admin-msg-quien { display: flex; align-items: center; gap: .5rem; }
+    .admin-msg-nombre { font-weight: 700; color: var(--brown-dark); }
+    .admin-msg-new { background: var(--cinnamon); color: #fff; font-size: .65rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; }
+    .admin-msg-fecha { font-size: .75rem; color: var(--text-muted); white-space: nowrap; }
+    .admin-msg-contacto { display: flex; gap: 1rem; font-size: .8rem; color: var(--text-muted); margin-bottom: .5rem; flex-wrap: wrap; }
+    .admin-msg-texto { font-size: .9rem; color: var(--text); line-height: 1.5; white-space: pre-wrap; }
+    .admin-msg-btn-leido {
+      margin-top: .65rem; background: none; border: 1px solid var(--border); border-radius: var(--radius-sm);
+      padding: .3rem .8rem; font-size: .78rem; color: var(--text-muted); cursor: pointer; transition: background .15s;
+    }
+    .admin-msg-btn-leido:hover { background: var(--cream-dk); }
+
     /* ── Modal formulario de producto ── */
     .prod-form-backdrop {
       position: fixed; inset: 0; background: rgba(20,8,2,.88);
@@ -2009,6 +2028,18 @@
             Gestión de Stock
           </div>
           <div id="stock-lista" class="stock-lista"></div>
+        </div>
+
+        <!-- Mensajes de contacto -->
+        <div class="gastos-section" id="admin-mensajes-section">
+          <div class="gastos-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
+            </svg>
+            Mensajes de contacto
+            <span id="admin-mensajes-badge" style="display:none;margin-left:.5rem;background:var(--cinnamon);color:#fff;border-radius:999px;padding:.1rem .55rem;font-size:.72rem;font-weight:700;"></span>
+          </div>
+          <div id="admin-mensajes-lista"></div>
         </div>
       </div>
     </div>

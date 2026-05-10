@@ -176,7 +176,7 @@ window.ModuloVista = (function () {
     });
 
     /* Validación al enviar */
-    form.addEventListener('submit', e => {
+    form.addEventListener('submit', async e => {
       e.preventDefault();
       let valido = true;
 
@@ -197,17 +197,31 @@ window.ModuloVista = (function () {
         return;
       }
 
-      /* Guardar en sessionStorage */
       const datos = {
         nombre  : form.querySelector('#cf-nombre').value.trim(),
         email   : form.querySelector('#cf-email').value.trim(),
-        tel     : form.querySelector('#cf-tel').value.trim(),
+        telefono: form.querySelector('#cf-tel').value.trim() || null,
         mensaje : form.querySelector('#cf-msg').value.trim(),
-        enviado : new Date().toISOString()
       };
-      try {
-        sessionStorage.setItem('sc_ultimo_contacto', JSON.stringify(datos));
-      } catch (_e) { /* sessionStorage no disponible */ }
+
+      const submitBtn = form.querySelector('.cf-submit');
+      if (submitBtn) { submitBtn.disabled = true; submitBtn.textContent = 'Enviando…'; }
+
+      const { error } = await window.db.from('mensajes').insert(datos);
+
+      if (submitBtn) { submitBtn.disabled = false; submitBtn.innerHTML = '&#10148; Enviar mensaje'; }
+
+      if (error) {
+        const errEl = form.querySelector('#cf-success');
+        if (errEl) {
+          errEl.textContent = 'No se pudo enviar el mensaje. Intenta de nuevo.';
+          errEl.style.background = '#fee2e2';
+          errEl.style.color = '#991b1b';
+          errEl.style.display = 'block';
+          setTimeout(() => { errEl.style.display = 'none'; errEl.style.background = ''; errEl.style.color = ''; }, 5000);
+        }
+        return;
+      }
 
       /* Limpiar formulario y mostrar confirmación */
       form.reset();
@@ -219,6 +233,7 @@ window.ModuloVista = (function () {
 
       const success = form.querySelector('#cf-success');
       if (success) {
+        success.textContent = '✓ Mensaje enviado correctamente. ¡Gracias!';
         success.style.display = 'block';
         setTimeout(() => { success.style.display = 'none'; }, 5000);
       }

@@ -64,6 +64,61 @@ window.VistaAdmin = (function () {
     };
 
     window.VistaCajero?.renderStock();
+    renderMensajes();
+  }
+
+  async function renderMensajes() {
+    const el = document.getElementById('admin-mensajes-lista');
+    if (!el) return;
+
+    el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem">Cargando mensajes…</p>';
+
+    const { data, error } = await window.db
+      .from('mensajes')
+      .select('*')
+      .order('enviado_en', { ascending: false });
+
+    if (error || !data) {
+      el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar mensajes.</p>';
+      return;
+    }
+
+    const noLeidos = data.filter(m => !m.leido).length;
+    const badge = document.getElementById('admin-mensajes-badge');
+    if (badge) { badge.textContent = noLeidos; badge.style.display = noLeidos > 0 ? '' : 'none'; }
+
+    if (!data.length) {
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay mensajes todavía.</p>';
+      return;
+    }
+
+    el.innerHTML = data.map(m => {
+      const fecha = new Date(m.enviado_en).toLocaleString('es-EC', { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' });
+      return `
+        <div class="admin-msg-card${m.leido ? ' leido' : ''}" data-msg-id="${m.id}">
+          <div class="admin-msg-head">
+            <div class="admin-msg-quien">
+              <span class="admin-msg-nombre">${m.nombre}</span>
+              ${!m.leido ? '<span class="admin-msg-new">Nuevo</span>' : ''}
+            </div>
+            <span class="admin-msg-fecha">${fecha}</span>
+          </div>
+          <div class="admin-msg-contacto">
+            <span>✉ ${m.email}</span>
+            ${m.telefono ? `<span>📞 ${m.telefono}</span>` : ''}
+          </div>
+          <p class="admin-msg-texto">${m.mensaje}</p>
+          ${!m.leido ? `<button class="admin-msg-btn-leido" data-id="${m.id}">Marcar como leído</button>` : ''}
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('.admin-msg-btn-leido').forEach(btn => {
+      btn.onclick = async () => {
+        const id = Number(btn.dataset.id);
+        await window.db.from('mensajes').update({ leido: true }).eq('id', id);
+        renderMensajes();
+      };
+    });
   }
 
   function abrirFormProducto(p) {
