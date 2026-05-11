@@ -372,9 +372,10 @@ window.VistaMenu = (function () {
         <button class="mesero-mesa-target__cancel" id="btn-cancel-mesa-target">Cancelar</button>
       </div>`;
 
-    const cats = [...new Set(PRODUCTOS.map(p => p.categoria))];
+    const todosProds = SC.getProductosMergeados().filter(p => p.activo !== false);
+    const cats = [...new Set(todosProds.map(p => p.categoria))];
     grid.innerHTML = mesasHTML + cats.map(cat => {
-      const prods = PRODUCTOS.filter(p => p.categoria === cat);
+      const prods = todosProds.filter(p => p.categoria === cat);
       return `
         <div class="mesero-cat-section">
           <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
