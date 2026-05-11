@@ -1400,124 +1400,192 @@
     /* ════ VISTA PERFIL USUARIO — estilo Uber Eats ════ */
     #usuario-view { display: none; background: var(--cream); min-height: 60vh; }
 
-    /* Zona superior: nombre grande + avatar */
-    .perfil-top { background: #fff; padding: 2rem 0 1.75rem; border-bottom: 1px solid var(--border); }
-    .perfil-top .wrap { display: flex; justify-content: space-between; align-items: flex-start; gap: 1rem; }
-    .perfil-top__left { flex: 1; min-width: 0; }
-    .perfil-top__nombre {
-      font-size: 2rem; font-weight: 800; color: var(--text);
-      margin: 0 0 .2rem; line-height: 1.15; word-break: break-word;
+    /* ── Cover ── */
+    .perfil-cover {
+      height: 170px;
+      background: linear-gradient(135deg, #1e0b02 0%, #4a1e0a 40%, #b84d18 75%, #e07b3a 100%);
+      position: relative;
+      overflow: hidden;
     }
-    .perfil-top__username { font-size: .88rem; color: var(--text-muted); margin: 0 0 1.5rem; }
-    .btn-ir-menu {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: var(--cinnamon); color: #fff; border: none;
-      border-radius: 999px; padding: .55rem 1.3rem;
-      font-size: .85rem; font-weight: 600; cursor: pointer;
-      transition: background .2s, box-shadow .2s;
-      box-shadow: 0 2px 8px rgba(200,86,26,.3);
+    .perfil-cover::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: url("data:image/svg+xml,%3Csvg width='80' height='80' viewBox='0 0 80 80' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Ccircle cx='40' cy='40' r='30'/%3E%3Ccircle cx='0' cy='0' r='20'/%3E%3Ccircle cx='80' cy='80' r='20'/%3E%3C/g%3E%3C/svg%3E");
     }
-    .btn-ir-menu:hover { background: var(--cinnamon-lt); box-shadow: 0 4px 14px rgba(200,86,26,.4); }
-    .perfil-avatar-wrap {
-      display: flex; flex-direction: column; align-items: center; gap: .5rem; flex-shrink: 0;
-    }
-    .btn-editar-perfil {
-      display: inline-flex; align-items: center; gap: .4rem;
-      background: transparent; border: 1.5px solid var(--border); color: var(--text-muted);
-      border-radius: 999px; padding: .45rem 1.1rem; font-size: .85rem; font-weight: 600;
-      cursor: pointer; transition: border-color .18s, color .18s; white-space: nowrap;
-    }
-    .btn-editar-perfil:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
-    .perfil-avatar-lg {
-      width: 80px; height: 80px; border-radius: 50%;
-      background: var(--cinnamon); color: #fff;
-      font-size: 2.2rem; font-weight: 700; flex-shrink: 0;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: 0 4px 16px rgba(200,86,26,.3);
+    .perfil-cover::after {
+      content: '';
+      position: absolute; bottom: 0; left: 0; right: 0; height: 50px;
+      background: #fff;
+      clip-path: ellipse(55% 100% at 50% 100%);
     }
 
-    /* Tarjetas de estadísticas */
-    .perfil-stats { display: grid; grid-template-columns: 1fr 1fr; gap: .85rem; padding: 1.25rem 0 .5rem; }
-    .perfil-stat {
-      background: #fff; border: 1px solid var(--border);
-      border-radius: var(--radius); padding: 1.1rem 1rem 1rem;
-      display: flex; flex-direction: column; align-items: center; gap: .1rem; text-align: center;
-      box-shadow: 0 1px 4px rgba(0,0,0,.06);
+    /* ── Header centrado (avatar + nombre) ── */
+    .perfil-header {
+      background: #fff;
+      border-bottom: 1px solid var(--border);
+      display: flex; flex-direction: column; align-items: center;
+      padding-bottom: 1.75rem;
     }
-    .perfil-stat__icon { font-size: 1.4rem; margin-bottom: .15rem; }
-    .perfil-stat__val { font-size: 1.45rem; font-weight: 800; color: var(--cinnamon); line-height: 1; }
-    .perfil-stat__lbl { font-size: .72rem; color: var(--text-muted); font-weight: 500; margin-top: .1rem; }
+    .perfil-avatar-wrap {
+      margin-top: -62px; position: relative; z-index: 1;
+    }
+    .perfil-avatar-lg {
+      width: 112px; height: 112px; border-radius: 50%;
+      background: linear-gradient(135deg, #e07b3a 0%, #c8561a 100%);
+      color: #fff; font-size: 3rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+      box-shadow: 0 0 0 4px #fff, 0 0 0 7px rgba(200,86,26,.35), 0 10px 30px rgba(200,86,26,.4);
+    }
+    .perfil-info {
+      text-align: center; padding: .85rem 1rem 0;
+    }
+    .perfil-top__nombre {
+      font-size: 1.8rem; font-weight: 800; color: var(--text);
+      margin: 0 0 .2rem; line-height: 1.2; word-break: break-word;
+    }
+    .perfil-top__username { font-size: .85rem; color: var(--text-muted); margin: 0 0 .65rem; }
+    .perfil-rol-badge {
+      display: inline-flex; align-items: center; gap: .3rem;
+      background: linear-gradient(135deg, #f3ede6, #ffe8d6);
+      color: var(--cinnamon); border: 1px solid rgba(200,86,26,.2);
+      border-radius: 999px; padding: .25rem 1rem;
+      font-size: .72rem; font-weight: 700; letter-spacing: .06em; text-transform: uppercase;
+    }
+    .perfil-actions {
+      display: flex; gap: .75rem; justify-content: center;
+      padding: 1.2rem 1rem 0; flex-wrap: wrap;
+    }
+    .btn-ir-menu {
+      display: inline-flex; align-items: center; gap: .45rem;
+      background: var(--cinnamon); color: #fff; border: none;
+      border-radius: 999px; padding: .6rem 1.5rem;
+      font-size: .88rem; font-weight: 700; cursor: pointer;
+      transition: background .2s, box-shadow .2s, transform .15s;
+      box-shadow: 0 3px 10px rgba(200,86,26,.35);
+    }
+    .btn-ir-menu:hover { background: var(--cinnamon-lt); box-shadow: 0 5px 16px rgba(200,86,26,.45); transform: translateY(-1px); }
+    .btn-editar-perfil {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #fff; border: 1.5px solid var(--border); color: var(--text-muted);
+      border-radius: 999px; padding: .55rem 1.25rem; font-size: .88rem; font-weight: 600;
+      cursor: pointer; transition: border-color .18s, color .18s, box-shadow .18s;
+      box-shadow: 0 1px 4px rgba(0,0,0,.07);
+    }
+    .btn-editar-perfil:hover { border-color: var(--cinnamon); color: var(--cinnamon); box-shadow: 0 3px 10px rgba(0,0,0,.1); }
+
+    /* ── Stats strip unificado ── */
+    .perfil-stats {
+      display: flex; margin: 1.5rem 0 1.75rem;
+      background: #fff; border: 1px solid var(--border);
+      border-radius: 1.1rem; overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,.07);
+    }
+    .perfil-stat {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 1.4rem 1rem 1.25rem; text-align: center; position: relative;
+      transition: background .18s;
+    }
+    .perfil-stat:hover { background: #faf8f5; }
+    .perfil-stat:not(:last-child)::after {
+      content: ''; position: absolute; right: 0; top: 20%; bottom: 20%;
+      width: 1px; background: var(--border);
+    }
+    .perfil-stat__icon { font-size: 1.6rem; margin-bottom: .3rem; }
+    .perfil-stat__val { font-size: 1.9rem; font-weight: 900; color: var(--cinnamon); line-height: 1; }
+    .perfil-stat__lbl { font-size: .72rem; color: var(--text-muted); font-weight: 500; margin-top: .3rem; letter-spacing: .02em; }
 
     /* Historial de pedidos */
     .perfil-section-title {
       font-size: 1rem; font-weight: 700; color: var(--text);
-      margin: 1.25rem 0 .75rem; letter-spacing: .01em;
+      margin: 0 0 1rem; letter-spacing: .01em;
+      display: flex; align-items: center; gap: .5rem;
     }
-    .perfil-historial { display: flex; flex-direction: column; gap: 1rem; padding-bottom: 3rem; }
+    .perfil-section-title::before {
+      content: ''; display: inline-block;
+      width: 3px; height: 1.1em; border-radius: 2px;
+      background: var(--cinnamon);
+    }
+    .perfil-historial { display: flex; flex-direction: column; gap: 1.1rem; padding-bottom: 3rem; }
 
     /* ── Card base ── */
     .perfil-pedido-card {
-      background: #fff;
-      border: 1px solid var(--border);
-      border-radius: 1rem;
-      overflow: hidden;
-      box-shadow: 0 2px 8px rgba(0,0,0,.07);
+      background: #fff; border: none;
+      border-radius: 1.25rem; overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0,0,0,.09);
       display: flex; flex-direction: column;
+      transition: box-shadow .22s, transform .22s;
     }
-    /* Fila de thumbnails pequeños (estilo Uber Eats) */
-    .perfil-card-imgs {
-      display: flex; align-items: center; flex-wrap: wrap;
-      gap: 6px; padding: .9rem 1rem .2rem;
+    .perfil-pedido-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.14); transform: translateY(-3px); }
+
+    /* Cabecera cálida: fondo degradado + imágenes + badge */
+    .perfil-card-top {
+      background: linear-gradient(135deg, #fdf0e4 0%, #f7e4cf 100%);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 1.1rem 1.2rem 1rem;
+      border-bottom: 1px solid rgba(200,86,26,.1);
     }
+    .perfil-card-imgs { display: flex; align-items: center; }
     .perfil-card-imgs img {
-      width: 52px; height: 52px; border-radius: 10px;
+      width: 68px; height: 68px; border-radius: 14px;
       object-fit: cover; object-position: center;
-      border: 1.5px solid var(--border);
-      box-shadow: 0 1px 4px rgba(0,0,0,.10);
-      flex-shrink: 0;
+      border: 3px solid #fff;
+      box-shadow: 0 3px 10px rgba(0,0,0,.18);
+      margin-right: -20px; flex-shrink: 0;
+      transition: transform .2s; position: relative;
     }
+    .perfil-card-imgs img:hover { transform: translateY(-4px) scale(1.07); z-index: 2; }
+    .perfil-card-imgs img:last-child { margin-right: 0; }
     .perfil-card-img-placeholder {
-      width: 52px; height: 52px; border-radius: 10px;
+      width: 68px; height: 68px; border-radius: 14px;
       display: flex; align-items: center; justify-content: center;
-      font-size: 1.6rem; background: #f3ede6; flex-shrink: 0;
+      font-size: 2rem; background: #ecdfd1;
+      border: 3px solid #fff; flex-shrink: 0;
     }
-    /* Cuerpo */
-    .perfil-card-body {
-      padding: .55rem 1rem .85rem; display: flex; flex-direction: column; gap: .38rem;
-    }
-    .perfil-card-meta {
-      display: flex; justify-content: space-between; align-items: center; gap: .5rem;
-    }
-    .perfil-card-fecha { font-size: .78rem; color: var(--text-muted); }
     .perfil-card-status {
-      display: inline-block; border-radius: 999px; padding: .18rem .7rem;
-      font-size: .72rem; font-weight: 700;
+      display: inline-flex; align-items: center; gap: .35rem;
+      border-radius: 999px; padding: .32rem .95rem;
+      font-size: .73rem; font-weight: 700; white-space: nowrap; flex-shrink: 0;
     }
-    .perfil-card-status--pending { background: #fef3c7; color: #92400e; }
-    .perfil-card-status--done    { background: #d1fae5; color: #065f46; }
+    .perfil-card-status--pending { background: #fef3c7; color: #92400e; border: 1px solid #fde68a; }
+    .perfil-card-status--done    { background: #ecfdf5; color: #059669; border: 1px solid #a7f3d0; }
+
+    /* Cuerpo */
+    .perfil-card-body { padding: .85rem 1.2rem .95rem; display: flex; flex-direction: column; gap: .45rem; }
+    .perfil-card-fecha { font-size: .78rem; color: var(--text-muted); }
     .perfil-card-nombres {
-      font-size: .85rem; color: var(--text); line-height: 1.45;
+      font-size: .9rem; color: var(--text); line-height: 1.55; font-weight: 500;
       display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
     }
-    /* Pie: total + botón */
+
+    /* Pie */
     .perfil-card-foot {
       display: flex; align-items: center; justify-content: space-between;
-      padding: .75rem 1rem; border-top: 1px solid var(--border);
-      background: #faf8f5;
+      padding: .9rem 1.2rem; border-top: 1px solid rgba(0,0,0,.06);
+      background: #fdfaf7;
     }
-    .perfil-card-total { font-size: 1.05rem; font-weight: 800; color: var(--text); }
+    .perfil-card-total-wrap { display: flex; flex-direction: column; line-height: 1.1; }
+    .perfil-card-total-lbl { font-size: .67rem; color: var(--text-muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+    .perfil-card-total { font-size: 1.35rem; font-weight: 900; color: var(--cinnamon); }
     .btn-volver-pedir {
+      display: inline-flex; align-items: center; gap: .4rem;
       background: var(--cinnamon); color: #fff; border: none;
-      border-radius: 999px; padding: .5rem 1.25rem; font-size: .85rem; font-weight: 700;
-      cursor: pointer; transition: opacity .18s; white-space: nowrap;
+      border-radius: 999px; padding: .6rem 1.4rem; font-size: .85rem; font-weight: 700;
+      cursor: pointer; transition: background .18s, box-shadow .18s, transform .15s;
+      box-shadow: 0 3px 10px rgba(200,86,26,.35); white-space: nowrap;
     }
-    .btn-volver-pedir:hover { opacity: .85; }
+    .btn-volver-pedir:hover { background: var(--cinnamon-lt); box-shadow: 0 5px 16px rgba(200,86,26,.45); transform: translateY(-1px); }
 
-    /* Pending card tinte */
-    .perfil-pedido-card--pending .perfil-card-foot { background: #fffbf0; }
-    .perfil-pedido-card--pending { border-top: 3px solid #f59e0b; }
+    /* Pending */
+    .perfil-pedido-card--pending { box-shadow: 0 4px 20px rgba(245,158,11,.15); }
+    .perfil-pedido-card--pending .perfil-card-top { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom-color: rgba(245,158,11,.2); }
+    .perfil-pedido-card--pending .perfil-card-foot { background: #fffdf5; }
 
-    .perfil-empty { text-align: center; padding: 3rem 1rem; color: var(--text-muted); }
+    .perfil-empty {
+      text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);
+      background: #fff; border: 1.5px dashed var(--border); border-radius: 1.2rem;
+    }
+    .perfil-empty svg { opacity: .3; margin-bottom: .75rem; }
+    .perfil-empty p { font-size: .95rem; }
     .perfil-empty svg { margin-bottom: .85rem; opacity: .35; display: block; margin-inline: auto; }
     .perfil-empty p { margin: 0; font-size: .92rem; }
 
@@ -1868,26 +1936,30 @@
     <!-- Vista Perfil (solo rol usuario) -->
     <div id="usuario-view">
 
-      <!-- Nombre grande + avatar (estilo Uber Eats) -->
-      <section class="perfil-top" aria-labelledby="perfil-nombre">
-        <div class="wrap">
-          <div class="perfil-top__left">
-            <h2 class="perfil-top__nombre" id="perfil-nombre">—</h2>
-            <p class="perfil-top__username" id="perfil-username">@—</p>
-            <button class="btn-ir-menu" id="btn-ir-menu" aria-label="Volver al menú">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-              Ver menú y pedir
-            </button>
-          </div>
-          <div class="perfil-avatar-wrap">
-            <div class="perfil-avatar-lg" id="perfil-avatar-lg" aria-hidden="true">?</div>
-            <button class="btn-editar-perfil" id="btn-editar-perfil" aria-label="Editar perfil">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Editar perfil
-            </button>
-          </div>
+      <!-- Cover banner -->
+      <div class="perfil-cover" aria-hidden="true"></div>
+
+      <!-- Avatar centrado + nombre + rol -->
+      <header class="perfil-header">
+        <div class="perfil-avatar-wrap">
+          <div class="perfil-avatar-lg" id="perfil-avatar-lg" aria-hidden="true">?</div>
         </div>
-      </section>
+        <div class="perfil-info">
+          <h2 class="perfil-top__nombre" id="perfil-nombre">—</h2>
+          <p class="perfil-top__username" id="perfil-username">@—</p>
+          <span class="perfil-rol-badge" id="perfil-rol-badge">Cliente</span>
+        </div>
+        <div class="perfil-actions">
+          <button class="btn-ir-menu" id="btn-ir-menu" aria-label="Volver al menú">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="15" height="15" aria-hidden="true"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
+            Ver menú y pedir
+          </button>
+          <button class="btn-editar-perfil" id="btn-editar-perfil" aria-label="Editar perfil">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+            Editar perfil
+          </button>
+        </div>
+      </header>
 
       <!-- Stats + historial -->
       <div class="wrap">
@@ -1895,7 +1967,7 @@
           <div class="perfil-stat">
             <span class="perfil-stat__icon" aria-hidden="true">🛍️</span>
             <span class="perfil-stat__val" id="perfil-total-pedidos">0</span>
-            <span class="perfil-stat__lbl">Pedidos</span>
+            <span class="perfil-stat__lbl">Pedidos realizados</span>
           </div>
           <div class="perfil-stat">
             <span class="perfil-stat__icon" aria-hidden="true">💰</span>
@@ -3253,9 +3325,11 @@
     const avatarEl   = document.getElementById('perfil-avatar-lg');
     const nombreEl   = document.getElementById('perfil-nombre');
     const usernameEl = document.getElementById('perfil-username');
+    const rolBadge   = document.getElementById('perfil-rol-badge');
     if (avatarEl)   avatarEl.textContent   = nombreCompleto.charAt(0).toUpperCase();
     if (nombreEl)   nombreEl.textContent   = nombreCompleto;
     if (usernameEl) usernameEl.textContent = '@' + session.usuario;
+    if (rolBadge)   rolBadge.textContent   = ROL_LABEL[session.rol] ?? session.rol;
 
     const historial    = leerHistorial();
     const pagados      = historial.filter(h => h.idUsuario === session.usuario);
@@ -3300,16 +3374,19 @@
 
     const cardsPendientes = pendientes.map(p => `
       <article class="perfil-pedido-card perfil-pedido-card--pending" aria-label="Pedido en proceso Mesa ${p.mesa}">
-        ${buildImgStrip(p.items)}
+        <div class="perfil-card-top">
+          ${buildImgStrip(p.items)}
+          <span class="perfil-card-status perfil-card-status--pending">⏳ En proceso</span>
+        </div>
         <div class="perfil-card-body">
-          <div class="perfil-card-meta">
-            <span class="perfil-card-fecha">🪑 Mesa ${p.mesa} · ${p.hora || ''}</span>
-            <span class="perfil-card-status perfil-card-status--pending">⏳ En proceso</span>
-          </div>
+          <span class="perfil-card-fecha">🪑 Mesa ${p.mesa}${p.hora ? ' · ' + p.hora : ''}</span>
           <p class="perfil-card-nombres">${buildNombres(p.items)}</p>
         </div>
         <div class="perfil-card-foot">
-          <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
+          <div class="perfil-card-total-wrap">
+            <span class="perfil-card-total-lbl">Total</span>
+            <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
+          </div>
         </div>
       </article>`).join('');
 
@@ -3320,18 +3397,20 @@
         : (p.hora || '');
       return `
       <article class="perfil-pedido-card" aria-label="Pedido del ${p.fecha}">
-        ${buildImgStrip(p.items)}
+        <div class="perfil-card-top">
+          ${buildImgStrip(p.items)}
+          <span class="perfil-card-status perfil-card-status--done">✅ Completado</span>
+        </div>
         <div class="perfil-card-body">
-          <div class="perfil-card-meta">
-            <span class="perfil-card-fecha">📅 ${p.fecha}${hora ? ' · ' + hora : ''}</span>
-            <span class="perfil-card-status perfil-card-status--done">✅ Completado</span>
-          </div>
+          <span class="perfil-card-fecha">📅 ${p.fecha}${hora ? ' · ' + hora : ''}</span>
           <p class="perfil-card-nombres">${buildNombres(p.items)}</p>
         </div>
         <div class="perfil-card-foot">
-          <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
-          <button class="btn-volver-pedir" data-idx="${idx}"
-                  aria-label="Volver a pedir lo mismo del ${p.fecha}">
+          <div class="perfil-card-total-wrap">
+            <span class="perfil-card-total-lbl">Total</span>
+            <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
+          </div>
+          <button class="btn-volver-pedir" data-idx="${idx}" aria-label="Volver a pedir lo mismo del ${p.fecha}">
             🔄 Volver a pedir
           </button>
         </div>
@@ -3380,7 +3459,7 @@
       userChip.style.display = '';
       userAvatar.textContent  = session.nombre.charAt(0).toUpperCase();
       userAvatar.className    = `user-chip__avatar ${session.rol}`;
-      userName.textContent    = ROL_LABEL[session.rol] ?? session.nombre;
+      userName.textContent    = session.nombre;
       userRol.textContent     = ROL_LABEL[session.rol] ?? session.rol;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
