@@ -11,16 +11,9 @@ window.ModuloRepositorio = (function () {
    * Carga los productos desde el archivo JSON.
    * @returns {Promise<Array>} Lista de productos.
    */
-  const cargar = async () => {
-    try {
-      const res = await fetch('data/productos.json');
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      _items = await res.json();
-    } catch (_e) {
-      /* Fallback: usa el array inline definido en el script principal */
-      _items = window.PRODUCTOS ?? [];
-    }
-    return _items;
+  const cargar = () => {
+    _items = window.PRODUCTOS ?? [];
+    return Promise.resolve(_items);
   };
 
   /** Devuelve todos los productos cargados. */

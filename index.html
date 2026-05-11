@@ -3595,18 +3595,20 @@
     trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open');
   });
 
-  // Cargar catálogo y datos de Supabase en paralelo, luego iniciar la sesión
-  Promise.all([
-    ModuloRepositorio.cargar().catch(function () {}),
-    inicializarDB()
-  ]).finally(() => {
-    const sesionActual = ModuloAutenticacion.getSession();
-    if (sesionActual) {
-      aplicarSesion();
-    } else {
-      ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
-      aplicarSesion();
-    }
+  // 1. Cargar productos estáticos (sincrónico, sin red)
+  ModuloRepositorio.cargar();
+
+  // 2. Mostrar UI inmediatamente con sesión de localStorage
+  const sesionActual = ModuloAutenticacion.getSession();
+  if (!sesionActual) {
+    ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
+  }
+  aplicarSesion();
+  renderCarrito();
+
+  // 3. Cargar datos de Supabase en segundo plano y refrescar
+  inicializarDB().finally(() => {
+    aplicarSesion();
     window.VistaCajero?.renderCajeroView();
     renderCarrito();
   });
