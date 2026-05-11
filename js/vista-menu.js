@@ -391,6 +391,13 @@ window.VistaMenu = (function () {
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.join(' · ')}
+                    ${(() => {
+                      const s = SC.getStock(p.id);
+                      const qty = s.stock;
+                      const color = qty <= 0 ? '#dc2626' : qty <= 5 ? '#d97706' : '#16a34a';
+                      const txt   = qty <= 0 ? 'Agotado' : `${qty} en stock`;
+                      return `<span style="display:block;margin-top:.4rem;font-weight:700;color:${color};font-size:.75rem;">${txt}</span>`;
+                    })()}
                   </div>
                 </button>
                 <div class="mesero-qty">
