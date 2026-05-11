@@ -3001,6 +3001,16 @@
   });
 
   /* ── Validación en tiempo real del formulario de registro ── */
+  function setRegState(inputId, errId, valid, msg) {
+    const el  = document.getElementById(inputId);
+    const err = document.getElementById(errId);
+    if (!el || !err) return;
+    el.classList.toggle('valid',   valid);
+    el.classList.toggle('invalid', !valid);
+    el.setAttribute('aria-invalid', String(!valid));
+    err.textContent = valid ? '' : msg;
+  }
+
   (function () {
     const RX = {
       nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
@@ -3010,15 +3020,7 @@
       usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
     };
 
-    function setState(inputId, errId, valid, msg) {
-      const el  = document.getElementById(inputId);
-      const err = document.getElementById(errId);
-      if (!el || !err) return;
-      el.classList.toggle('valid',   valid);
-      el.classList.toggle('invalid', !valid);
-      el.setAttribute('aria-invalid', String(!valid));
-      err.textContent = valid ? '' : msg;
-    }
+    const setState = setRegState;
     function clearState(inputId, errId) {
       const el  = document.getElementById(inputId);
       const err = document.getElementById(errId);
@@ -3146,7 +3148,7 @@
       return ok;
     };
 
-    const ok = [
+    let ok = [
       check('reg-nombre',   'err-nombre',   nombre,   RX.nombre,   'Solo letras y espacios, mínimo 2 caracteres.'),
       check('reg-apellido', 'err-apellido', apellido, RX.apellido, 'Solo letras y espacios, mínimo 2 caracteres.'),
       check('reg-email',    'err-email',    email,    RX.email,    'Formato inválido. Ej: nombre@gmail.com'),
@@ -3157,29 +3159,43 @@
     if (password.length < 6) {
       setState('reg-password', 'err-password', false, 'Mínimo 6 caracteres.');
       if (!firstInvalid) firstInvalid = 'reg-password';
+      ok = false;
     } else {
       setState('reg-password', 'err-password', true, '');
     }
     if (!password2 || password2 !== password) {
       setState('reg-password2', 'err-password2', false, 'Las contraseñas no coinciden.');
       if (!firstInvalid) firstInvalid = 'reg-password2';
+      ok = false;
     } else {
       setState('reg-password2', 'err-password2', true, '');
     }
 
-    if (!ok || password.length < 6 || password2 !== password) {
+    /* Verificar duplicados en todos los campos a la vez (solo si el formato es válido) */
+    const users = ModuloAutenticacion.leerUsuarios();
+    if (RX.usuario.test(usuario) && users.some(u => u.usuario === usuario)) {
+      setState('reg-usuario', 'err-usuario', false, 'Ese nombre de usuario ya existe.');
+      if (!firstInvalid) firstInvalid = 'reg-usuario';
+      ok = false;
+    }
+    if (RX.email.test(email) && users.some(u => u.email === email)) {
+      setState('reg-email', 'err-email', false, 'Ya existe una cuenta con ese correo.');
+      if (!firstInvalid) firstInvalid = 'reg-email';
+      ok = false;
+    }
+    if (telefono && RX.telefono.test(telefono) && users.some(u => u.telefono && u.telefono === telefono)) {
+      setState('reg-telefono', 'err-telefono', false, 'Ya existe una cuenta con ese número de teléfono.');
+      if (!firstInvalid) firstInvalid = 'reg-telefono';
+      ok = false;
+    }
+
+    if (!ok) {
       if (firstInvalid) document.getElementById(firstInvalid).focus();
-      return show('Corrige los campos marcados en rojo antes de continuar.');
+      return;
     }
 
     const res = ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
-    if (!res.ok) {
-      show(res.msg);
-      if (res.msg.includes('usuario'))   { setState('reg-usuario',  'err-usuario',  false, res.msg); document.getElementById('reg-usuario').focus(); }
-      else if (res.msg.includes('correo'))  { setState('reg-email',    'err-email',    false, res.msg); document.getElementById('reg-email').focus(); }
-      else if (res.msg.includes('teléfono')) { setState('reg-telefono', 'err-telefono', false, res.msg); document.getElementById('reg-telefono').focus(); }
-      return;
-    }
+    if (!res.ok) { show(res.msg); return; }
     limpiarFormAuth();
     ModuloAutenticacion.setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });
     aplicarSesion();
