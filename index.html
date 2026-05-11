@@ -3055,7 +3055,9 @@
     inEmail.addEventListener('input', () => {
       const v = inEmail.value.trim();
       if (!v) return clearState('reg-email', 'err-email');
-      setState('reg-email', 'err-email', RX.email.test(v), 'Formato inválido. Ej: nombre@gmail.com');
+      if (!RX.email.test(v)) return setState('reg-email', 'err-email', false, 'Formato inválido. Ej: nombre@gmail.com');
+      const dup = ModuloAutenticacion.leerUsuarios().some(u => u.email === v);
+      setState('reg-email', 'err-email', !dup, 'Ya existe una cuenta con ese correo.');
     });
 
     /* ── Teléfono (solo dígitos, máx 10) ── */
@@ -3067,8 +3069,10 @@
       inTel.value = inTel.value.replace(/\D/g, '').slice(0, 10);
       const v = inTel.value;
       if (!v) return clearState('reg-telefono', 'err-telefono');
-      setState('reg-telefono', 'err-telefono', RX.telefono.test(v),
+      if (!RX.telefono.test(v)) return setState('reg-telefono', 'err-telefono', false,
         v.length < 10 ? `${v.length}/10 dígitos. Ej: 0991234567` : 'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).');
+      const dup = ModuloAutenticacion.leerUsuarios().some(u => u.telefono && u.telefono === v);
+      setState('reg-telefono', 'err-telefono', !dup, 'Ya existe una cuenta con ese número de teléfono.');
     });
 
     /* ── Usuario (sin espacios, alfanumérico + _ -) ── */
@@ -3080,8 +3084,10 @@
       inUsuario.value = inUsuario.value.replace(/\s/g, '');
       const v = inUsuario.value;
       if (!v) return clearState('reg-usuario', 'err-usuario');
-      setState('reg-usuario', 'err-usuario', RX.usuario.test(v),
+      if (!RX.usuario.test(v)) return setState('reg-usuario', 'err-usuario', false,
         'Letras, números, _ o - (3–20 caracteres, sin espacios).');
+      const dup = ModuloAutenticacion.leerUsuarios().some(u => u.usuario === v);
+      setState('reg-usuario', 'err-usuario', !dup, 'Ese nombre de usuario ya existe.');
     });
 
     /* ── Contraseña ── */
@@ -3167,7 +3173,13 @@
     }
 
     const res = ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
-    if (!res.ok) { show(res.msg); return; }
+    if (!res.ok) {
+      show(res.msg);
+      if (res.msg.includes('usuario'))   { setState('reg-usuario',  'err-usuario',  false, res.msg); document.getElementById('reg-usuario').focus(); }
+      else if (res.msg.includes('correo'))  { setState('reg-email',    'err-email',    false, res.msg); document.getElementById('reg-email').focus(); }
+      else if (res.msg.includes('teléfono')) { setState('reg-telefono', 'err-telefono', false, res.msg); document.getElementById('reg-telefono').focus(); }
+      return;
+    }
     limpiarFormAuth();
     ModuloAutenticacion.setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });
     aplicarSesion();
