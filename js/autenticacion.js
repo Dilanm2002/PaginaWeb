@@ -95,6 +95,8 @@ window.ModuloAutenticacion = (function () {
       return { ok: false, msg: 'Ese nombre de usuario ya existe.' };
     if (_users.find(u => u.email === email))
       return { ok: false, msg: 'Ya existe una cuenta con ese correo.' };
+    if (telefono && _users.find(u => u.telefono && u.telefono === telefono))
+      return { ok: false, msg: 'Ya existe una cuenta con ese número de teléfono.' };
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 

@@ -3610,6 +3610,7 @@
   inicializarDB().finally(() => {
     aplicarSesion();
     window.VistaCajero?.renderCajeroView();
+    window.VistaAdmin?.renderAdminView();
     renderCarrito();
   });
 
