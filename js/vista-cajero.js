@@ -130,9 +130,10 @@ window.VistaCajero = (function () {
       </table>`;
 
     listaEl.querySelectorAll('.gasto-del-btn').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         const id = Number(btn.dataset.delId);
-        SC.guardarGastos(SC.leerGastos().filter(g => g.id !== id));
+        btn.disabled = true;
+        await SC.eliminarGasto(id);
         renderGastos();
       };
     });
@@ -227,11 +228,14 @@ window.VistaCajero = (function () {
       const inp = row?.querySelector('.stock-input');
 
       if (act === 'set') {
+        btn.disabled = true;
+        btn.textContent = '…';
         const nuevo  = Math.max(0, parseInt(inp?.value) || 0);
         const actual = SC.getStock(id).stock;
         const diff   = nuevo - actual;
         if (diff > 0)      await SC.reponerStock(id, diff);
         else if (diff < 0) await SC.actualizarStock(id, Math.abs(diff));
+        SC.toast('Stock actualizado ✓', 'success');
       }
       renderStock();
       const cat = SC.getFiltroSesion();
@@ -357,25 +361,28 @@ window.VistaCajero = (function () {
   function init() {
     const addGastoBtn = document.getElementById('btn-add-gasto');
     if (addGastoBtn) {
-      addGastoBtn.addEventListener('click', () => {
+      addGastoBtn.addEventListener('click', async () => {
         const SC    = window.SC;
         const descEl  = document.getElementById('gasto-desc');
         const montoEl = document.getElementById('gasto-monto');
         const desc  = descEl.value.trim();
         const monto = parseFloat(montoEl.value);
-        if (!desc)  { descEl.style.borderColor  = '#dc2626'; descEl.focus();  setTimeout(() => descEl.style.borderColor  = '', 1500); return; }
+        const soloLetras = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]+$/;
+        if (!desc) { descEl.style.borderColor = '#dc2626'; descEl.focus(); setTimeout(() => descEl.style.borderColor = '', 1500); return; }
+        if (!soloLetras.test(desc)) { SC.toast('La descripción solo puede contener letras.', 'error'); descEl.style.borderColor = '#dc2626'; descEl.focus(); setTimeout(() => descEl.style.borderColor = '', 1500); return; }
         if (!monto || monto <= 0) { montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
         if (monto > 5000) { SC.toast('El monto no puede superar $5,000 por gasto.', 'error'); montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
+        addGastoBtn.disabled = true;
         const hoy  = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
         const hora = new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
-        const gastos = SC.leerGastos();
-        gastos.push({ id: Date.now(), descripcion: desc, monto, fecha: hoy, hora });
-        SC.guardarGastos(gastos);
+        const gasto = { id: Date.now(), descripcion: desc, monto, fecha: hoy, hora };
+        await SC.insertarGasto(gasto);
         descEl.value  = '';
         montoEl.value = '';
         descEl.focus();
         renderGastos();
         SC.toast(`Gasto "${desc}" registrado`, 'success');
+        addGastoBtn.disabled = false;
       });
     }
     const montoEl = document.getElementById('gasto-monto');

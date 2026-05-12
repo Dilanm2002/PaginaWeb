@@ -54,7 +54,22 @@ window.VistaAdmin = (function () {
         const prod = SC.getProductosMergeados().find(p => p.id === id);
         if (prod) abrirFormProducto(prod);
       } else if (btn.dataset.action === 'eliminar') {
-        if (!confirm(`¿Eliminar "${SC.getProductosMergeados().find(p=>p.id===id)?.nombre}"?`)) return;
+        if (!btn.dataset.confirmando) {
+          const originalHTML = btn.innerHTML;
+          btn.dataset.confirmando = '1';
+          btn.textContent = '¿Confirmar?';
+          btn.style.background = '#dc2626';
+          const resetBtn = () => {
+            delete btn.dataset.confirmando;
+            btn.innerHTML = originalHTML;
+            btn.style.background = '';
+            document.removeEventListener('click', outsideClick);
+          };
+          const outsideClick = e2 => { if (!btn.contains(e2.target)) resetBtn(); };
+          setTimeout(() => document.addEventListener('click', outsideClick), 10);
+          return;
+        }
+        btn.disabled = true;
         await SC.eliminarMenuItemDB(id);
         renderAdminView();
         const cat = SC.getFiltroSesion();
@@ -139,7 +154,7 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-ingredientes').value = ings;
     document.getElementById('pf-imagen').value       = '';
 
-    const imgActual     = document.getElementById('pf-img-actual');
+    const imgActual      = document.getElementById('pf-img-actual');
     const imgPlaceholder = document.getElementById('pf-img-placeholder');
     if (p?.imagen) {
       imgActual.src = p.imagen;
@@ -162,16 +177,41 @@ window.VistaAdmin = (function () {
     _prodFormEditId    = null;
   }
 
-  function init() {
-    document.getElementById('pf-imagen').addEventListener('change', async e => {
-      const file = e.target.files[0];
-      if (!file) return;
+  function _setupDragDrop() {
+    const pfImagen = document.getElementById('pf-imagen');
+    if (pfImagen) {
+      pfImagen.style.display = 'none';
+    }
+
+    const processFile = async file => {
+      if (!file || !file.type.startsWith('image/')) {
+        window.SC?.toast('Solo se aceptan imágenes', 'error');
+        return;
+      }
       _prodFormImgBase64 = await window.SC.comprimirImagen(file);
       const imgActual = document.getElementById('pf-img-actual');
       imgActual.src = _prodFormImgBase64;
       imgActual.style.display = '';
       document.getElementById('pf-img-placeholder').style.display = 'none';
-    });
+    };
+
+    const addDropZone = el => {
+      if (!el) return;
+      el.addEventListener('dragover', e => { e.preventDefault(); el.style.opacity = '.65'; });
+      el.addEventListener('dragleave', () => { el.style.opacity = ''; });
+      el.addEventListener('drop', async e => {
+        e.preventDefault();
+        el.style.opacity = '';
+        await processFile(e.dataTransfer?.files?.[0]);
+      });
+    };
+
+    addDropZone(document.getElementById('pf-img-placeholder'));
+    addDropZone(document.getElementById('pf-img-actual'));
+  }
+
+  function init() {
+    _setupDragDrop();
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
@@ -184,8 +224,12 @@ window.VistaAdmin = (function () {
       const SC     = window.SC;
       const nombre = document.getElementById('pf-nombre').value.trim();
       const precio = parseFloat(document.getElementById('pf-precio').value);
-      if (!nombre)           { SC.toast('El nombre es obligatorio', 'error'); return; }
-      if (!precio || precio <= 0) { SC.toast('Precio inválido', 'error'); return; }
+      if (!nombre)               { SC.toast('El nombre es obligatorio', 'error'); return; }
+      if (!precio || precio <= 0){ SC.toast('Precio inválido', 'error'); return; }
+      if (!_prodFormImgBase64)   { SC.toast('La imagen es obligatoria', 'error'); return; }
+
+      const saveBtn = document.getElementById('btn-prod-save');
+      saveBtn.disabled = true;
 
       const id            = _prodFormEditId ?? SC.nextMenuId();
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
@@ -200,13 +244,14 @@ window.VistaAdmin = (function () {
         precio,
         ingredientes,
         tag:         document.getElementById('pf-tag').value.trim(),
-        imagen:      _prodFormImgBase64 || '',
+        imagen:      _prodFormImgBase64,
         destacado:   document.getElementById('pf-destacado').checked,
         activo:      true,
         stock_inicial: stockInicial
       };
 
       await SC.guardarMenuItemDB(item);
+      saveBtn.disabled = false;
       cerrarFormProducto();
       renderAdminView();
       const cat = SC.getFiltroSesion();

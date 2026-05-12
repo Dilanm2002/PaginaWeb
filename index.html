@@ -2005,6 +2005,12 @@
                 <div class="cajero-stat__lbl">Por cobrar</div>
               </div>
             </div>
+            <button class="cajero-refresh" id="btn-cajero-ver-menu" style="background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M3 6h18M3 12h18M3 18h18"/>
+              </svg>
+              Ver Menú
+            </button>
             <button class="cajero-refresh" id="btn-refresh-caja">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polyline points="23 4 23 10 17 10"/>
@@ -2441,6 +2447,17 @@
     await ModuloAutenticacion.cargarUsuarios();
   }
 
+  async function recargarCaja() {
+    try {
+      const [rCaja, rHist] = await Promise.all([
+        db.from('pedidos').select('data').eq('estado', 'pendiente'),
+        db.from('pedidos').select('data').eq('estado', 'cobrado')
+      ]);
+      if (!rCaja.error) _caja      = (rCaja.data || []).map(r => r.data);
+      if (!rHist.error) _historial = (rHist.data || []).map(r => r.data);
+    } catch(e) { console.warn('recargarCaja:', e); }
+  }
+
   /* Devuelve la lista completa de productos (base JSON + overrides/nuevos del admin) */
   function getProductosMergeados() {
     const overrides = {};
@@ -2483,8 +2500,34 @@
   function leerGastos()    { return _gastos; }
 
   function guardarCaja(p)  { _caja = p; }
-  function guardarHistorial(h) { _historial = h; }
-  function guardarGastos(g)    { _gastos = g; }
+  function guardarHistorial(h) {
+    _historial = h;
+    try { localStorage.setItem(LS_HISTORIAL, JSON.stringify(h)); } catch(_) {}
+  }
+  function guardarGastos(g) { _gastos = g; }
+
+  async function insertarGasto(gasto) {
+    _gastos.push(gasto);
+    try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
+    try {
+      const { data, error } = await db.from('gastos').insert({ data: gasto }).select().single();
+      if (!error && data) {
+        const idx = _gastos.findIndex(g => g.id === gasto.id);
+        if (idx >= 0) _gastos[idx]._dbId = data.id;
+      }
+      if (error) console.error('Supabase insertarGasto:', error);
+    } catch(e) { console.error('insertarGasto:', e); }
+  }
+
+  async function eliminarGasto(gastoLocalId) {
+    const gasto = _gastos.find(g => g.id === gastoLocalId);
+    _gastos = _gastos.filter(g => g.id !== gastoLocalId);
+    try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
+    if (gasto?._dbId) {
+      db.from('gastos').delete().eq('id', gasto._dbId)
+        .then(({ error }) => { if (error) console.error('Supabase eliminarGasto:', error); });
+    }
+  }
 
   function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items }) {
     const totales = LogicaCarrito.calcularTotales(items);
@@ -2519,6 +2562,7 @@
       const hoy    = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
       const entrada = { ...cobrado, fecha: hoy, cobradoEn: new Date().toISOString(), estado: 'cobrado' };
       _historial.push(entrada);
+      try { localStorage.setItem(LS_HISTORIAL, JSON.stringify(_historial)); } catch(_) {}
       db.from('pedidos').update({
         data:   entrada,
         estado: 'cobrado',
@@ -2667,7 +2711,11 @@
           LogicaCarrito.eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
         } else if (btn.dataset.action === 'inc') {
           const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
-          if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad + 1); renderCarrito(); }
+          if (it) {
+            const s = getStock(id);
+            if (it.cantidad >= s.stock) { toast(`Solo quedan ${s.stock} unidades de "${it.nombre}"`, 'error'); return; }
+            LogicaCarrito.cambiarCantidad(id, it.cantidad + 1); renderCarrito();
+          }
         } else if (btn.dataset.action === 'dec') {
           const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
           if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad - 1); renderCarrito(); }
@@ -2767,6 +2815,7 @@
   /* -- API compartida con los modulos de vista -- */
   window.SC = {
     leerCaja, leerHistorial, leerGastos, guardarGastos,
+    insertarGasto, eliminarGasto,
     getStock, getProductosMergeados,
     cobrarPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
@@ -2774,6 +2823,8 @@
     IVA, ROL_LABEL,
     getFiltroSesion:     () => ModuloApp.getFiltroSesion(),
     guardarFiltroSesion: cat => ModuloApp.guardarFiltroSesion(cat),
+    getSession:          () => ModuloAutenticacion.getSession(),
+    recargarCaja,
     renderCarrito: () => renderCarrito(),
   };
 
@@ -3042,9 +3093,35 @@
     });
   }
   if (btnRefreshCaja) {
-    btnRefreshCaja.addEventListener('click', () => {
+    btnRefreshCaja.addEventListener('click', async () => {
+      btnRefreshCaja.disabled = true;
+      await recargarCaja();
       window.VistaCajero?.renderCajeroView();
       toast('Pedidos actualizados', 'success');
+      btnRefreshCaja.disabled = false;
+    });
+  }
+
+  const btnCajeroVerMenu = document.getElementById('btn-cajero-ver-menu');
+  if (btnCajeroVerMenu) {
+    btnCajeroVerMenu.addEventListener('click', () => {
+      const mostrando = menuView.style.display !== 'none';
+      if (mostrando) {
+        menuView.style.display = 'none';
+        cajeroView.classList.add('visible');
+        btnCajeroVerMenu.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Ver Menú`;
+        btnCajeroVerMenu.style.cssText = 'background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)';
+        cajeroView.scrollIntoView({ behavior: 'smooth' });
+      } else {
+        cajeroView.classList.remove('visible');
+        menuView.style.display = '';
+        document.querySelector('.filter-bar-wrap').style.display = 'none';
+        document.querySelector('.hero').style.display = 'none';
+        window.VistaMenu?.renderProductosMesero();
+        btnCajeroVerMenu.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Volver a Caja`;
+        btnCajeroVerMenu.style.cssText = '';
+        menuView.scrollIntoView({ behavior: 'smooth' });
+      }
     });
   }
 

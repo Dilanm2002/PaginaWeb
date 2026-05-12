@@ -13,7 +13,7 @@ window.ModuloVista = (function () {
   /* ── Expresiones regulares de validación ── */
   const REGEX = {
     nombre : /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
-    email  : /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+    email  : /^[^\s@]+@(gmail|yahoo|outlook|hotmail)\.(com|es|ec|co|net|org)$/i,
     tel    : /^(09\d{8}|0[2-7]\d{7})$/,
     mensaje: /^[\s\S]{10,500}$/
   };
@@ -21,7 +21,7 @@ window.ModuloVista = (function () {
   /* ── Definición de campos del formulario ── */
   const CAMPOS = [
     { id: 'cf-nombre', regex: REGEX.nombre,  required: true,  msg: 'Ingresa un nombre válido (solo letras, mín. 2 caracteres).' },
-    { id: 'cf-email',  regex: REGEX.email,   required: true,  msg: 'Ingresa un correo electrónico válido (ej: usuario@gmail.com).' },
+    { id: 'cf-email',  regex: REGEX.email,   required: true,  msg: 'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.' },
     { id: 'cf-tel',    regex: REGEX.tel,     required: false, msg: 'Teléfono inválido. Usa formato ecuatoriano (ej: 0991234567).' },
     { id: 'cf-msg',    regex: REGEX.mensaje,  required: true,  msg: 'El mensaje debe tener entre 10 y 500 caracteres.' }
   ];
