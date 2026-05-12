@@ -714,13 +714,13 @@
       const [rCaja, rHist, rGastos, rStock, rMenu] = await Promise.all([
         db.from('pedidos').select('data').eq('estado', 'pendiente'),
         db.from('pedidos').select('data').eq('estado', 'cobrado'),
-        db.from('gastos').select('data, id'),
+        db.from('gastos').select('id, descripcion, monto, fecha, hora').order('id', { ascending: true }),
         db.from('productos').select('id, stock, disponible'),
         db.from('menu_items').select('*').then(r => r).catch(() => ({ data: null }))
       ]);
       _caja      = (rCaja.data   || []).map(r => r.data);
       _historial = (rHist.data   || []).map(r => r.data);
-      _gastos    = (rGastos.data || []).map(r => ({ ...r.data, _dbId: r.id }));
+      _gastos    = (rGastos.data || []).map(r => ({ id: r.id, descripcion: r.descripcion, monto: Number(r.monto), fecha: r.fecha, hora: r.hora, _dbId: r.id }));
       _stock     = {};
       (rStock.data || []).forEach(r => { _stock[r.id] = { stock: r.stock, disponible: r.disponible }; });
       /* Si menu_items no existe en Supabase, usar localStorage como fallback */
@@ -745,12 +745,12 @@
       const [rCaja, rHist, rGastos, rStock] = await Promise.all([
         db.from('pedidos').select('data').eq('estado', 'pendiente'),
         db.from('pedidos').select('data').eq('estado', 'cobrado'),
-        db.from('gastos').select('data, id'),
+        db.from('gastos').select('id, descripcion, monto, fecha, hora').order('id', { ascending: true }),
         db.from('productos').select('id, stock, disponible')
       ]);
       if (!rCaja.error)   _caja      = (rCaja.data   || []).map(r => r.data);
       if (!rHist.error)   _historial = (rHist.data   || []).map(r => r.data);
-      if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ ...r.data, _dbId: r.id }));
+      if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ id: r.id, descripcion: r.descripcion, monto: Number(r.monto), fecha: r.fecha, hora: r.hora, _dbId: r.id }));
       if (!rStock.error) {
         _stock = {};
         (rStock.data || []).forEach(r => { _stock[r.id] = { stock: r.stock, disponible: r.disponible }; });
@@ -814,7 +814,12 @@
     _gastos.push(gasto);
     try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
     try {
-      const resp = await db.from('gastos').insert({ data: gasto, fecha: gasto.fecha }).select('id').single();
+      const resp = await db.from('gastos').insert({
+        descripcion: gasto.descripcion,
+        monto:       gasto.monto,
+        fecha:       gasto.fecha,
+        hora:        gasto.hora
+      }).select('id').single();
       if (resp.error) {
         console.error('Supabase insertarGasto:', resp.error);
         toast('⚠ Gasto guardado solo localmente: ' + (resp.error.message || resp.error.code || 'error desconocido'), 'error');
@@ -952,7 +957,7 @@
         const esMio = (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
                       (!session?.usuario && pedOcupado.rol === 'invitado');
         if (!esMio) {
-          err.textContent = `Mesa ${num} ocupada por ${pedOcupado.nombreUsuario}`;
+          err.textContent = `Mesa ${num} ya está ocupada`;
           err.style.display = 'block';
           mesaInput.style.borderColor = '#f59e0b';
           return;
@@ -1335,7 +1340,7 @@
         mesaInput.style.borderColor = '#dc2626';
         const mesaErrEl2 = document.getElementById('mesa-input-error');
         if (mesaErrEl2) {
-          mesaErrEl2.textContent = `Mesa ${mesa} ya está ocupada por ${pedidoExistente.nombreUsuario}. Elige otra mesa o espera a que se libere.`;
+          mesaErrEl2.textContent = `Mesa ${mesa} ya está ocupada. Elige otra mesa o espera a que se libere.`;
           mesaErrEl2.style.display = 'block';
         }
         mesaInput.focus();
