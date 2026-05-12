@@ -1947,9 +1947,7 @@
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none';
       window.VistaCajero?.renderCajeroView();
-      // Auto-refresh cada 15s (se limpia si ya había uno activo)
       if (aplicarSesion._cajeroInterval) clearInterval(aplicarSesion._cajeroInterval);
-      aplicarSesion._cajeroInterval = setInterval(async () => { await recargarCaja(); window.VistaCajero?.renderCajeroView(); }, 15000);
     } else {
       // Mesero / usuario / invitado
       if (adminView) adminView.classList.remove('visible');
@@ -2171,7 +2169,36 @@
     window.VistaCajero?.renderCajeroView();
     window.VistaAdmin?.renderAdminView();
     renderCarrito();
+    _iniciarRealtime();
   });
+
+  function _iniciarRealtime() {
+    const refrescar = async () => {
+      await recargarCaja();
+      window.VistaCajero?.renderCajeroView();
+      window.VistaMenu?.renderMesasActivas();
+      window.VistaAdmin?.renderAdminView();
+    };
+
+    db.channel('realtime-pedidos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, refrescar)
+      .subscribe();
+
+    db.channel('realtime-gastos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'gastos' }, async () => {
+        await recargarCaja();
+        window.VistaCajero?.renderGastos?.();
+      })
+      .subscribe();
+
+    db.channel('realtime-stock')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, async () => {
+        await recargarCaja();
+        window.VistaCajero?.renderStock?.();
+        window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(ModuloApp.getFiltroSesion()));
+      })
+      .subscribe();
+  }
 
   </script>
 </body>
