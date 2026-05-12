@@ -373,6 +373,10 @@
               <div class="admin-stat__val" id="admin-stat-agotados">0</div>
               <div class="admin-stat__lbl">Agotados</div>
             </div>
+            <div class="admin-stat">
+              <div class="admin-stat__val" id="admin-stat-mensajes">0</div>
+              <div class="admin-stat__lbl">Sin leer</div>
+            </div>
           </div>
         </div>
 
@@ -424,6 +428,7 @@
             <div class="prod-form-group prod-form-full">
               <label for="pf-nombre">Nombre del plato</label>
               <input type="text" id="pf-nombre" placeholder="Ej: Ceviche de Camarón" maxlength="80">
+              <span id="pf-nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
               <label for="pf-categoria">Categoría</label>
@@ -460,10 +465,14 @@
             <div class="prod-form-group prod-form-full">
               <label>Imagen del plato</label>
               <div class="prod-form-img-preview" id="pf-img-preview">
-                <span id="pf-img-placeholder">Sin imagen seleccionada</span>
+                <div id="pf-img-placeholder" style="display:flex;align-items:center;justify-content:center;">
+                  <span style="color:var(--text-muted);font-size:.88rem;">Arrastra una imagen aquí</span>
+                </div>
                 <img id="pf-img-actual" style="display:none;width:100%;height:100%;object-fit:cover;" alt="Preview">
               </div>
-              <input type="file" id="pf-imagen" accept="image/*" style="margin-top:.5rem;font-size:.82rem;">
+              <button type="button" id="btn-elegir-imagen" style="margin-top:.6rem;width:100%;padding:.6rem 1rem;background:#C8561A;color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:.01em;">📁 Elegir imagen desde el dispositivo</button>
+              <input type="file" id="pf-imagen" accept="image/*" style="display:none;">
+              <span id="pf-imagen-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
               <label class="prod-form-check">
@@ -805,7 +814,7 @@
     _gastos.push(gasto);
     try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
     try {
-      const resp = await db.from('gastos').insert({ data: gasto }).select('id').single();
+      const resp = await db.from('gastos').insert({ data: gasto, fecha: gasto.fecha }).select('id').single();
       if (resp.error) {
         console.error('Supabase insertarGasto:', resp.error);
         toast('⚠ Gasto guardado solo localmente: ' + (resp.error.message || resp.error.code || 'error desconocido'), 'error');
@@ -1222,7 +1231,7 @@
   btnCloseMesa.addEventListener('click', cerrarModalMesa);
   mesaBackdrop.addEventListener('click', e => { if (e.target === mesaBackdrop) cerrarModalMesa(); });
 
-  btnConfirmarMesa.addEventListener('click', () => {
+  btnConfirmarMesa.addEventListener('click', async () => {
     const session = ModuloAutenticacion.getSession();
     let meseroMesaTarget = window.VistaMenu?.getMesaTarget() ?? null;
     const mesa = Number(mesaInput.value.trim());
@@ -1291,8 +1300,13 @@
       }
     }
 
-    // Verificar si la mesa ya tiene un pedido activo de otra persona
-    const pedidoExistente = leerCaja().find(p => String(p.mesa) === String(mesa));
+    // Verificar en tiempo real (Supabase) si la mesa ya está ocupada por otra persona
+    btnConfirmarMesa.disabled = true;
+    const { data: pedidosDB } = await db.from('pedidos').select('data').eq('estado', 'pendiente').catch(() => ({ data: null }));
+    const cajaNow = pedidosDB ? pedidosDB.map(r => r.data) : leerCaja();
+    btnConfirmarMesa.disabled = false;
+
+    const pedidoExistente = cajaNow.find(p => String(p.mesa) === String(mesa));
     if (pedidoExistente && !meseroMesaTarget) {
       const mismaPersona =
         (idUsuario && pedidoExistente.idUsuario && pedidoExistente.idUsuario === idUsuario) ||

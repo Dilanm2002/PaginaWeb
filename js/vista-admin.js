@@ -90,6 +90,8 @@ window.VistaAdmin = (function () {
     const noLeidos = data.filter(m => !m.leido).length;
     const badge = document.getElementById('admin-mensajes-badge');
     if (badge) { badge.textContent = noLeidos; badge.style.display = noLeidos > 0 ? '' : 'none'; }
+    const statMensajes = document.getElementById('admin-stat-mensajes');
+    if (statMensajes) statMensajes.textContent = noLeidos;
 
     if (!data.length) {
       el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay mensajes todavía.</p>';
@@ -191,13 +193,13 @@ window.VistaAdmin = (function () {
     document.body.style.overflow = '';
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
+    _mostrarErrorNombre('');
+    _mostrarErrorImagen('');
   }
 
   function _setupDragDrop() {
     const pfImagen = document.getElementById('pf-imagen');
-    if (pfImagen) {
-      pfImagen.style.display = 'none';
-    }
+    if (pfImagen) pfImagen.style.display = 'none';
 
     const processFile = async file => {
       if (!file || !file.type.startsWith('image/')) {
@@ -209,7 +211,18 @@ window.VistaAdmin = (function () {
       imgActual.src = _prodFormImgBase64;
       imgActual.style.display = '';
       document.getElementById('pf-img-placeholder').style.display = 'none';
+      _mostrarErrorImagen('');
     };
+
+    document.getElementById('btn-elegir-imagen')?.addEventListener('click', e => {
+      e.stopPropagation();
+      pfImagen?.click();
+    });
+
+    pfImagen?.addEventListener('change', async () => {
+      await processFile(pfImagen.files?.[0]);
+      pfImagen.value = '';
+    });
 
     const addDropZone = el => {
       if (!el) return;
@@ -226,8 +239,52 @@ window.VistaAdmin = (function () {
     addDropZone(document.getElementById('pf-img-actual'));
   }
 
+  const NOMBRE_LETRA_RE = /[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]/;
+
+  function _validarNombre(valor) {
+    const v = valor.trim();
+    if (!v)                      return 'El nombre es obligatorio.';
+    if (v.length < 2)            return 'El nombre debe tener al menos 2 caracteres.';
+    if (!NOMBRE_LETRA_RE.test(v)) return 'El nombre debe contener al menos una letra.';
+    return '';
+  }
+
+  function _mostrarErrorNombre(msg) {
+    const inp = document.getElementById('pf-nombre');
+    const err = document.getElementById('pf-nombre-error');
+    if (!inp || !err) return;
+    if (msg) {
+      inp.style.borderColor = '#dc2626';
+      err.textContent = msg;
+      err.style.display = 'block';
+    } else {
+      inp.style.borderColor = '';
+      err.textContent = '';
+      err.style.display = 'none';
+    }
+  }
+
+  function _mostrarErrorImagen(msg) {
+    const preview = document.getElementById('pf-img-preview');
+    const err     = document.getElementById('pf-imagen-error');
+    if (!preview || !err) return;
+    if (msg) {
+      preview.style.outline = '2px solid #dc2626';
+      err.textContent = msg;
+      err.style.display = 'block';
+    } else {
+      preview.style.outline = '';
+      err.textContent = '';
+      err.style.display = 'none';
+    }
+  }
+
   function init() {
     _setupDragDrop();
+
+    const pfNombre = document.getElementById('pf-nombre');
+    pfNombre.addEventListener('input', () => _mostrarErrorNombre(_validarNombre(pfNombre.value)));
+    pfNombre.addEventListener('blur',  () => _mostrarErrorNombre(_validarNombre(pfNombre.value)));
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
@@ -240,9 +297,10 @@ window.VistaAdmin = (function () {
       const SC     = window.SC;
       const nombre = document.getElementById('pf-nombre').value.trim();
       const precio = parseFloat(document.getElementById('pf-precio').value);
-      if (!nombre)               { SC.toast('El nombre es obligatorio', 'error'); return; }
+      const errNombre = _validarNombre(nombre);
+      if (errNombre)             { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
       if (!precio || precio <= 0){ SC.toast('Precio inválido', 'error'); return; }
-      if (!_prodFormImgBase64)   { SC.toast('La imagen es obligatoria', 'error'); return; }
+      if (!_prodFormImgBase64)   { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
 
       const saveBtn = document.getElementById('btn-prod-save');
       saveBtn.disabled = true;
