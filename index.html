@@ -815,7 +815,6 @@
     try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
     try {
       const resp = await db.from('gastos').insert({
-        data:        gasto,
         descripcion: gasto.descripcion,
         monto:       gasto.monto,
         fecha:       gasto.fecha,
