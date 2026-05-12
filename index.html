@@ -858,7 +858,12 @@
       estado:     'pendiente',
       id_usuario: pedido.idUsuario,
       mesa:       pedido.mesa
-    }).then(({ error }) => { if (error) console.error('Supabase insert pedido:', error); });
+    }).then(({ error }) => {
+      if (error) {
+        console.error('Supabase insert pedido:', error);
+        toast('⚠ Pedido guardado solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
+      }
+    });
     /* Descontar stock por cada ítem del pedido (en paralelo) */
     Promise.all(pedido.items.map(i => actualizarStock(i.id, i.cantidad)))
       .catch(e => console.error('Error actualizando stock del pedido:', e));
@@ -876,7 +881,12 @@
         data:   entrada,
         estado: 'cobrado',
         fecha:  hoy
-      }).eq('id', cobrado.id).then(({ error }) => { if (error) console.error('Supabase cobrar:', error); });
+      }).eq('id', cobrado.id).then(({ error }) => {
+        if (error) {
+          console.error('Supabase cobrar:', error);
+          toast('⚠ Venta guardada solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
+        }
+      });
       CarritoIDB.guardar(entrada).catch(() => {});
     }
     _caja = _caja.filter(x => String(x.id) !== String(id));
@@ -1300,11 +1310,14 @@
       }
     }
 
-    // Verificar en tiempo real (Supabase) si la mesa ya está ocupada por otra persona
+    // Verificar ocupación de mesa: combinar Supabase (otros dispositivos) + memoria local (mismo dispositivo)
     btnConfirmarMesa.disabled = true;
     const { data: pedidosDB } = await db.from('pedidos').select('data').eq('estado', 'pendiente').catch(() => ({ data: null }));
-    const cajaNow = pedidosDB ? pedidosDB.map(r => r.data) : leerCaja();
     btnConfirmarMesa.disabled = false;
+    const cajaNow = [
+      ...( pedidosDB ? pedidosDB.map(r => r.data) : [] ),
+      ...leerCaja()
+    ].filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i); // deduplicar por id
 
     const pedidoExistente = cajaNow.find(p => String(p.mesa) === String(mesa));
     if (pedidoExistente && !meseroMesaTarget) {
