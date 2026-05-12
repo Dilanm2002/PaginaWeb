@@ -1311,13 +1311,19 @@
     }
 
     // Verificar ocupación de mesa: combinar Supabase (otros dispositivos) + memoria local (mismo dispositivo)
-    btnConfirmarMesa.disabled = true;
-    const { data: pedidosDB } = await db.from('pedidos').select('data').eq('estado', 'pendiente').catch(() => ({ data: null }));
-    btnConfirmarMesa.disabled = false;
-    const cajaNow = [
-      ...( pedidosDB ? pedidosDB.map(r => r.data) : [] ),
-      ...leerCaja()
-    ].filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i); // deduplicar por id
+    let cajaNow;
+    try {
+      btnConfirmarMesa.disabled = true;
+      const { data: pedidosDB } = await db.from('pedidos').select('data').eq('estado', 'pendiente');
+      cajaNow = [
+        ...( pedidosDB || [] ).map(r => r.data),
+        ...leerCaja()
+      ].filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i);
+    } catch(_) {
+      cajaNow = leerCaja();
+    } finally {
+      btnConfirmarMesa.disabled = false;
+    }
 
     const pedidoExistente = cajaNow.find(p => String(p.mesa) === String(mesa));
     if (pedidoExistente && !meseroMesaTarget) {
