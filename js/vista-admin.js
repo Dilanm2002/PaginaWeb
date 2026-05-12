@@ -54,27 +54,16 @@ window.VistaAdmin = (function () {
         const prod = SC.getProductosMergeados().find(p => p.id === id);
         if (prod) abrirFormProducto(prod);
       } else if (btn.dataset.action === 'eliminar') {
-        if (!btn.dataset.confirmando) {
-          const originalHTML = btn.innerHTML;
-          btn.dataset.confirmando = '1';
-          btn.textContent = '¿Confirmar?';
-          btn.style.background = '#dc2626';
-          const resetBtn = () => {
-            delete btn.dataset.confirmando;
-            btn.innerHTML = originalHTML;
-            btn.style.background = '';
-            document.removeEventListener('click', outsideClick);
-          };
-          const outsideClick = e2 => { if (!btn.contains(e2.target)) resetBtn(); };
-          setTimeout(() => document.addEventListener('click', outsideClick), 10);
-          return;
-        }
+        const prod = SC.getProductosMergeados().find(p => p.id === id);
+        const confirmado = await _modalConfirmar(prod?.nombre ?? 'este producto');
+        if (!confirmado) return;
         btn.disabled = true;
-        await SC.eliminarMenuItemDB(id);
+        const ok = await SC.eliminarMenuItemDB(id);
         renderAdminView();
         const cat = SC.getFiltroSesion();
         window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
-        SC.toast('Producto eliminado', 'success');
+        if (ok) SC.toast('Producto eliminado ✓', 'success');
+        else    SC.toast('Eliminado localmente (error en la nube)', 'error');
       }
     };
 
@@ -168,6 +157,33 @@ window.VistaAdmin = (function () {
 
     document.getElementById('prod-form-backdrop').classList.add('open');
     document.body.style.overflow = 'hidden';
+  }
+
+  function _modalConfirmar(nombre) {
+    return new Promise(resolve => {
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
+          <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">🗑️</div>
+          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Eliminar producto?</h3>
+          <p style="color:#7A5640;font-size:.88rem;margin-bottom:1.5rem;line-height:1.5;">
+            Se eliminará permanentemente<br><strong style="color:#C8561A;">"${nombre}"</strong>.<br>Esta acción no se puede deshacer.
+          </p>
+          <div style="display:flex;gap:.75rem;justify-content:center;">
+            <button id="_conf-cancel" style="flex:1;padding:.65rem 1rem;border:1.5px solid #E0C9B0;border-radius:10px;background:#fff;color:#7A5640;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;">Cancelar</button>
+            <button id="_conf-ok" style="flex:1;padding:.65rem 1rem;border:none;border-radius:10px;background:#dc2626;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;">Sí, eliminar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const cleanup = val => { document.body.removeChild(overlay); resolve(val); };
+      overlay.querySelector('#_conf-ok').addEventListener('click', () => cleanup(true));
+      overlay.querySelector('#_conf-cancel').addEventListener('click', () => cleanup(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
+      document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); cleanup(false); }
+      });
+    });
   }
 
   function cerrarFormProducto() {

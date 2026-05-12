@@ -1105,7 +1105,7 @@
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
     const { stock_inicial, ...itemDB } = item;
     const { error } = await db.from('menu_items').upsert(itemDB);
-    if (error) console.error('Supabase menu_items upsert:', error);
+    if (error) { console.error('Supabase menu_items upsert:', error); return false; }
     /* Asegurar fila de stock para productos nuevos */
     if (!_stock[item.id]) {
       const stockInicial = item.stock_inicial ?? 20;
@@ -1113,17 +1113,22 @@
       const { error: errStock } = await db.from('productos').upsert({ id: item.id, stock: stockInicial, disponible: stockInicial > 0 });
       if (errStock) console.error('Supabase productos upsert:', errStock);
     }
+    return true;
   }
 
   async function eliminarMenuItemDB(id) {
-    /* Para productos base (1-99): marcar inactivo (override). Para nuevos: borrar. */
     if (id <= 99) {
-      await guardarMenuItemDB({ id, activo: false, nombre: '', categoria: '', precio: 0 });
+      const ok = await guardarMenuItemDB({ id, activo: false, nombre: '', categoria: '', precio: 0 });
+      return ok;
     } else {
       _menuItems = _menuItems.filter(m => m.id !== id);
       localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
       const { error: errDel } = await db.from('menu_items').delete().eq('id', id);
-      if (errDel) console.error('Supabase delete menu_item:', errDel);
+      if (errDel) {
+        console.error('Supabase delete menu_item:', errDel);
+        return false;
+      }
+      return true;
     }
   }
 
