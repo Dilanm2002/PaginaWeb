@@ -138,9 +138,9 @@ window.VistaMenu = (function () {
         const prod = SC.getProductosMergeados().find(x => x.id === Number(btnAdd.dataset.id));
         if (!prod) return;
         const s = SC.getStock(prod.id);
-        if (!s.disponible || s.stock <= 0) { SC.toast(`"${prod.nombre}" está agotado`, 'error'); return; }
+        if (!s.disponible || s.stock <= 0) return;
         const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === prod.id);
-        if (enCarrito && enCarrito.cantidad >= s.stock) { SC.toast(`Solo quedan ${s.stock} unidades de "${prod.nombre}"`, 'error'); return; }
+        if (enCarrito && enCarrito.cantidad >= s.stock) return;
         LogicaCarrito.agregarItem(prod); SC.renderCarrito();
         SC.toast(`"${prod.nombre}" agregado a tu orden 🍽️`, 'success');
         return;
@@ -209,7 +209,7 @@ window.VistaMenu = (function () {
       const s = SC.getStock(p.id);
       if (!s.disponible || s.stock <= 0) { SC.toast(`"${p.nombre}" está agotado`, 'error'); return; }
       const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === p.id);
-      if (enCarrito && enCarrito.cantidad >= s.stock) { SC.toast(`Solo quedan ${s.stock} unidades de "${p.nombre}"`, 'error'); return; }
+      if (enCarrito && enCarrito.cantidad >= s.stock) return;
       LogicaCarrito.agregarItem(p); SC.renderCarrito();
       SC.toast(`"${p.nombre}" agregado a tu orden 🍽️`, 'success');
       cerrarModalProducto();
@@ -454,10 +454,7 @@ window.VistaMenu = (function () {
 
       if (btn.classList.contains('add')) {
         const s = SC.getStock(prod.id);
-        if (!s.disponible || s.stock <= 0) {
-          SC.toast(`"${prod.nombre}" está agotado`, 'error');
-          return;
-        }
+        if (!s.disponible || s.stock <= 0) return;
       }
 
       if (meseroMesaTarget) {
@@ -468,10 +465,7 @@ window.VistaMenu = (function () {
           if (btn.classList.contains('add')) {
             const totalEnPedido = existente ? existente.cantidad : 0;
             const s = SC.getStock(prod.id);
-            if (totalEnPedido >= s.stock) {
-              SC.toast(`Solo quedan ${s.stock} unidades de "${prod.nombre}"`, 'error');
-              return;
-            }
+            if (totalEnPedido >= s.stock) return;
             if (existente) { existente.cantidad += 1; }
             else { ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 }); }
             SC.toast(`"${prod.nombre}" agregado a Mesa ${meseroMesaTarget.mesa}`, 'success');
@@ -494,10 +488,7 @@ window.VistaMenu = (function () {
         const enCarrito = carrito.find(x => x.id === prod.id);
         const totalEnCarrito = enCarrito ? enCarrito.cantidad : 0;
         const s = SC.getStock(prod.id);
-        if (totalEnCarrito >= s.stock) {
-          SC.toast(`Solo quedan ${s.stock} unidades de "${prod.nombre}"`, 'error');
-          return;
-        }
+        if (totalEnCarrito >= s.stock) return;
         LogicaCarrito.agregarItem(prod);
         SC.toast(`"${prod.nombre}" agregado`, 'success');
       } else {

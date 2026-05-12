@@ -2624,7 +2624,24 @@
   mesaInput.addEventListener('input', () => {
     mesaInput.style.borderColor = '';
     const err = document.getElementById('mesa-input-error');
-    if (err) { err.textContent = ''; err.style.display = 'none'; }
+    if (!err) return;
+    const num = Number(mesaInput.value.trim());
+    if (num >= 1 && num <= 12) {
+      const session = ModuloAutenticacion.getSession();
+      const pedOcupado = leerCaja().find(p => String(p.mesa) === String(num));
+      if (pedOcupado) {
+        const esMio = (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
+                      (!session?.usuario && pedOcupado.rol === 'invitado');
+        if (!esMio) {
+          err.textContent = `Mesa ${num} ocupada por ${pedOcupado.nombreUsuario}`;
+          err.style.display = 'block';
+          mesaInput.style.borderColor = '#f59e0b';
+          return;
+        }
+      }
+    }
+    err.textContent = '';
+    err.style.display = 'none';
   });
   const cajeroView      = document.getElementById('cajero-view');
   const menuView        = document.getElementById('menu-view');
@@ -2691,7 +2708,7 @@
             <div class="qty-wrap" role="group" aria-label="Cantidad de ${item.nombre}">
               <button class="qty-btn" data-action="dec" data-id="${item.id}" aria-label="Reducir">−</button>
               <span class="qty-value">${item.cantidad}</span>
-              <button class="qty-btn" data-action="inc" data-id="${item.id}" aria-label="Aumentar">+</button>
+              <button class="qty-btn" data-action="inc" data-id="${item.id}" aria-label="Aumentar" ${item.cantidad >= getStock(item.id).stock ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>+</button>
             </div>
             <button class="btn-remove" data-id="${item.id}" aria-label="Eliminar ${item.nombre}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
@@ -2713,7 +2730,7 @@
           const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
           if (it) {
             const s = getStock(id);
-            if (it.cantidad >= s.stock) { toast(`Solo quedan ${s.stock} unidades de "${it.nombre}"`, 'error'); return; }
+            if (it.cantidad >= s.stock) return;
             LogicaCarrito.cambiarCantidad(id, it.cantidad + 1); renderCarrito();
           }
         } else if (btn.dataset.action === 'dec') {
@@ -2969,9 +2986,25 @@
       }
     }
 
-    // Si ya hay pedido activo en esa mesa, agregar ítems al pedido existente
+    // Verificar si la mesa ya tiene un pedido activo de otra persona
     const pedidoExistente = leerCaja().find(p => String(p.mesa) === String(mesa));
     if (pedidoExistente && !meseroMesaTarget) {
+      const mismaPersona =
+        (idUsuario && pedidoExistente.idUsuario && pedidoExistente.idUsuario === idUsuario) ||
+        (!idUsuario && !pedidoExistente.idUsuario && pedidoExistente.nombreUsuario === nombreUsuario && pedidoExistente.rol === 'invitado' && rol === 'invitado');
+
+      if (!mismaPersona) {
+        mesaInput.style.borderColor = '#dc2626';
+        const mesaErrEl2 = document.getElementById('mesa-input-error');
+        if (mesaErrEl2) {
+          mesaErrEl2.textContent = `Mesa ${mesa} ya está ocupada por ${pedidoExistente.nombreUsuario}. Elige otra mesa o espera a que se libere.`;
+          mesaErrEl2.style.display = 'block';
+        }
+        mesaInput.focus();
+        return;
+      }
+
+      // Misma persona — agregar ítems al pedido existente
       items.forEach(nuevoItem => {
         const existente = pedidoExistente.items.find(x => x.id === nuevoItem.id);
         if (existente) {

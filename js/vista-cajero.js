@@ -292,7 +292,7 @@ window.VistaCajero = (function () {
             <div class="cajero-order-mesa">🪑 Mesa ${p.mesa}</div>
             <div class="cajero-order-quien">
               <span class="rol-pill ${p.rol}">${ROL_LABEL[p.rol] ?? p.rol}</span>
-              ${p.nombreUsuario}
+              <span>${p.nombreUsuario}${p.idUsuario ? ` <small style="opacity:.6;font-size:.72rem">@${p.idUsuario}</small>` : ''}</span>
             </div>
           </div>
           <div class="cajero-order-time">🕐 ${p.hora}</div>
