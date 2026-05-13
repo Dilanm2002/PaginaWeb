@@ -1622,7 +1622,7 @@
     const RX = {
       nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
       apellido: /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
-      email:    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      email:    /^[^\s@]+@(gmail|yahoo|outlook|hotmail)\.(com|es|ec|co|net|org)$/i,
       telefono: /^(09\d{8}|0[2-7]\d{7})$/,
       usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
     };
@@ -1664,7 +1664,7 @@
     inEmail.addEventListener('input', () => {
       const v = inEmail.value.trim();
       if (!v) return clearState('reg-email', 'err-email');
-      if (!RX.email.test(v)) return setState('reg-email', 'err-email', false, 'Formato inválido. Ej: nombre@gmail.com');
+      if (!RX.email.test(v)) return setState('reg-email', 'err-email', false, 'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.');
       const dup = ModuloAutenticacion.leerUsuarios().some(u => u.email === v);
       setState('reg-email', 'err-email', !dup, 'Ya existe una cuenta con ese correo.');
     });
@@ -1731,7 +1731,7 @@
     const RX = {
       nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
       apellido: /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
-      email:    /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/,
+      email:    /^[^\s@]+@(gmail|yahoo|outlook|hotmail)\.(com|es|ec|co|net|org)$/i,
       telefono: /^(09\d{8}|0[2-7]\d{7})$/,
       usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
     };
@@ -1758,7 +1758,7 @@
     let ok = [
       check('reg-nombre',   'err-nombre',   nombre,   RX.nombre,   'Solo letras y espacios, mínimo 2 caracteres.'),
       check('reg-apellido', 'err-apellido', apellido, RX.apellido, 'Solo letras y espacios, mínimo 2 caracteres.'),
-      check('reg-email',    'err-email',    email,    RX.email,    'Formato inválido. Ej: nombre@gmail.com'),
+      check('reg-email',    'err-email',    email,    RX.email,    'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.'),
       check('reg-telefono', 'err-telefono', telefono, RX.telefono, 'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).'),
       check('reg-usuario',  'err-usuario',  usuario,  RX.usuario,  'Letras, números, _ o - (3–20 caracteres, sin espacios).'),
     ].every(Boolean);

@@ -1974,3 +1974,57 @@
     .contacto-info { position: static; }
     .cf-row { grid-template-columns: 1fr; }
   }
+
+  /* ══════════════════════════════════════════════════
+     RESPONSIVE — breakpoints adicionales móvil
+  ══════════════════════════════════════════════════ */
+
+  /* ── 480px: hero stats y contacto ── */
+  @media (max-width: 480px) {
+    /* Hero: stats en columna vertical */
+    .hero-stats {
+      flex-direction: column;
+      gap: .85rem;
+      padding: 1.25rem 0;
+    }
+    .hero-stats__sep { display: none; }
+    .hero-stat { padding: 0; }
+
+    /* Contacto: menos padding vertical */
+    .contacto-section { padding: 2.5rem 0 3rem; }
+    .contacto-info { padding: 1.5rem 1.25rem; }
+    .contacto-card { padding: 1.5rem 1.25rem; }
+  }
+
+  /* ── 380px: pantallas muy pequeñas (iPhone SE, etc.) ── */
+  @media (max-width: 380px) {
+    /* Reduce el padding del contenedor */
+    .wrap { padding: 0 1rem; }
+
+    /* Header: aún más compacto */
+    .logo-text { font-size: 1rem; }
+    .logo-icon { width: 26px; height: 26px; }
+    .user-chip { gap: .2rem; padding: .2rem .4rem .2rem .2rem; }
+    .user-chip__name { max-width: 55px; font-size: .68rem; }
+    .user-chip__rol  { display: none; }
+    .cart-btn  { padding: .3rem .4rem; font-size: .72rem; }
+    .btn-logout { font-size: .62rem; padding: .22rem .4rem; }
+
+    /* Hero */
+    .hero h1 { font-size: 2.3rem; }
+    .hero-desc { font-size: .82rem; }
+
+    /* Productos */
+    .products-grid { gap: .65rem; }
+    .product-card__img { height: 150px; }
+
+    /* Cajero stats */
+    .cajero-stats { flex-wrap: wrap; gap: .4rem; }
+    .cajero-stat { min-width: calc(50% - .2rem); }
+
+    /* Contacto */
+    .ci-logo { font-size: 1.6rem; }
+    .cf-field input,
+    .cf-field textarea { font-size: .85rem; padding: .5rem .7rem; }
+    .cf-submit { width: 100%; justify-content: center; }
+  }
