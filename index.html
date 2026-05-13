@@ -1426,15 +1426,18 @@
       }
 
       // Misma persona — agregar ítems al pedido existente
+      // cajaNow solo trae id/mesa/rol desde Supabase (sin items); buscamos el completo en leerCaja()
+      const pedidoCompleto = leerCaja().find(p => String(p.id) === String(pedidoExistente.id));
+      const itemsActuales  = Array.isArray(pedidoCompleto?.items) ? [...pedidoCompleto.items] : [];
       items.forEach(nuevoItem => {
-        const existente = pedidoExistente.items.find(x => x.id === nuevoItem.id);
+        const existente = itemsActuales.find(x => x.id === nuevoItem.id);
         if (existente) {
           existente.cantidad += nuevoItem.cantidad;
         } else {
-          pedidoExistente.items.push({ ...nuevoItem });
+          itemsActuales.push({ ...nuevoItem });
         }
       });
-      actualizarPedido(pedidoExistente.id, pedidoExistente.items);
+      actualizarPedido(pedidoExistente.id, itemsActuales);
       items.forEach(i => actualizarStock(i.id, i.cantidad));
       LogicaCarrito.vaciarCarrito();
       renderCarrito();

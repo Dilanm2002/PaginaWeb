@@ -222,9 +222,9 @@
     .user-chip {
       display: flex; align-items: center; gap: .6rem;
       padding: .3rem .65rem .3rem .35rem;
-      border: 1.5px solid rgba(255,255,255,.2);
+      border: 1.5px solid transparent;
       border-radius: 999px;
-      background: rgba(255,255,255,.07);
+      background: transparent;
       cursor: default;
       transition: background .15s, border-color .15s;
       flex-shrink: 0;
@@ -1510,14 +1510,15 @@
       width: 3px; height: 1.1em; border-radius: 2px;
       background: var(--cinnamon);
     }
-    .perfil-historial { display: flex; flex-direction: column; gap: 1.1rem; padding-bottom: 3rem; }
+    .perfil-historial { display: flex; flex-direction: column; gap: 1.35rem; padding-bottom: 3rem; }
 
     /* ── Card base ── */
     .perfil-pedido-card {
-      background: #fff; border: none;
+      background: #fff;
       border-radius: 1.25rem; overflow: hidden;
       box-shadow: 0 4px 20px rgba(0,0,0,.09);
       display: flex; flex-direction: column;
+      border-left: 4px solid #E0C9B0;
       transition: box-shadow .22s, transform .22s;
     }
     .perfil-pedido-card:hover { box-shadow: 0 8px 32px rgba(0,0,0,.14); transform: translateY(-3px); }
@@ -1580,10 +1581,23 @@
     }
     .btn-volver-pedir:hover { background: var(--cinnamon-lt); box-shadow: 0 5px 16px rgba(200,86,26,.45); transform: translateY(-1px); }
 
-    /* Pending */
-    .perfil-pedido-card--pending { box-shadow: 0 4px 20px rgba(245,158,11,.15); }
+    /* Pending — borde y fondo ámbar */
+    .perfil-pedido-card--pending {
+      border-left-color: #f59e0b;
+      box-shadow: 0 4px 20px rgba(245,158,11,.18);
+    }
     .perfil-pedido-card--pending .perfil-card-top { background: linear-gradient(135deg, #fffbeb, #fef3c7); border-bottom-color: rgba(245,158,11,.2); }
-    .perfil-pedido-card--pending .perfil-card-foot { background: #fffdf5; }
+    .perfil-pedido-card--pending .perfil-card-body { background: #fffef7; }
+    .perfil-pedido-card--pending .perfil-card-foot { background: #fffdf0; }
+
+    /* Completado — borde verde */
+    .perfil-pedido-card:not(.perfil-pedido-card--pending) {
+      border-left-color: #10b981;
+    }
+    .perfil-pedido-card:not(.perfil-pedido-card--pending) .perfil-card-top {
+      background: linear-gradient(135deg, #f0fdf4, #dcfce7);
+      border-bottom-color: rgba(16,185,129,.15);
+    }
 
     .perfil-empty {
       text-align: center; padding: 3.5rem 1rem; color: var(--text-muted);
@@ -1595,7 +1609,11 @@
     .perfil-empty p { margin: 0; font-size: .92rem; }
 
     #btn-mi-perfil { display: none; }
-    .user-chip--clickable { cursor: pointer; }
+    .user-chip--clickable {
+      cursor: pointer;
+      border-color: rgba(255,255,255,.2);
+      background: rgba(255,255,255,.07);
+    }
     .user-chip--clickable:hover { background: rgba(255,255,255,.14); border-color: rgba(255,255,255,.35); }
 
     /* Buscador móvil — entre hero y filtros, oculto en desktop */
@@ -1655,12 +1673,11 @@
       .cart-btn { padding: .4rem .65rem; font-size: .78rem; gap: .3rem; }
       .cart-btn svg { width: 15px; height: 15px; }
       .caja-btn { padding: .4rem .65rem; font-size: .78rem; }
-      .btn-logout { font-size: .68rem; padding: .28rem .5rem; }
-      /* Chip usuario compacto */
-      .user-chip { gap: .35rem; padding: .25rem .5rem .25rem .28rem; }
-      .user-chip__avatar { width: 28px; height: 28px; font-size: .72rem; flex-shrink: 0; }
-      .user-chip__name { font-size: .75rem; max-width: 80px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-      .user-chip__rol { font-size: .62rem; }
+      /* Chip usuario compacto: solo avatar, sin nombre ni rol */
+      .user-chip { gap: 0; padding: .15rem; border-radius: 50%; }
+      .user-chip__avatar { width: 30px; height: 30px; font-size: .78rem; flex-shrink: 0; }
+      .user-chip__info { display: none; }
+      .btn-logout { font-size: .65rem; padding: .25rem .45rem; }
 
       /* ── Hero ── (overrides handled in hero CSS block) */
 
