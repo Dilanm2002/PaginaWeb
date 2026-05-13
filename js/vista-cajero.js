@@ -207,7 +207,8 @@ window.VistaCajero = (function () {
     });
 
     listaEl.querySelectorAll('.stock-input').forEach(inp => {
-      inp.addEventListener('focus', () => inp.select());
+      inp.addEventListener('focus', () => { inp.dataset.prev = inp.value; inp.value = ''; });
+      inp.addEventListener('blur',  () => { if (inp.value === '') inp.value = inp.dataset.prev || inp.dataset.original || '0'; });
       inp.addEventListener('input', () => {
         const original = parseInt(inp.dataset.original) || 0;
         const nuevo    = parseInt(inp.value) || 0;
@@ -215,6 +216,7 @@ window.VistaCajero = (function () {
         inp.style.color       = nuevo > original ? '#16a34a' : nuevo < original ? '#dc2626' : '';
       });
       inp.addEventListener('keydown', e => {
+        if (e.key === '-' || e.key === 'e') e.preventDefault();
         if (e.key === 'Enter') inp.closest('.stock-row')?.querySelector('.stock-btn--set')?.click();
       });
     });
