@@ -207,6 +207,7 @@ window.VistaCajero = (function () {
     });
 
     listaEl.querySelectorAll('.stock-input').forEach(inp => {
+      inp.addEventListener('focus', () => inp.select());
       inp.addEventListener('input', () => {
         const original = parseInt(inp.dataset.original) || 0;
         const nuevo    = parseInt(inp.value) || 0;
@@ -237,7 +238,17 @@ window.VistaCajero = (function () {
         else if (diff < 0) await SC.actualizarStock(id, Math.abs(diff));
         SC.toast('Stock actualizado ✓', 'success');
       }
+      // Preservar categorías abiertas antes de re-renderizar
+      const catsAbiertas = [...listaEl.querySelectorAll('.mesero-cat-title:not(.collapsed)')]
+        .map(t => t.dataset.cat);
       renderStock();
+      catsAbiertas.forEach(cat => {
+        const title = listaEl.querySelector(`.mesero-cat-title[data-cat="${cat}"]`);
+        if (!title) return;
+        title.classList.remove('collapsed');
+        title.setAttribute('aria-expanded', 'true');
+        title.nextElementSibling?.classList.remove('hidden');
+      });
       const cat = SC.getFiltroSesion();
       window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
     };
