@@ -543,7 +543,7 @@ window.VistaMenu = (function () {
               return `
               <div class="mesero-row" style="cursor:default;">
                 <span class="mesero-row__name" style="${agotado ? 'opacity:.45;' : ''}">${p.nombre}</span>
-                <span class="mesero-row__price"><span style="font-size:1rem;font-weight:700;color:#1a1a1a;">Precio</span> $${p.precio.toFixed(2)}</span>
+                <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i
                   <div class="mesero-ing-pop" id="cpop-${p.id}">
