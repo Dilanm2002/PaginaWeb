@@ -207,9 +207,10 @@ window.VistaCajero = (function () {
     });
 
     listaEl.querySelectorAll('.stock-input').forEach(inp => {
-      inp.addEventListener('focus', () => { inp.dataset.prev = inp.value; inp.value = ''; });
-      inp.addEventListener('blur',  () => { if (inp.value === '') inp.value = inp.dataset.prev || inp.dataset.original || '0'; });
+      inp.addEventListener('focus', () => { inp.dataset.prev = inp.value; inp.dataset.clearNext = 'true'; inp.select(); });
+      inp.addEventListener('blur',  () => { inp.dataset.clearNext = ''; if (inp.value === '') inp.value = inp.dataset.prev || inp.dataset.original || '0'; });
       inp.addEventListener('input', () => {
+        inp.dataset.clearNext = '';
         const original = parseInt(inp.dataset.original) || 0;
         const nuevo    = parseInt(inp.value) || 0;
         inp.style.borderColor = nuevo > original ? '#16a34a' : nuevo < original ? '#dc2626' : '';
@@ -217,6 +218,10 @@ window.VistaCajero = (function () {
       });
       inp.addEventListener('keydown', e => {
         if (e.key === '-' || e.key === 'e') e.preventDefault();
+        if (inp.dataset.clearNext === 'true' && /^[0-9]$/.test(e.key)) {
+          inp.value = '';
+          inp.dataset.clearNext = '';
+        }
         if (e.key === 'Enter') inp.closest('.stock-row')?.querySelector('.stock-btn--set')?.click();
       });
     });
@@ -238,27 +243,43 @@ window.VistaCajero = (function () {
         const diff   = nuevo - actual;
         if (diff > 0)      await SC.reponerStock(id, diff);
         else if (diff < 0) await SC.actualizarStock(id, Math.abs(diff));
+
+        // Actualizar solo la fila en el DOM sin re-renderizar la lista completa
+        const MAX_STOCK = 20;
+        const esCero = nuevo <= 0;
+        const esBajo = !esCero && nuevo <= 5;
+        const pct    = Math.min(100, Math.round((nuevo / MAX_STOCK) * 100));
+
+        row.className = `stock-row${esCero ? ' stock-row--cero' : esBajo ? ' stock-row--bajo' : ''}`;
+        row.querySelector('.stock-current').textContent = nuevo;
+
+        const bar = row.querySelector('.stock-row__bar');
+        bar.style.width = `${pct}%`;
+        bar.className = `stock-row__bar${esCero ? ' stock-row__bar--cero' : esBajo ? ' stock-row__bar--bajo' : ''}`;
+
+        const statusEl = row.querySelector('.stock-row__status');
+        statusEl.textContent = esCero ? '🔴 Agotado' : esBajo ? '⚠️ Stock bajo' : '✅ Disponible';
+        statusEl.className = `stock-row__status${esCero ? ' stock-row__status--cero' : esBajo ? ' stock-row__status--bajo' : ''}`;
+
+        inp.value            = nuevo;
+        inp.dataset.original = String(nuevo);
+        inp.dataset.prev     = String(nuevo);
+        inp.style.borderColor = '';
+        inp.style.color       = '';
+
+        btn.disabled    = false;
+        btn.textContent = 'Guardar';
+
         SC.toast('Stock actualizado ✓', 'success');
+        const cat = SC.getFiltroSesion();
+        window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
       }
-      // Preservar categorías abiertas antes de re-renderizar
-      const catsAbiertas = [...listaEl.querySelectorAll('.mesero-cat-title:not(.collapsed)')]
-        .map(t => t.dataset.cat);
-      renderStock();
-      catsAbiertas.forEach(cat => {
-        const title = listaEl.querySelector(`.mesero-cat-title[data-cat="${cat}"]`);
-        if (!title) return;
-        title.classList.remove('collapsed');
-        title.setAttribute('aria-expanded', 'true');
-        title.nextElementSibling?.classList.remove('hidden');
-      });
-      const cat = SC.getFiltroSesion();
-      window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
     };
   }
 
   function renderCajeroView() {
     const SC = window.SC;
-    const pedidos        = SC.leerCaja();
+    const pedidos        = SC.leerCaja().sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
     const totalPorCobrar = pedidos.reduce((s,p) => s + p.total, 0);
 
     const statPedidos = document.getElementById('stat-pedidos');

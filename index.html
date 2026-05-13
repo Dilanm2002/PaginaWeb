@@ -727,16 +727,17 @@
       total:         Number(r.ped_total    ?? 0),
       iva:           Number(r.ped_iva      ?? 0),
       subtotal:      Number(r.ped_subtotal ?? 0),
-      cobradoEn:     r.ped_cobrado_en ?? null
+      cobradoEn:     r.ped_cobrado_en ?? null,
+      createdAt:     r.ped_created_at ?? null
     };
   }
 
-  const _PED_SELECT = 'ped_id, ped_mesa, ped_estado, ped_id_usuario, ped_nombre_usuario, ped_rol, ped_hora, ped_fecha, ped_items, ped_total, ped_iva, ped_subtotal, ped_cobrado_en';
+  const _PED_SELECT = 'ped_id, ped_mesa, ped_estado, ped_id_usuario, ped_nombre_usuario, ped_rol, ped_hora, ped_fecha, ped_items, ped_total, ped_iva, ped_subtotal, ped_cobrado_en, ped_created_at';
 
   async function inicializarDB() {
     try {
       const [rCaja, rHist, rGastos, rStock, rMenu] = await Promise.all([
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null).order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
         db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
         db.from('productos').select('prod_id, prod_stock, prod_disponible'),
@@ -767,7 +768,7 @@
   async function recargarCaja() {
     try {
       const [rCaja, rHist, rGastos, rStock] = await Promise.all([
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null).order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
         db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
         db.from('productos').select('prod_id, prod_stock, prod_disponible')
@@ -869,8 +870,9 @@
 
   function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items }) {
     const totales = LogicaCarrito.calcularTotales(items);
+    const _todosIds = [..._caja, ..._historial].map(p => Number(p.id)).filter(n => n > 0 && n < 1_000_000);
     const pedido  = {
-      id: Date.now(),
+      id: Math.max(0, ..._todosIds) + 1,
       mesa,
       nombreUsuario,
       idUsuario: idUsuario || null,
@@ -879,7 +881,8 @@
       total:    totales.total,
       iva:      totales.iva,
       subtotal: totales.subtotal,
-      hora:  new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' }),
+      hora:      new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' }),
+      createdAt: new Date().toISOString(),
       estado: 'pendiente'
     };
     _caja.push(pedido);
@@ -1397,7 +1400,7 @@
     let cajaNow;
     try {
       btnConfirmarMesa.disabled = true;
-      const { data: pedidosDB } = await db.from('pedidos').select('ped_id, ped_mesa, ped_id_usuario, ped_rol').eq('ped_estado', 'pendiente');
+      const { data: pedidosDB } = await db.from('pedidos').select('ped_id, ped_mesa, ped_id_usuario, ped_rol').eq('ped_estado', 'pendiente').not('ped_items', 'is', null);
       cajaNow = [
         ...( pedidosDB || [] ).map(r => ({ id: r.ped_id, mesa: r.ped_mesa, idUsuario: r.ped_id_usuario, rol: r.ped_rol })),
         ...leerCaja()
@@ -2291,7 +2294,18 @@
     db.channel('realtime-stock')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, async () => {
         await recargarCaja();
+        const _listaEl = document.getElementById('stock-lista');
+        const _catsAbiertas = _listaEl
+          ? [..._listaEl.querySelectorAll('.mesero-cat-title:not(.collapsed)')].map(t => t.dataset.cat)
+          : [];
         window.VistaCajero?.renderStock?.();
+        _catsAbiertas.forEach(cat => {
+          const title = _listaEl?.querySelector(`.mesero-cat-title[data-cat="${cat}"]`);
+          if (!title) return;
+          title.classList.remove('collapsed');
+          title.setAttribute('aria-expanded', 'true');
+          title.nextElementSibling?.classList.remove('hidden');
+        });
         window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(ModuloApp.getFiltroSesion()));
       })
       .subscribe();

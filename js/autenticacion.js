@@ -100,13 +100,16 @@ window.ModuloAutenticacion = (function () {
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 
-    const id    = Math.max(0, ..._users.map(u => Number(u.id) || 0)) + 1;
+    const ROL_ID = { administrador: 1, cajero: 2, mesero: 3, usuario: 4 };
+    // Solo considerar IDs "normales" (excluye los antiguos timestamp-IDs de Date.now())
+    const ids = _users.map(u => Number(u.id)).filter(n => n > 0 && n < 1_000_000);
+    const id  = Math.max(3, ...ids) + 1;
     const nuevo = { id, nombre, apellido, email, telefono, usuario, password, rol };
     _users.push(nuevo);
 
     /* Guardar en Supabase (fire-and-forget) */
     window.db.from('usuarios')
-      .upsert({ usu_id: nuevo.id, usu_data: nuevo, usu_usuario: nuevo.usuario, usu_email: nuevo.email })
+      .upsert({ usu_id: nuevo.id, usu_data: nuevo, usu_usuario: nuevo.usuario, usu_email: nuevo.email, usu_rol_id: ROL_ID[rol] ?? 4 })
       .then(({ error }) => { if (error) console.error('Supabase registrar:', error); });
 
     /* Fallback localStorage */
