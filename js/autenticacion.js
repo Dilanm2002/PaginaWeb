@@ -13,9 +13,9 @@ window.ModuloAutenticacion = (function () {
   /** Carga usuarios desde Supabase (o localStorage como fallback). */
   const cargarUsuarios = async () => {
     try {
-      const { data, error } = await window.db.from('usuarios').select('data');
+      const { data, error } = await window.db.from('usuarios').select('usu_data');
       if (error) throw error;
-      _users = (data || []).map(r => r.data);
+      _users = (data || []).map(r => r.usu_data);
 
       /* Fusionar usuarios de localStorage que no llegaron a Supabase (insert fallido) */
       try {
@@ -26,7 +26,7 @@ window.ModuloAutenticacion = (function () {
             _users.push(lu);
             /* Re-intentar upsert en Supabase */
             window.db.from('usuarios')
-              .upsert({ id: lu.id, data: lu, usuario: lu.usuario, email: lu.email || '' })
+              .upsert({ usu_id: lu.id, usu_data: lu, usu_usuario: lu.usuario, usu_email: lu.email || '' })
               .catch(e => console.warn('Supabase sync usuario local:', e?.message));
           }
         }
@@ -64,7 +64,7 @@ window.ModuloAutenticacion = (function () {
     for (const u of defaults) {
       if (!_users.some(x => x.usuario === u.usuario)) {
         try {
-          await window.db.from('usuarios').upsert({ id: u.id, data: u, usuario: u.usuario, email: u.email });
+          await window.db.from('usuarios').upsert({ usu_id: u.id, usu_data: u, usu_usuario: u.usuario, usu_email: u.email });
           _users.push(u);
         } catch (e) { console.warn('seedUsers upsert:', e?.message); }
       }
@@ -106,7 +106,7 @@ window.ModuloAutenticacion = (function () {
 
     /* Guardar en Supabase (fire-and-forget) */
     window.db.from('usuarios')
-      .upsert({ id: nuevo.id, data: nuevo, usuario: nuevo.usuario, email: nuevo.email })
+      .upsert({ usu_id: nuevo.id, usu_data: nuevo, usu_usuario: nuevo.usuario, usu_email: nuevo.email })
       .then(({ error }) => { if (error) console.error('Supabase registrar:', error); });
 
     /* Fallback localStorage */

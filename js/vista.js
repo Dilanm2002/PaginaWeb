@@ -198,10 +198,10 @@ window.ModuloVista = (function () {
       }
 
       const datos = {
-        nombre  : form.querySelector('#cf-nombre').value.trim(),
-        email   : form.querySelector('#cf-email').value.trim(),
-        telefono: form.querySelector('#cf-tel').value.trim() || null,
-        mensaje : form.querySelector('#cf-msg').value.trim(),
+        mens_nombre  : form.querySelector('#cf-nombre').value.trim(),
+        mens_email   : form.querySelector('#cf-email').value.trim(),
+        mens_telefono: form.querySelector('#cf-tel').value.trim() || null,
+        mens_mensaje : form.querySelector('#cf-msg').value.trim(),
       };
 
       const submitBtn = form.querySelector('.cf-submit');

@@ -363,7 +363,8 @@ window.VistaMenu = (function () {
     }
   }
 
-  function renderProductosMesero() {
+  function renderProductosMesero(opts = {}) {
+    const sinMesas = opts.sinMesas ?? false;
     const SC   = window.SC;
     const grid = document.getElementById('products-grid');
     if (!grid) return;
@@ -372,7 +373,7 @@ window.VistaMenu = (function () {
     const sectionTitle = grid.closest('section#menu')?.querySelector('.section-title');
     if (sectionTitle) sectionTitle.style.display = 'none';
 
-    const mesasHTML = `
+    const mesasHTML = sinMesas ? '' : `
       <div class="mesero-mesas-section">
         <div class="mesero-mesas-title">Mesas activas — toca una para agregar ítems</div>
         <div class="mesero-mesas-list" id="mesero-mesas-activas"></div>
@@ -421,7 +422,7 @@ window.VistaMenu = (function () {
         </div>`;
     }).join('');
 
-    renderMesasActivas();
+    if (!sinMesas) renderMesasActivas();
 
     grid.querySelectorAll('.mesero-cat-title').forEach(title => {
       title.addEventListener('click', e => {
@@ -508,6 +509,89 @@ window.VistaMenu = (function () {
     }
   }
 
+  function renderMenuCajero() {
+    const SC   = window.SC;
+    const grid = document.getElementById('products-grid');
+    if (!grid) return;
+    grid.className = 'mesero-view';
+    const sectionTitle = grid.closest('section#menu')?.querySelector('.section-title');
+    if (sectionTitle) sectionTitle.style.display = 'none';
+
+    const todos = SC.getProductosMergeados().filter(p => p.activo !== false);
+    const cats  = [...new Set(todos.map(p => p.categoria))];
+
+    const volverHTML = `
+      <div style="margin-bottom:1.25rem;">
+        <button id="btn-cajero-volver-caja" style="display:inline-flex;align-items:center;gap:.5rem;background:var(--cinnamon);color:#fff;border:none;border-radius:10px;padding:.55rem 1.1rem;font-size:.88rem;font-weight:600;cursor:pointer;font-family:inherit;">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+          Volver a Caja
+        </button>
+      </div>`;
+
+    grid.innerHTML = volverHTML + cats.map(cat => {
+      const prods = todos.filter(p => p.categoria === cat);
+      return `
+        <div class="mesero-cat-section">
+          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+            ${cat}<span class="mesero-cat-chevron">▾</span>
+          </div>
+          <div class="mesero-list">
+            ${prods.map(p => {
+              const s = SC.getStock(p.id);
+              const agotado = !s.disponible || s.stock <= 0;
+              const ings = Array.isArray(p.ingredientes) ? p.ingredientes.join(' · ') : (p.ingredientes || '—');
+              return `
+              <div class="mesero-row" style="cursor:default;">
+                <span class="mesero-row__name" style="${agotado ? 'opacity:.45;' : ''}">${p.nombre}</span>
+                <span class="mesero-row__price"><span style="font-size:1rem;font-weight:700;color:#1a1a1a;">Precio</span> $${p.precio.toFixed(2)}</span>
+                <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
+                  i
+                  <div class="mesero-ing-pop" id="cpop-${p.id}">
+                    <strong>${p.nombre}</strong>
+                    <span style="display:block;margin:.3rem 0;font-size:.78rem;color:#7A5640;">${p.descripcion || ''}</span>
+                    <strong style="font-size:.75rem;">Ingredientes</strong>
+                    <span style="display:block;margin-top:.25rem;">${ings}</span>
+                    <span style="display:block;margin-top:.4rem;font-weight:700;font-size:.75rem;color:${agotado ? '#dc2626' : s.stock <= 5 ? '#d97706' : '#16a34a'};">
+                      ${agotado ? 'Agotado' : `Stock: ${s.stock}`}
+                    </span>
+                  </div>
+                </button>
+                ${agotado
+                  ? `<span style="font-size:.72rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.15rem .55rem;">Agotado</span>`
+                  : `<span style="font-size:.72rem;color:#16a34a;background:#dcfce7;border-radius:999px;padding:.15rem .55rem;">Stock: ${s.stock}</span>`}
+              </div>`;
+            }).join('')}
+          </div>
+        </div>`;
+    }).join('');
+
+    grid.querySelectorAll('.mesero-cat-title').forEach(title => {
+      title.addEventListener('click', () => {
+        const list = title.nextElementSibling;
+        const collapsed = title.classList.toggle('collapsed');
+        title.setAttribute('aria-expanded', String(!collapsed));
+        list.classList.toggle('hidden', collapsed);
+      });
+    });
+
+    document.getElementById('btn-cajero-volver-caja')?.addEventListener('click', () => {
+      document.getElementById('btn-cajero-ver-menu')?.click();
+    });
+
+    grid.onclick = e => {
+      const infoBtn = e.target.closest('.mesero-info-btn');
+      if (infoBtn) {
+        e.stopPropagation();
+        const pop = infoBtn.querySelector('.mesero-ing-pop');
+        const isOpen = pop.classList.contains('visible');
+        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+        if (!isOpen) pop.classList.add('visible');
+        return;
+      }
+      grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+    };
+  }
+
   function init() {
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     if (modalBackdrop) {
@@ -524,7 +608,7 @@ window.VistaMenu = (function () {
   return {
     renderProductos, renderFiltros, setFiltroActivo, actualizarTitulo, getListaByCat,
     abrirModalProducto, cerrarModalProducto,
-    renderMesasActivas, renderProductosMesero, syncQtys,
+    renderMesasActivas, renderProductosMesero, renderMenuCajero, syncQtys,
     getMesaTarget, setMesaTarget, getFiltroActivo: () => window.SC?.getFiltroSesion(),
     init
   };

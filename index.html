@@ -588,10 +588,14 @@
           <input type="text" id="invitado-nombre" placeholder="Ej: María López" autocomplete="name" />
           <span id="nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Por favor ingresa tu nombre para continuar.</span>
         </div>
-        <div class="mesa-field">
+        <div class="mesa-field" id="campo-mesa">
           <label for="mesa-input">Número de Mesa</label>
           <input type="number" id="mesa-input" min="1" max="12" placeholder="Ej: 5" autocomplete="off" />
           <span id="mesa-input-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+        </div>
+        <div id="mesa-asignada-info" style="display:none" class="mesa-asignada-info">
+          <span class="mesa-asignada-info__label">Tu mesa</span>
+          <span class="mesa-asignada-info__num" id="mesa-asignada-num">—</span>
         </div>
         <div class="mesa-order-preview" id="mesa-preview"></div>
         <button id="btn-confirmar-mesa" class="btn-confirmar-mesa">✓ Enviar a Caja</button>
@@ -709,25 +713,45 @@
   let _stock     = {}; // { [productoId]: { stock, disponible } }
   let _menuItems = []; // productos gestionados por el admin (Supabase menu_items)
 
+  function _rowAPedido(r) {
+    return {
+      id:            r.ped_id,
+      mesa:          r.ped_mesa,
+      estado:        r.ped_estado,
+      idUsuario:     r.ped_id_usuario,
+      nombreUsuario: r.ped_nombre_usuario,
+      rol:           r.ped_rol,
+      hora:          r.ped_hora,
+      fecha:         r.ped_fecha,
+      items:         (() => { const v = r.ped_items; if (Array.isArray(v)) return v; if (v && typeof v === 'string') { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } } return []; })(),
+      total:         Number(r.ped_total    ?? 0),
+      iva:           Number(r.ped_iva      ?? 0),
+      subtotal:      Number(r.ped_subtotal ?? 0),
+      cobradoEn:     r.ped_cobrado_en ?? null
+    };
+  }
+
+  const _PED_SELECT = 'ped_id, ped_mesa, ped_estado, ped_id_usuario, ped_nombre_usuario, ped_rol, ped_hora, ped_fecha, ped_items, ped_total, ped_iva, ped_subtotal, ped_cobrado_en';
+
   async function inicializarDB() {
     try {
       const [rCaja, rHist, rGastos, rStock, rMenu] = await Promise.all([
-        db.from('pedidos').select('data').eq('estado', 'pendiente'),
-        db.from('pedidos').select('data').eq('estado', 'cobrado'),
-        db.from('gastos').select('id, descripcion, monto, fecha, hora').order('id', { ascending: true }),
-        db.from('productos').select('id, stock, disponible'),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
+        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
+        db.from('productos').select('prod_id, prod_stock, prod_disponible'),
         db.from('menu_items').select('*').then(r => r).catch(() => ({ data: null }))
       ]);
-      _caja      = (rCaja.data   || []).map(r => r.data);
-      _historial = (rHist.data   || []).map(r => r.data);
-      _gastos    = (rGastos.data || []).map(r => ({ id: r.id, descripcion: r.descripcion, monto: Number(r.monto), fecha: r.fecha, hora: r.hora, _dbId: r.id }));
+      _caja      = (rCaja.data   || []).map(_rowAPedido);
+      _historial = (rHist.data   || []).map(_rowAPedido);
+      _gastos    = (rGastos.data || []).map(r => ({ id: r.gast_id, descripcion: r.gast_descripcion, monto: Number(r.gast_monto), fecha: r.gast_fecha, hora: r.gast_hora, _dbId: r.gast_id }));
       _stock     = {};
-      (rStock.data || []).forEach(r => { _stock[r.id] = { stock: r.stock, disponible: r.disponible }; });
+      (rStock.data || []).forEach(r => { _stock[r.prod_id] = { stock: r.prod_stock, disponible: r.prod_disponible }; });
       /* Si menu_items no existe en Supabase, usar localStorage como fallback */
       if (rMenu.error) {
         try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
       } else {
-        _menuItems = rMenu.data || [];
+        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado, activo: r.plat_activo, codigo: r.plat_codigo }));
         localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
       }
     } catch(e) {
@@ -743,17 +767,17 @@
   async function recargarCaja() {
     try {
       const [rCaja, rHist, rGastos, rStock] = await Promise.all([
-        db.from('pedidos').select('data').eq('estado', 'pendiente'),
-        db.from('pedidos').select('data').eq('estado', 'cobrado'),
-        db.from('gastos').select('id, descripcion, monto, fecha, hora').order('id', { ascending: true }),
-        db.from('productos').select('id, stock, disponible')
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
+        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
+        db.from('productos').select('prod_id, prod_stock, prod_disponible')
       ]);
-      if (!rCaja.error)   _caja      = (rCaja.data   || []).map(r => r.data);
-      if (!rHist.error)   _historial = (rHist.data   || []).map(r => r.data);
-      if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ id: r.id, descripcion: r.descripcion, monto: Number(r.monto), fecha: r.fecha, hora: r.hora, _dbId: r.id }));
+      if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido);
+      if (!rHist.error)   _historial = (rHist.data   || []).map(_rowAPedido);
+      if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ id: r.gast_id, descripcion: r.gast_descripcion, monto: Number(r.gast_monto), fecha: r.gast_fecha, hora: r.gast_hora, _dbId: r.gast_id }));
       if (!rStock.error) {
         _stock = {};
-        (rStock.data || []).forEach(r => { _stock[r.id] = { stock: r.stock, disponible: r.disponible }; });
+        (rStock.data || []).forEach(r => { _stock[r.prod_id] = { stock: r.prod_stock, disponible: r.prod_disponible }; });
       }
       return !rCaja.error;
     } catch(e) {
@@ -785,7 +809,7 @@
     const nuevoStock = Math.max(0, actual.stock - cantidad);
     const disponible = nuevoStock > 0;
     _stock[productoId] = { stock: nuevoStock, disponible };
-    const { error } = await db.from('productos').update({ stock: nuevoStock, disponible, updated_at: new Date().toISOString() }).eq('id', productoId);
+    const { error } = await db.from('productos').update({ prod_stock: nuevoStock, prod_disponible: disponible, prod_updated_at: new Date().toISOString() }).eq('prod_id', productoId);
     if (error) console.error('Supabase actualizarStock:', error);
     return nuevoStock;
   }
@@ -794,7 +818,7 @@
     const actual = getStock(productoId);
     const nuevoStock = actual.stock + cantidad;
     _stock[productoId] = { stock: nuevoStock, disponible: true };
-    const { error } = await db.from('productos').update({ stock: nuevoStock, disponible: true, updated_at: new Date().toISOString() }).eq('id', productoId);
+    const { error } = await db.from('productos').update({ prod_stock: nuevoStock, prod_disponible: true, prod_updated_at: new Date().toISOString() }).eq('prod_id', productoId);
     if (error) console.error('Supabase reponerStock:', error);
     return nuevoStock;
   }
@@ -815,17 +839,17 @@
     try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
     try {
       const resp = await db.from('gastos').insert({
-        descripcion: gasto.descripcion,
-        monto:       gasto.monto,
-        fecha:       gasto.fecha,
-        hora:        gasto.hora
-      }).select('id').single();
+        gast_descripcion: gasto.descripcion,
+        gast_monto:       gasto.monto,
+        gast_fecha:       gasto.fecha,
+        gast_hora:        gasto.hora
+      }).select('gast_id').single();
       if (resp.error) {
         console.error('Supabase insertarGasto:', resp.error);
         toast('⚠ Gasto guardado solo localmente: ' + (resp.error.message || resp.error.code || 'error desconocido'), 'error');
-      } else if (resp.data?.id) {
+      } else if (resp.data?.gast_id) {
         const idx = _gastos.findIndex(g => g.id === gasto.id);
-        if (idx >= 0) _gastos[idx]._dbId = resp.data.id;
+        if (idx >= 0) _gastos[idx]._dbId = resp.data.gast_id;
       }
     } catch(e) {
       console.error('insertarGasto exception:', e);
@@ -838,7 +862,7 @@
     _gastos = _gastos.filter(g => g.id !== gastoLocalId);
     try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
     if (gasto?._dbId) {
-      db.from('gastos').delete().eq('id', gasto._dbId)
+      db.from('gastos').delete().eq('gast_id', gasto._dbId)
         .then(({ error }) => { if (error) console.error('Supabase eliminarGasto:', error); });
     }
   }
@@ -852,17 +876,25 @@
       idUsuario: idUsuario || null,
       rol,
       items: items.map(i => ({ id:i.id, nombre:i.nombre, cantidad:i.cantidad, precio:i.precio, imagen:i.imagen||null })),
-      total: totales.total,
+      total:    totales.total,
+      iva:      totales.iva,
+      subtotal: totales.subtotal,
       hora:  new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' }),
       estado: 'pendiente'
     };
     _caja.push(pedido);
     db.from('pedidos').insert({
-      id:         pedido.id,
-      data:       pedido,
-      estado:     'pendiente',
-      id_usuario: pedido.idUsuario,
-      mesa:       pedido.mesa
+      ped_id:             pedido.id,
+      ped_mesa:           pedido.mesa,
+      ped_estado:         'pendiente',
+      ped_id_usuario:     pedido.idUsuario,
+      ped_nombre_usuario: pedido.nombreUsuario,
+      ped_rol:            pedido.rol,
+      ped_hora:           pedido.hora,
+      ped_items:          pedido.items,
+      ped_total:          pedido.total,
+      ped_iva:            pedido.iva,
+      ped_subtotal:       pedido.subtotal
     }).then(({ error }) => {
       if (error) {
         console.error('Supabase insert pedido:', error);
@@ -883,10 +915,10 @@
       _historial.push(entrada);
       try { localStorage.setItem(LS_HISTORIAL, JSON.stringify(_historial)); } catch(_) {}
       db.from('pedidos').update({
-        data:   entrada,
-        estado: 'cobrado',
-        fecha:  hoy
-      }).eq('id', cobrado.id).then(({ error }) => {
+        ped_estado:     'cobrado',
+        ped_fecha:      hoy,
+        ped_cobrado_en: new Date().toISOString()
+      }).eq('ped_id', cobrado.id).then(({ error }) => {
         if (error) {
           console.error('Supabase cobrar:', error);
           toast('⚠ Venta guardada solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
@@ -903,15 +935,17 @@
     if (idx < 0) return;
     if (!nuevoItems.length) {
       _caja.splice(idx, 1);
-      db.from('pedidos').delete().eq('id', pedidoId).then(({ error }) => { if (error) console.error('Supabase delete pedido:', error); });
+      db.from('pedidos').delete().eq('ped_id', pedidoId).then(({ error }) => { if (error) console.error('Supabase delete pedido:', error); });
       return;
     }
-    const total = nuevoItems.reduce((s,i) => s + i.precio * i.cantidad, 0);
+    const total    = nuevoItems.reduce((s,i) => s + i.precio * i.cantidad, 0);
+    const iva      = total * (IVA / (1 + IVA));
+    const subtotal = total - iva;
     _caja[idx].items    = nuevoItems;
     _caja[idx].total    = total;
-    _caja[idx].iva      = total * (IVA / (1 + IVA));
-    _caja[idx].subtotal = total - _caja[idx].iva;
-    db.from('pedidos').update({ data: _caja[idx] }).eq('id', pedidoId)
+    _caja[idx].iva      = iva;
+    _caja[idx].subtotal = subtotal;
+    db.from('pedidos').update({ ped_items: nuevoItems, ped_total: total, ped_iva: iva, ped_subtotal: subtotal }).eq('ped_id', pedidoId)
       .then(({ error }) => { if (error) console.error('Supabase update pedido:', error); });
   }
 
@@ -985,6 +1019,7 @@
      TOAST
   ══════════════════════════════════════════════════ */
   function toast(msg, tipo = '') {
+    while (toastCont.children.length >= 3) toastCont.firstChild.remove();
     const t = document.createElement('div');
     t.className = `toast ${tipo}`;
     t.setAttribute('role','status');
@@ -1119,6 +1154,15 @@
     }
   }
 
+  const _CAT_PREFIX = {
+    'Desayunos': 'DES', 'Almuerzos': 'ALM', 'Platos Fuertes': 'PLA',
+    'Bebidas': 'BEB', 'Postres': 'POS', 'Entradas': 'ENT', 'Sopas': 'SOP'
+  };
+  function _generarCodigo(categoria, id) {
+    const prefix = _CAT_PREFIX[categoria] || categoria?.slice(0,3).toUpperCase() || 'PLT';
+    return `${prefix}-${String(id).padStart(3, '0')}`;
+  }
+
   async function guardarMenuItemDB(item) {
     /* Subir imagen a Storage si es base64 */
     if (item.imagen?.startsWith('data:image')) {
@@ -1127,14 +1171,26 @@
     _menuItems = _menuItems.filter(m => m.id !== item.id);
     _menuItems.push(item);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-    const { stock_inicial, ...itemDB } = item;
+    const stockInicial = item.stock_inicial ?? 20;
+    const itemDB = {
+      plat_id:          item.id,
+      plat_nombre:      item.nombre,
+      plat_categoria:   item.categoria,
+      plat_descripcion: item.descripcion ?? '',
+      plat_precio:      item.precio,
+      plat_ingredientes:item.ingredientes ?? [],
+      plat_tag:         item.tag ?? '',
+      plat_imagen:      item.imagen ?? '',
+      plat_destacado:   item.destacado ?? false,
+      plat_activo:      item.activo ?? true,
+      plat_codigo:      _generarCodigo(item.categoria, item.id)
+    };
     const { error } = await db.from('menu_items').upsert(itemDB);
     if (error) { console.error('Supabase menu_items upsert:', error); return false; }
     /* Asegurar fila de stock para productos nuevos */
     if (!_stock[item.id]) {
-      const stockInicial = item.stock_inicial ?? 20;
       _stock[item.id] = { stock: stockInicial, disponible: stockInicial > 0 };
-      const { error: errStock } = await db.from('productos').upsert({ id: item.id, stock: stockInicial, disponible: stockInicial > 0 });
+      const { error: errStock } = await db.from('productos').upsert({ prod_id: item.id, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
       if (errStock) console.error('Supabase productos upsert:', errStock);
     }
     return true;
@@ -1147,7 +1203,7 @@
     } else {
       _menuItems = _menuItems.filter(m => m.id !== id);
       localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-      const { error: errDel } = await db.from('menu_items').delete().eq('id', id);
+      const { error: errDel } = await db.from('menu_items').delete().eq('plat_id', id);
       if (errDel) {
         console.error('Supabase delete menu_item:', errDel);
         return false;
@@ -1190,16 +1246,38 @@
     const totales = LogicaCarrito.calcularTotales(items);
     const meseroMesaTarget = window.VistaMenu?.getMesaTarget() ?? null;
 
-    // Si el mesero tiene una mesa activa seleccionada, pre-llenar el número
+    // Limpiar error de mesa
     const mesaErrEl = document.getElementById('mesa-input-error');
     if (mesaErrEl) { mesaErrEl.textContent = ''; mesaErrEl.style.display = 'none'; }
     mesaInput.style.borderColor = '';
+
+    const campoMesa       = document.getElementById('campo-mesa');
+    const mesaAsignadaDiv = document.getElementById('mesa-asignada-info');
+    const mesaAsignadaNum = document.getElementById('mesa-asignada-num');
+
+    // ¿El usuario ya tiene un pedido pendiente en esta sesión?
+    const pedidoPrevio = (session && session.rol !== 'invitado' && session.usuario)
+      ? leerCaja().find(p => p.idUsuario === session.usuario)
+      : null;
+
     if (meseroMesaTarget) {
-      mesaInput.value = meseroMesaTarget.mesa;
+      // Mesero con mesa activa seleccionada
+      mesaInput.value    = meseroMesaTarget.mesa;
       mesaInput.readOnly = true;
+      campoMesa.style.display       = '';
+      mesaAsignadaDiv.style.display = 'none';
+    } else if (pedidoPrevio) {
+      // Usuario con pedido ya activo → mesa autoasignada, no se pide de nuevo
+      mesaInput.value    = pedidoPrevio.mesa;
+      mesaInput.readOnly = true;
+      campoMesa.style.display       = 'none';
+      mesaAsignadaDiv.style.display = '';
+      mesaAsignadaNum.textContent   = pedidoPrevio.mesa;
     } else {
-      mesaInput.value = '';
+      mesaInput.value    = '';
       mesaInput.readOnly = false;
+      campoMesa.style.display       = '';
+      mesaAsignadaDiv.style.display = 'none';
     }
 
     if (session && session.rol !== 'invitado') {
@@ -1319,9 +1397,9 @@
     let cajaNow;
     try {
       btnConfirmarMesa.disabled = true;
-      const { data: pedidosDB } = await db.from('pedidos').select('data').eq('estado', 'pendiente');
+      const { data: pedidosDB } = await db.from('pedidos').select('ped_id, ped_mesa, ped_id_usuario, ped_rol').eq('ped_estado', 'pendiente');
       cajaNow = [
-        ...( pedidosDB || [] ).map(r => r.data),
+        ...( pedidosDB || [] ).map(r => ({ id: r.ped_id, mesa: r.ped_mesa, idUsuario: r.ped_id_usuario, rol: r.ped_rol })),
         ...leerCaja()
       ].filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i);
     } catch(_) {
@@ -1497,7 +1575,7 @@
         menuView.style.display = '';
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
-        window.VistaMenu?.renderProductosMesero();
+        window.VistaMenu?.renderMenuCajero();
         btnCajeroVerMenu.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Volver a Caja`;
         btnCajeroVerMenu.style.cssText = '';
         menuView.scrollIntoView({ behavior: 'smooth' });
@@ -1922,9 +2000,11 @@
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
       if (btnMiPerfil) btnMiPerfil.style.display = 'none';
       // Chip clickeable solo para rol usuario → abre perfil
-      userChip.style.cursor  = session.rol === 'usuario' ? 'pointer' : 'default';
-      userChip.title         = session.rol === 'usuario' ? 'Ver mi perfil y pedidos' : '';
-      userChip.onclick       = session.rol === 'usuario' ? () => irAlPerfil() : null;
+      const esUsuario = session.rol === 'usuario';
+      userChip.style.cursor  = esUsuario ? 'pointer' : 'default';
+      userChip.title         = esUsuario ? 'Ver mi perfil y pedidos' : '';
+      userChip.onclick       = esUsuario ? () => irAlPerfil() : null;
+      userChip.classList.toggle('user-chip--clickable', esUsuario);
     }
 
     const esRolEspecial = session.rol === 'cajero' || session.rol === 'mesero' || session.rol === 'administrador';
@@ -1951,6 +2031,12 @@
       cajeroView.classList.add('visible');
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none';
+      // Siempre resetear el botón al estado correcto (puede quedar en "Volver a Caja" por un toggle previo)
+      const _btnVM = document.getElementById('btn-cajero-ver-menu');
+      if (_btnVM) {
+        _btnVM.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Ver Menú`;
+        _btnVM.style.cssText = 'background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)';
+      }
       window.VistaCajero?.renderCajeroView();
       if (aplicarSesion._cajeroInterval) clearInterval(aplicarSesion._cajeroInterval);
     } else {
@@ -1974,6 +2060,9 @@
         window.VistaMenu?.setMesaTarget(null);
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
+        // Mesero nunca ve el cajero-view — ocultar el botón toggle por si acaso
+        const _btnVM = document.getElementById('btn-cajero-ver-menu');
+        if (_btnVM) _btnVM.style.display = 'none';
         window.VistaMenu?.renderProductosMesero();
         renderCarrito();
       } else {

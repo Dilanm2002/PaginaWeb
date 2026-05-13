@@ -45,7 +45,7 @@ window.VistaCajero = (function () {
             <tr>
               <td><strong>Mesa ${h.mesa}</strong></td>
               <td>${h.nombreUsuario}</td>
-              <td>${h.items.map(i => `${i.cantidad}× ${i.nombre}`).join(', ')}</td>
+              <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${i.nombre}`).join(', ') : '—'}</td>
               <td class="td-hora">${h.fecha}</td>
               <td class="td-hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</td>
               <td class="td-total">$${h.total.toFixed(2)}</td>
@@ -61,15 +61,15 @@ window.VistaCajero = (function () {
             </div>
             <div class="resumen-card__body">
               <div class="resumen-card__cliente">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${h.nombreUsuario.charAt(0).toUpperCase()}</span>
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${(h.nombreUsuario || '?').charAt(0).toUpperCase()}</span>
                 ${h.nombreUsuario}
               </div>
               <div class="resumen-card__items">
-                ${h.items.map(i => `
+                ${Array.isArray(h.items) ? h.items.map(i => `
                   <div class="resumen-card__item-row">
                     <span class="resumen-card__item-qty">${i.cantidad}×</span>
                     <span>${i.nombre}</span>
-                  </div>`).join('')}
+                  </div>`).join('') : ''}
               </div>
               <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
             </div>
@@ -282,9 +282,10 @@ window.VistaCajero = (function () {
     const ROL_LABEL = SC.ROL_LABEL;
 
     cajeroGrid.innerHTML = pedidos.map(p => {
-      const subtotal = p.items.reduce((s,i) => s + i.precio * i.cantidad, 0);
-      const iva      = subtotal * IVA;
-      const total    = subtotal + iva;
+      const items    = Array.isArray(p.items) ? p.items : [];
+      const total    = p.total    || 0;
+      const iva      = p.iva      || 0;
+      const subtotal = p.subtotal || 0;
       return `
       <div class="cajero-order-card" role="listitem" data-pid="${p.id}">
         <div class="cajero-order-card__head">
@@ -298,7 +299,7 @@ window.VistaCajero = (function () {
           <div class="cajero-order-time">🕐 ${p.hora}</div>
         </div>
         <div class="cajero-order-items">
-          ${p.items.map((it, idx) => `
+          ${items.map((it, idx) => `
             <div class="cajero-order-item">
               <span class="cajero-order-item__name">${it.nombre}</span>
               <div class="caj-qty">
@@ -306,10 +307,11 @@ window.VistaCajero = (function () {
                 <span class="caj-qty__val">${it.cantidad}</span>
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="inc">+</button>
               </div>
-              <span class="cajero-order-item__price">$${(it.precio * it.cantidad).toFixed(2)}</span>
+              <span class="cajero-order-item__price">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
               <button class="caj-del" data-pid="${p.id}" data-idx="${idx}" title="Eliminar ítem">✕</button>
             </div>
           `).join('')}
+          ${!items.length ? '<p style="color:var(--text-muted);font-size:.85rem;padding:.25rem 0">Sin detalle de ítems</p>' : ''}
         </div>
         <div class="cajero-order-subtotals">
           <div><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
@@ -336,7 +338,7 @@ window.VistaCajero = (function () {
         const idx = Number(btnDel.dataset.idx);
         const peds = SC.leerCaja();
         const ped = peds.find(p => String(p.id) === String(pid));
-        if (!ped) return;
+        if (!ped || !Array.isArray(ped.items)) return;
         ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);
         renderCajeroView();
@@ -349,7 +351,7 @@ window.VistaCajero = (function () {
         const action = btnQty.dataset.action;
         const peds   = SC.leerCaja();
         const ped    = peds.find(p => String(p.id) === String(pid));
-        if (!ped) return;
+        if (!ped || !Array.isArray(ped.items) || !ped.items[idx]) return;
         ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
         if (ped.items[idx].cantidad <= 0) ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);
