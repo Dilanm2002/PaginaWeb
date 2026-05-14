@@ -133,15 +133,22 @@
     .auth-error.visible { display: block; }
 
     @media (max-width: 480px) {
-      .auth-backdrop { padding: .5rem; align-items: center; overflow-y: auto; }
+      .auth-backdrop {
+        padding: .5rem;
+        align-items: center;
+        overflow-y: auto;
+        /* Forzar que el backdrop ocupe exactamente el viewport, no el documento */
+        width: 100vw;
+        left: 0;
+      }
       .auth-box {
         border-radius: var(--radius);
-        max-height: calc(100vh - 1rem);
+        max-height: calc(100dvh - 1rem);
         overflow-x: hidden;
         overflow-y: auto;
         margin: auto;
-        width: calc(100% - 1rem);
-        max-width: 420px;
+        /* vw en lugar de % — inmune al overflow horizontal del documento */
+        width: min(calc(100vw - 1.5rem), 420px);
         box-sizing: border-box;
       }
       .auth-header { padding: .75rem 1.25rem .6rem; }
@@ -201,6 +208,7 @@
       position: sticky; top: 0; z-index: 100;
       background: #2a1006;
       box-shadow: 0 2px 16px rgba(20,6,1,.5);
+      overflow-x: clip;
     }
     .site-header .wrap {
       display: flex; align-items: center; gap: .75rem;
@@ -818,6 +826,7 @@
       background: var(--white); border-radius: var(--radius);
       width: 100%; max-width: 560px; box-shadow: 0 24px 64px rgba(20,8,2,.5);
       overflow: hidden; margin: auto; box-sizing: border-box;
+      isolation: isolate;
     }
     .prod-form-header {
       background: var(--brown-dark); padding: 1.25rem 1.5rem;
@@ -866,7 +875,8 @@
     .btn-prod-save:hover { background: var(--brown-mid); }
 
     @media (max-width: 520px) {
-      .prod-form-backdrop { padding: .5rem; }
+      .prod-form-backdrop { padding: .5rem; width: 100vw; left: 0; }
+      .prod-form-box { width: min(calc(100vw - 1rem), 560px); }
       .prod-form-body { padding: 1rem; }
       .prod-form-grid { grid-template-columns: 1fr; }
       .prod-form-full { grid-column: 1; }
