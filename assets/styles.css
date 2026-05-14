@@ -31,7 +31,7 @@
 
     html { scroll-behavior: smooth; overflow-x: hidden; }
     body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-    main { flex: 1; }
+    main { flex: 1; overflow-x: clip; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
     .skip-link {
@@ -133,14 +133,7 @@
     .auth-error.visible { display: block; }
 
     @media (max-width: 480px) {
-      .auth-backdrop {
-        padding: .5rem;
-        align-items: center;
-        overflow-y: auto;
-        /* Forzar que el backdrop ocupe exactamente el viewport, no el documento */
-        width: 100vw;
-        left: 0;
-      }
+      .auth-backdrop { padding: .5rem; align-items: center; overflow-y: auto; }
       .auth-box {
         border-radius: var(--radius);
         max-height: calc(100dvh - 1rem);
@@ -875,7 +868,7 @@
     .btn-prod-save:hover { background: var(--brown-mid); }
 
     @media (max-width: 520px) {
-      .prod-form-backdrop { padding: .5rem; width: 100vw; left: 0; }
+      .prod-form-backdrop { padding: .5rem; }
       .prod-form-box { width: min(calc(100vw - 1rem), 560px); }
       .prod-form-body { padding: 1rem; }
       .prod-form-grid { grid-template-columns: 1fr; }
@@ -2017,7 +2010,9 @@
   /* ── Responsive contacto ── */
   @media (max-width: 768px) {
     .contacto-grid { grid-template-columns: 1fr; }
-    .contacto-info { position: static; }
+    /* Mantener position:relative (no static) para que ::before y ::after
+       se posicionen dentro del elemento y no escapen al viewport (+40px overflow) */
+    .contacto-info { position: relative; }
     .cf-row { grid-template-columns: 1fr; }
   }
 
