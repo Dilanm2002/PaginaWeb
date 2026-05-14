@@ -29,8 +29,8 @@
       --cat-fuertes:         #C4890A;
     }
 
-    html { scroll-behavior: smooth; }
-    body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
+    html { scroll-behavior: smooth; overflow-x: hidden; }
+    body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
     main { flex: 1; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
@@ -58,6 +58,7 @@
       width: 100%; max-width: 420px;
       box-shadow: 0 24px 64px rgba(20,8,2,.5);
       overflow: hidden;
+      box-sizing: border-box;
     }
     .auth-header {
       background: var(--brown-dark);
@@ -90,7 +91,7 @@
     }
     .auth-tab.active { color: var(--cinnamon); border-bottom-color: var(--cinnamon); background: var(--white); }
 
-    .auth-body { padding: 1.5rem; }
+    .auth-body { padding: 1.5rem; box-sizing: border-box; width: 100%; }
 
     .auth-form-panel { display: none; }
     .auth-form-panel.active { display: block; }
@@ -107,6 +108,7 @@
       font-size: .9rem; font-family: 'Inter', sans-serif;
       background: var(--cream); color: var(--text);
       transition: border-color .2s, box-shadow .2s;
+      box-sizing: border-box;
     }
     .auth-field input:focus, .auth-field select:focus {
       outline: none; border-color: var(--cinnamon);
@@ -131,12 +133,14 @@
     .auth-error.visible { display: block; }
 
     @media (max-width: 480px) {
-      .auth-backdrop { padding: .6rem; align-items: center; }
+      .auth-backdrop { padding: .5rem; align-items: center; overflow-y: auto; }
       .auth-box {
         border-radius: var(--radius);
-        max-height: 85vh;
+        max-height: calc(100vh - 1rem);
         overflow-y: auto;
-        -webkit-overflow-scrolling: touch;
+        margin: auto;
+        width: 95%;
+        max-width: 420px;
       }
       .auth-header { padding: .75rem 1.25rem .6rem; }
       .auth-logo { font-size: 1.3rem; }
@@ -811,14 +815,14 @@
     .prod-form-box {
       background: var(--white); border-radius: var(--radius);
       width: 100%; max-width: 560px; box-shadow: 0 24px 64px rgba(20,8,2,.5);
-      overflow: hidden; margin: auto;
+      overflow: hidden; margin: auto; box-sizing: border-box;
     }
     .prod-form-header {
       background: var(--brown-dark); padding: 1.25rem 1.5rem;
       display: flex; align-items: center; justify-content: space-between;
     }
     .prod-form-header h3 { color: var(--cream); font-size: 1.05rem; font-weight: 700; }
-    .prod-form-body { padding: 1.5rem; }
+    .prod-form-body { padding: 1.5rem; box-sizing: border-box; width: 100%; }
     .prod-form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: .9rem; }
     .prod-form-full { grid-column: 1 / -1; }
     .prod-form-group { display: flex; flex-direction: column; gap: .35rem; }
@@ -829,6 +833,7 @@
       border: 1.5px solid var(--border); border-radius: var(--radius-sm);
       padding: .6rem .8rem; font-size: .9rem; color: var(--text);
       background: var(--cream); transition: border-color .2s; width: 100%;
+      box-sizing: border-box;
     }
     .prod-form-group input:focus,
     .prod-form-group select:focus,
@@ -857,6 +862,16 @@
       transition: background .2s;
     }
     .btn-prod-save:hover { background: var(--brown-mid); }
+
+    @media (max-width: 520px) {
+      .prod-form-backdrop { padding: .5rem; }
+      .prod-form-body { padding: 1rem; }
+      .prod-form-grid { grid-template-columns: 1fr; }
+      .prod-form-full { grid-column: 1; }
+      .prod-form-footer { padding: .75rem 1rem; }
+      .btn-prod-cancel, .btn-prod-save { flex: 1; text-align: center; }
+    }
+
     .gastos-title {
       font-size: 1.1rem; font-weight: 700; color: var(--brown-dark);
       margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
@@ -1354,7 +1369,7 @@
     .mesa-modal-body { padding: 1.5rem; }
     .mesa-field { margin-bottom: 1rem; }
     .mesa-field label { display: block; font-size: .78rem; font-weight: 600; color: var(--text-muted); margin-bottom: .35rem; text-transform: uppercase; letter-spacing: .06em; }
-    .mesa-field input { width: 100%; padding: .6rem .85rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .95rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); transition: border-color .2s; }
+    .mesa-field input { width: 100%; padding: .6rem .85rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm); font-size: .95rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); transition: border-color .2s; box-sizing: border-box; }
     .mesa-field input:focus { outline: none; border-color: var(--cinnamon); }
 
     .mesa-quien {
@@ -1646,6 +1661,7 @@
       .mobile-search-wrap {
         display: flex; align-items: center; position: relative;
         padding: .75rem 1rem; background: #2a1006;
+        box-sizing: border-box; width: 100%; overflow: hidden;
       }
       .mobile-search-icon {
         position: absolute; left: 1.85rem; top: 50%; transform: translateY(-50%);
@@ -1673,10 +1689,11 @@
       .cart-btn { padding: .4rem .65rem; font-size: .78rem; gap: .3rem; }
       .cart-btn svg { width: 15px; height: 15px; }
       .caja-btn { padding: .4rem .65rem; font-size: .78rem; }
-      /* Chip usuario compacto: solo avatar, sin nombre ni rol */
-      .user-chip { gap: 0; padding: .15rem; border-radius: 50%; }
+      /* Chip usuario compacto: avatar + nombre, sin rol */
+      .user-chip { gap: .3rem; padding: .15rem .4rem .15rem .15rem; border-radius: 999px; }
       .user-chip__avatar { width: 30px; height: 30px; font-size: .78rem; flex-shrink: 0; }
-      .user-chip__info { display: none; }
+      .user-chip__name { font-size: .72rem; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .user-chip__rol  { display: none; }
       .btn-logout { font-size: .65rem; padding: .25rem .45rem; }
 
       /* ── Hero ── (overrides handled in hero CSS block) */
