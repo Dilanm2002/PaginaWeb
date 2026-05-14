@@ -31,7 +31,7 @@
 
     html { scroll-behavior: smooth; overflow-x: hidden; }
     body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
-    main { flex: 1; overflow-x: clip; }
+    main { flex: 1; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
     .skip-link {
@@ -1662,11 +1662,12 @@
       .header-search-wrap { display: none; }
       .site-header .wrap { padding-block: .65rem; gap: .4rem; flex-wrap: nowrap; }
 
-      /* ── Buscador móvil (entre hero y filtros) ── */
+      /* ── Buscador móvil (entre hero y filtros) — sticky en scroll ── */
       .mobile-search-wrap {
-        display: flex; align-items: center; position: relative;
+        display: flex; align-items: center; position: sticky; top: 54px; z-index: 95;
         padding: .75rem 1rem; background: #2a1006;
         box-sizing: border-box; width: 100%; overflow: hidden;
+        box-shadow: 0 2px 8px rgba(20,6,1,.35);
       }
       .mobile-search-icon {
         position: absolute; left: 1.85rem; top: 50%; transform: translateY(-50%);
@@ -1707,7 +1708,8 @@
       .hero-search-wrap { max-width: 100%; }
       .menu-search { font-size: .88rem; padding: .65rem 1rem .65rem 2.6rem; }
       /* ── Filter bar ── */
-      .filter-bar-wrap { top: 54px; }
+      /* top = header (54px) + buscador móvil sticky (~3.75rem ≈ 60px) */
+      .filter-bar-wrap { top: calc(54px + 3.75rem); }
       .filter-bar { padding: .4rem .85rem; gap: .35rem; }
       .filter-btn { font-size: .73rem; padding: .3rem .7rem; white-space: nowrap; }
 
