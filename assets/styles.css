@@ -30,7 +30,7 @@
     }
 
     html { scroll-behavior: smooth; overflow-x: hidden; }
-    body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; overflow-x: hidden; }
+    body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
     main { flex: 1; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
