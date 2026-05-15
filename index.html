@@ -17,6 +17,17 @@
 </head>
 <body>
 
+  <!-- ══ LOADER INICIAL ══ -->
+  <div id="app-loader" style="
+    position:fixed;inset:0;z-index:99999;
+    background:var(--brown-dark,#3B1A08);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    gap:1.25rem;transition:opacity .35s ease;
+  ">
+    <span style="font-family:'Dancing Script',cursive;font-size:2.2rem;color:#F5ECD7;">Sal <span style="color:#E07A3A;">y</span> Canela</span>
+    <div style="width:44px;height:44px;border:3.5px solid rgba(245,236,215,.2);border-top-color:#E07A3A;border-radius:50%;animation:spin .75s linear infinite;"></div>
+  </div>
+
   <a class="skip-link" href="#contenido">Saltar al contenido</a>
 
   <!-- ══ MODAL AUTENTICACIÓN ══ -->
@@ -2304,6 +2315,11 @@
     window.VistaAdmin?.renderAdminView();
     renderCarrito();
     _iniciarRealtime();
+    const loader = document.getElementById('app-loader');
+    if (loader) {
+      loader.style.opacity = '0';
+      setTimeout(() => loader.remove(), 380);
+    }
   });
 
   function _iniciarRealtime() {
