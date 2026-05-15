@@ -886,37 +886,28 @@
       estado: 'pendiente'
     };
     _caja.push(pedido);
-    db.from('pedidos').insert({
-      ped_id:             pedido.id,
-      ped_mesa:           pedido.mesa,
-      ped_estado:         'pendiente',
-      ped_id_usuario:     pedido.idUsuario,
-      ped_nombre_usuario: pedido.nombreUsuario,
-      ped_rol:            pedido.rol,
-      ped_hora:           pedido.hora,
-      ped_items:          pedido.items,
-      ped_total:          pedido.total,
-      ped_iva:            pedido.iva,
-      ped_subtotal:       pedido.subtotal
-    }).then(async ({ error }) => {
+    (async () => {
+      /* Limpiar cualquier fila fantasma pendiente para esta mesa antes de insertar */
+      await db.from('pedidos').delete()
+        .eq('ped_mesa', pedido.mesa).eq('ped_estado', 'pendiente');
+      const { error } = await db.from('pedidos').insert({
+        ped_id:             pedido.id,
+        ped_mesa:           pedido.mesa,
+        ped_estado:         'pendiente',
+        ped_id_usuario:     pedido.idUsuario,
+        ped_nombre_usuario: pedido.nombreUsuario,
+        ped_rol:            pedido.rol,
+        ped_hora:           pedido.hora,
+        ped_items:          pedido.items,
+        ped_total:          pedido.total,
+        ped_iva:            pedido.iva,
+        ped_subtotal:       pedido.subtotal
+      });
       if (error) {
-        if (error.code === '23505') {
-          /* Ya existe un pendiente para esta mesa — actualizar la fila existente */
-          await db.from('pedidos').update({
-            ped_nombre_usuario: pedido.nombreUsuario,
-            ped_rol:            pedido.rol,
-            ped_hora:           pedido.hora,
-            ped_items:          pedido.items,
-            ped_total:          pedido.total,
-            ped_iva:            pedido.iva,
-            ped_subtotal:       pedido.subtotal
-          }).eq('ped_mesa', pedido.mesa).eq('ped_estado', 'pendiente');
-        } else {
-          console.error('Supabase insert pedido:', error);
-          toast('⚠ Pedido guardado solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
-        }
+        console.error('Supabase insert pedido:', error);
+        toast('⚠ Pedido guardado solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
       }
-    });
+    })();
     /* Descontar stock por cada ítem del pedido (en paralelo) */
     Promise.all(pedido.items.map(i => actualizarStock(i.id, i.cantidad)))
       .catch(e => console.error('Error actualizando stock del pedido:', e));
