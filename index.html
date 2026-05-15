@@ -711,7 +711,8 @@
   let _historial = [];
   let _gastos    = [];
   let _stock     = {}; // { [productoId]: { stock, disponible } }
-  let _menuItems = []; // productos gestionados por el admin (Supabase menu_items)
+  let _menuItems = [];
+  const _pedidoUpdateTimers = {}; // productos gestionados por el admin (Supabase menu_items)
 
   function _rowAPedido(r) {
     return {
@@ -952,8 +953,11 @@
     _caja[idx].total    = total;
     _caja[idx].iva      = iva;
     _caja[idx].subtotal = subtotal;
-    db.from('pedidos').update({ ped_items: nuevoItems, ped_total: total, ped_iva: iva, ped_subtotal: subtotal }).eq('ped_id', pedidoId)
-      .then(({ error }) => { if (error) console.error('Supabase update pedido:', error); });
+    clearTimeout(_pedidoUpdateTimers[pedidoId]);
+    _pedidoUpdateTimers[pedidoId] = setTimeout(() => {
+      db.from('pedidos').update({ ped_items: nuevoItems, ped_total: total, ped_iva: iva, ped_subtotal: subtotal }).eq('ped_id', pedidoId)
+        .then(({ error }) => { if (error) console.error('Supabase update pedido:', error); });
+    }, 600);
   }
 
   /* ══════════════════════════════════════════════════
