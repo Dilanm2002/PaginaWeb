@@ -1541,12 +1541,15 @@
   function abrirCarrito() {
     cartOverlay.classList.add('open'); cartPanel.classList.add('open');
     cartPanel.setAttribute('aria-hidden','false');
-    document.body.style.overflow = 'hidden'; btnClose.focus();
+    document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
+    btnClose.focus();
   }
   function cerrarCarrito() {
     cartOverlay.classList.remove('open'); cartPanel.classList.remove('open');
     cartPanel.setAttribute('aria-hidden','true');
     document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
   }
 
   btnOpen.addEventListener('click', abrirCarrito);
