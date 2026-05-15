@@ -1201,9 +1201,10 @@
     /* Stock: crear para productos nuevos, actualizar para ediciones */
     if (!_stock[item.id]) {
       _stock[item.id] = { stock: stockInicial, disponible: stockInicial > 0 };
-      const { error: errStock } = await db.from('productos').upsert({ prod_id: item.id, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
+      const { error: errStock } = await db.from('productos').upsert({ prod_id: item.id, prod_nombre: item.nombre, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
       if (errStock) console.error('Supabase productos upsert:', errStock);
     } else {
+      await db.from('productos').update({ prod_nombre: item.nombre }).eq('prod_id', item.id);
       const actualStock = _stock[item.id].stock;
       if (stockInicial !== actualStock) {
         const diff = stockInicial - actualStock;
