@@ -153,6 +153,7 @@ window.VistaAdmin = (function () {
       imgPlaceholder.style.display = 'none';
       _prodFormImgBase64 = p.imagen;
     } else {
+      imgActual.src                = '';
       imgActual.style.display      = 'none';
       imgPlaceholder.style.display = '';
     }
@@ -206,7 +207,10 @@ window.VistaAdmin = (function () {
         window.SC?.toast('Solo se aceptan imágenes', 'error');
         return;
       }
-      _prodFormImgBase64 = await window.SC.comprimirImagen(file);
+      const base64 = await window.SC.comprimirImagen(file);
+      /* Si el formulario se cerró/reinició mientras procesaba, descartar */
+      if (!document.getElementById('prod-form-backdrop').classList.contains('open')) return;
+      _prodFormImgBase64 = base64;
       const imgActual = document.getElementById('pf-img-actual');
       imgActual.src = _prodFormImgBase64;
       imgActual.style.display = '';
