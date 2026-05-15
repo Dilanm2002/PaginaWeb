@@ -31,7 +31,7 @@
 
     html { scroll-behavior: smooth; overflow-x: hidden; }
     body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; }
-    main { flex: 1; }
+    main { flex: 1; display: flex; flex-direction: column; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
 
     .skip-link {
@@ -1423,7 +1423,7 @@
     @keyframes toastOut { from { opacity: 1; } to { opacity: 0; transform: translateX(20px); } }
 
     /* ════ VISTA PERFIL USUARIO — estilo Uber Eats ════ */
-    #usuario-view { display: none; background: var(--cream); min-height: 60vh; }
+    #usuario-view { display: none; background: var(--cream); flex: 1; }
 
     /* ── Cover ── */
     .perfil-cover {
