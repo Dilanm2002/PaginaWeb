@@ -224,20 +224,17 @@ window.VistaAdmin = (function () {
       pfImagen.value = '';
     });
 
-    const addDropZone = el => {
-      if (!el) return;
-      el.addEventListener('dragover', e => { e.preventDefault(); el.style.outline = '2.5px dashed var(--cinnamon)'; el.style.opacity = '.85'; });
-      el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) { el.style.outline = ''; el.style.opacity = ''; } });
-      el.addEventListener('drop', async e => {
+    const preview = document.getElementById('pf-img-preview');
+    if (preview) {
+      preview.addEventListener('dragover', e => { e.preventDefault(); preview.style.outline = '2.5px dashed var(--cinnamon)'; preview.style.opacity = '.85'; });
+      preview.addEventListener('dragleave', e => { if (!preview.contains(e.relatedTarget)) { preview.style.outline = ''; preview.style.opacity = ''; } });
+      preview.addEventListener('drop', async e => {
         e.preventDefault();
-        el.style.outline = '';
-        el.style.opacity = '';
+        preview.style.outline = '';
+        preview.style.opacity = '';
         await processFile(e.dataTransfer?.files?.[0]);
       });
-    };
-
-    addDropZone(document.getElementById('pf-img-placeholder'));
-    addDropZone(document.getElementById('pf-img-actual'));
+    }
   }
 
   const NOMBRE_LETRA_RE = /[a-záéíóúüñA-ZÁÉÍÓÚÜÑ]/;
