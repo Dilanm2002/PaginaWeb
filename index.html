@@ -171,6 +171,17 @@
 
       </div>
     </div>
+    <!-- Segunda fila: buscador solo en móvil ≤600px — parte del header sticky, sin gap posible -->
+    <div class="mobile-header-search-row" role="search" aria-label="Buscar en el menú">
+      <div class="wrap" style="padding-block:.55rem">
+        <span class="mobile-search-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+        </span>
+        <input type="search" id="menu-search-mobile" class="menu-search-mobile"
+               placeholder="Buscar platillo o bebida…" autocomplete="off"
+               aria-label="Buscar en el menú">
+      </div>
+    </div>
   </header>
 
   <!-- ══ MAIN ══ -->
@@ -191,17 +202,7 @@
         </div>
       </section>
 
-      <!-- Buscador móvil: solo visible en ≤600px, entre hero y filtros (IHC: zona de alcance del pulgar) -->
-      <div class="mobile-search-wrap" id="mobile-search-wrap" role="search">
-        <span class="mobile-search-icon" aria-hidden="true">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" width="18" height="18"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-        </span>
-        <input type="search" id="menu-search-mobile" class="menu-search-mobile"
-               placeholder="Buscar platillo o bebida…" autocomplete="off"
-               aria-label="Buscar en el menú">
-      </div>
-
-      <div class="filter-bar-wrap" role="group" aria-label="Filtrar menú">
+<div class="filter-bar-wrap" role="group" aria-label="Filtrar menú">
         <div class="filter-bar-scroll-wrap">
           <div id="filter-bar" class="filter-bar"></div>
         </div>
@@ -1831,23 +1832,25 @@
   function irAlMenu() {
     document.getElementById('usuario-view').style.display = 'none';
     document.getElementById('menu-view').style.display = '';
-    const hs = document.getElementById('header-search-wrap');
-    const ms = document.getElementById('mobile-search-wrap');
-    const ct = document.getElementById('seccion-contacto');
-    if (hs) hs.style.display = '';
-    if (ms) ms.style.display = '';
-    if (ct) ct.style.display = '';
+    const hs  = document.getElementById('header-search-wrap');
+    const mhr = document.querySelector('.mobile-header-search-row');
+    const ct  = document.getElementById('seccion-contacto');
+    if (hs)  hs.style.display  = '';
+    if (mhr) mhr.style.display = '';
+    if (ct)  ct.style.display  = '';
+    requestAnimationFrame(actualizarAlturasStickyMovil);
   }
 
   function irAlPerfil() {
     document.getElementById('menu-view').style.display = 'none';
     document.getElementById('usuario-view').style.display = 'block';
-    const hs = document.getElementById('header-search-wrap');
-    const ms = document.getElementById('mobile-search-wrap');
-    const ct = document.getElementById('seccion-contacto');
-    if (hs) hs.style.display = 'none';
-    if (ms) ms.style.display = 'none';
-    if (ct) ct.style.display = 'none';
+    const hs  = document.getElementById('header-search-wrap');
+    const mhr = document.querySelector('.mobile-header-search-row');
+    const ct  = document.getElementById('seccion-contacto');
+    if (hs)  hs.style.display  = 'none';
+    if (mhr) mhr.style.display = 'none';
+    if (ct)  ct.style.display  = 'none';
+    requestAnimationFrame(actualizarAlturasStickyMovil);
     window.scrollTo({ top: 0, behavior: 'smooth' });
     renderUsuarioView();
   }
@@ -2113,16 +2116,9 @@
   /* ── Alturas sticky: mide header y buscador móvil para evitar gaps en cualquier dispositivo ── */
   function actualizarAlturasStickyMovil() {
     const header = document.querySelector('.site-header');
-    const search = document.getElementById('mobile-search-wrap');
     if (!header) return;
     const hH = header.getBoundingClientRect().height;
     document.documentElement.style.setProperty('--header-h', hH + 'px');
-    if (search && getComputedStyle(search).display !== 'none') {
-      const sH = search.getBoundingClientRect().height;
-      document.documentElement.style.setProperty('--search-h', sH + 'px');
-    } else {
-      document.documentElement.style.removeProperty('--search-h');
-    }
   }
   actualizarAlturasStickyMovil();
   window.addEventListener('resize', actualizarAlturasStickyMovil);
