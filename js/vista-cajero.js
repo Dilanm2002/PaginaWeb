@@ -277,6 +277,31 @@ window.VistaCajero = (function () {
     };
   }
 
+  function updatePedidoDisplay(pid, items) {
+    const SC  = window.SC;
+    const IVA = SC.IVA;
+    items.forEach((it, idx) => {
+      const qEl = document.getElementById(`qty-${pid}-${idx}`);
+      const pEl = document.getElementById(`item-price-${pid}-${idx}`);
+      if (qEl) qEl.textContent = it.cantidad;
+      if (pEl) pEl.textContent = `$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}`;
+    });
+    const total    = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+    const iva      = total * (IVA / (1 + IVA));
+    const subtotal = total - iva;
+    const subEl   = document.getElementById(`card-sub-${pid}`);
+    const ivaEl   = document.getElementById(`card-iva-${pid}`);
+    const totalEl = document.getElementById(`card-total-${pid}`);
+    if (subEl)   subEl.textContent   = `$${subtotal.toFixed(2)}`;
+    if (ivaEl)   ivaEl.textContent   = `$${iva.toFixed(2)}`;
+    if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
+    /* actualizar el total global del header */
+    const allPedidos  = SC.leerCaja();
+    const totalGlobal = allPedidos.reduce((s, p) => s + p.total, 0);
+    const statTotal   = document.getElementById('stat-total');
+    if (statTotal) statTotal.textContent = `$${totalGlobal.toFixed(2)}`;
+  }
+
   function renderCajeroView() {
     const SC = window.SC;
     const pedidos        = SC.leerCaja().sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
@@ -338,19 +363,19 @@ window.VistaCajero = (function () {
               <span class="cajero-order-item__name">${it.nombre}</span>
               <div class="caj-qty">
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
-                <span class="caj-qty__val">${it.cantidad}</span>
+                <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="inc">+</button>
               </div>
-              <span class="cajero-order-item__price">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
+              <span class="cajero-order-item__price" id="item-price-${p.id}-${idx}">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
               <button class="caj-del" data-pid="${p.id}" data-idx="${idx}" title="Eliminar ítem">✕</button>
             </div>
           `).join('')}
           ${!items.length ? '<p style="color:var(--text-muted);font-size:.85rem;padding:.25rem 0">Sin detalle de ítems</p>' : ''}
         </div>
         <div class="cajero-order-subtotals">
-          <div><span>Subtotal</span><span>$${subtotal.toFixed(2)}</span></div>
-          <div class="iva-line"><span>IVA 15 %</span><span>$${iva.toFixed(2)}</span></div>
-          <div class="total-line"><span>Total</span><span>$${total.toFixed(2)}</span></div>
+          <div><span>Subtotal</span><span id="card-sub-${p.id}">$${subtotal.toFixed(2)}</span></div>
+          <div class="iva-line"><span>IVA 15 %</span><span id="card-iva-${p.id}">$${iva.toFixed(2)}</span></div>
+          <div class="total-line"><span>Total</span><span id="card-total-${p.id}">$${total.toFixed(2)}</span></div>
         </div>
         <div class="cajero-order-card__foot">
           <button class="btn-cobrar" data-pedido-id="${p.id}">Cobrado ✓</button>
@@ -394,9 +419,14 @@ window.VistaCajero = (function () {
           }
         }
         ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
-        if (ped.items[idx].cantidad <= 0) ped.items.splice(idx, 1);
+        if (ped.items[idx].cantidad <= 0) {
+          ped.items.splice(idx, 1);
+          SC.actualizarPedido(pid, ped.items);
+          renderCajeroView(); // ítem eliminado — necesita re-render estructural
+          return;
+        }
         SC.actualizarPedido(pid, ped.items);
-        renderCajeroView();
+        updatePedidoDisplay(pid, ped.items);
       }
     };
   }
