@@ -153,6 +153,9 @@
       .auth-field input { padding: .5rem .75rem; font-size: .88rem; }
       .auth-error { padding: .4rem .65rem; font-size: .78rem; margin-bottom: .5rem; }
       .btn-auth { padding: .6rem; font-size: .92rem; margin-top: .25rem; }
+      .field-error { min-height: .4rem; margin-top: .1rem; font-size: .7rem; }
+      .auth-field { margin-bottom: .15rem; }
+      .auth-field label { margin-bottom: .15rem; }
       /* grids de 2 columnas → 1 columna en móvil */
       #tab-register > div[style*="grid-template-columns"] {
         display: flex !important; flex-direction: column; gap: 0 !important;
