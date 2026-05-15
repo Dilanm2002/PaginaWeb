@@ -189,6 +189,7 @@ window.VistaMenu = (function () {
     modalBackdrop.classList.add('open');
     modalBackdrop.setAttribute('aria-hidden','false');
     document.body.style.overflow = 'hidden';
+    document.documentElement.style.overflow = 'hidden';
 
     document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
@@ -210,6 +211,7 @@ window.VistaMenu = (function () {
     modalBackdrop.classList.remove('open');
     modalBackdrop.setAttribute('aria-hidden','true');
     document.body.style.overflow = '';
+    document.documentElement.style.overflow = '';
   }
 
   /* ── Mesero ── */
