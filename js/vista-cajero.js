@@ -211,6 +211,7 @@ window.VistaCajero = (function () {
       inp.addEventListener('blur',  () => { inp.dataset.clearNext = ''; if (inp.value === '') inp.value = inp.dataset.prev || inp.dataset.original || '0'; });
       inp.addEventListener('input', () => {
         inp.dataset.clearNext = '';
+        if (inp.value.length > 3) inp.value = inp.value.slice(0, 3);
         const original = parseInt(inp.dataset.original) || 0;
         const nuevo    = parseInt(inp.value) || 0;
         inp.style.borderColor = nuevo > original ? '#16a34a' : nuevo < original ? '#dc2626' : '';
