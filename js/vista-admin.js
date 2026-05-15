@@ -140,7 +140,7 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-descripcion').value  = p?.descripcion ?? '';
     document.getElementById('pf-tag').value          = p?.tag         ?? '';
     document.getElementById('pf-destacado').checked  = p?.destacado   ?? false;
-    document.getElementById('pf-stock').value        = p ? SC.getStock(p.id).stock : 20;
+    document.getElementById('pf-stock').value        = p ? SC.getStock(p.id).stock : '';
     const ings = Array.isArray(p?.ingredientes) ? p.ingredientes.join(', ') : (p?.ingredientes || '');
     document.getElementById('pf-ingredientes').value = ings;
     document.getElementById('pf-imagen').value       = '';
@@ -301,16 +301,30 @@ window.VistaAdmin = (function () {
       const precio = parseFloat(document.getElementById('pf-precio').value);
       const errNombre = _validarNombre(nombre);
       if (errNombre)             { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
-      if (!precio || precio <= 0){ SC.toast('Precio inválido', 'error'); return; }
+      if (!precio || precio <= 0)    { SC.toast('Precio inválido', 'error'); return; }
+      if (precio > 99.99)            { SC.toast('El precio no puede superar $99.99', 'error'); return; }
       if (!_prodFormImgBase64)   { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
 
-      /* Verificar nombre duplicado (excluyendo el producto que se está editando) */
+      /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      const duplicado = SC.getProductosMergeados().find(p =>
+      const duplicadoLocal = SC.getProductosMergeados().find(p =>
         p.id !== (_prodFormEditId ?? -1) && normStr(p.nombre) === normStr(nombre)
       );
-      if (duplicado) {
-        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicado.nombre}".`);
+      if (duplicadoLocal) {
+        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoLocal.nombre}".`);
+        document.getElementById('pf-nombre').focus();
+        return;
+      }
+      /* Consulta directa a Supabase para detectar duplicados de otras sesiones */
+      const { data: dbRows } = await window.db.from('menu_items')
+        .select('plat_id, plat_nombre')
+        .ilike('plat_nombre', nombre);
+      const duplicadoDB = (dbRows || []).find(r =>
+        Number(r.plat_id) !== (_prodFormEditId ?? -1) &&
+        normStr(r.plat_nombre) === normStr(nombre)
+      );
+      if (duplicadoDB) {
+        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoDB.plat_nombre}".`);
         document.getElementById('pf-nombre').focus();
         return;
       }
