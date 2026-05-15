@@ -2108,6 +2108,23 @@
      INIT
   ══════════════════════════════════════════════════ */
 
+  /* ── Alturas sticky: mide header y buscador móvil para evitar gaps en cualquier dispositivo ── */
+  function actualizarAlturasStickyMovil() {
+    const header = document.querySelector('.site-header');
+    const search = document.getElementById('mobile-search-wrap');
+    if (!header) return;
+    const hH = header.getBoundingClientRect().height;
+    document.documentElement.style.setProperty('--header-h', hH + 'px');
+    if (search && getComputedStyle(search).display !== 'none') {
+      const sH = search.getBoundingClientRect().height;
+      document.documentElement.style.setProperty('--search-h', sH + 'px');
+    } else {
+      document.documentElement.style.removeProperty('--search-h');
+    }
+  }
+  actualizarAlturasStickyMovil();
+  window.addEventListener('resize', actualizarAlturasStickyMovil);
+
   /* ── Módulos externos ── */
   ModuloApp.registrarVisita();
   CarritoIDB.abrir().catch(function () {});

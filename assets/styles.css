@@ -1664,7 +1664,7 @@
 
       /* ── Buscador móvil (entre hero y filtros) — sticky en scroll ── */
       .mobile-search-wrap {
-        display: flex; align-items: center; position: sticky; top: 54px; z-index: 95;
+        display: flex; align-items: center; position: sticky; top: var(--header-h, 54px); z-index: 95;
         padding: .75rem 1rem; background: #2a1006;
         box-sizing: border-box; width: 100%; overflow: hidden;
         box-shadow: 0 2px 8px rgba(20,6,1,.35);
@@ -1708,8 +1708,8 @@
       .hero-search-wrap { max-width: 100%; }
       .menu-search { font-size: .88rem; padding: .65rem 1rem .65rem 2.6rem; }
       /* ── Filter bar ── */
-      /* top = header (54px) + buscador móvil sticky (~3.75rem ≈ 60px) */
-      .filter-bar-wrap { top: calc(54px + 3.75rem); }
+      /* top = altura real del header (JS → --header-h) + buscador móvil (JS → --search-h) */
+      .filter-bar-wrap { top: calc(var(--header-h, 54px) + var(--search-h, 3.75rem)); }
       .filter-bar { padding: .4rem .85rem; gap: .35rem; }
       .filter-btn { font-size: .73rem; padding: .3rem .7rem; white-space: nowrap; }
 
