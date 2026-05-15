@@ -177,7 +177,7 @@ window.VistaCajero = (function () {
                 </div>
                 <div class="stock-input-left">
                   <span class="stock-arrow">→</span>
-                  <input class="stock-input" type="number" min="0" value="${qty}" data-id="${p.id}" data-original="${qty}" aria-label="Nuevo stock de ${p.nombre}">
+                  <input class="stock-input" type="number" min="0" max="999" value="${qty}" data-id="${p.id}" data-original="${qty}" aria-label="Nuevo stock de ${p.nombre}">
                   <button class="stock-btn stock-btn--set" data-action="set" data-id="${p.id}">Guardar</button>
                 </div>
               </div>
@@ -386,6 +386,13 @@ window.VistaCajero = (function () {
         const peds   = SC.leerCaja();
         const ped    = peds.find(p => String(p.id) === String(pid));
         if (!ped || !Array.isArray(ped.items) || !ped.items[idx]) return;
+        if (action === 'inc') {
+          const s = SC.getStock(ped.items[idx].id);
+          if (ped.items[idx].cantidad >= s.stock) {
+            SC.toast(`Stock máximo: ${s.stock} unidades`, 'error');
+            return;
+          }
+        }
         ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
         if (ped.items[idx].cantidad <= 0) ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);

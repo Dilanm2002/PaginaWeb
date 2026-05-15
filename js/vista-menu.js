@@ -156,26 +156,8 @@ window.VistaMenu = (function () {
   /* ── Modal ingredientes ── */
   function abrirModalProducto(p) {
     const SC = window.SC;
-    const s        = SC.getStock(p.id);
-    const agotado  = !s.disponible || s.stock <= 0;
-    const session  = SC.getSession?.() ?? null;
-    const verStock = session && ['mesero','cajero','administrador'].includes(session.rol);
-    const stockHtml = agotado
-      ? `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:700;color:#c0392b;background:#fdf0f0;border:1px solid #f5c6c6;border-radius:999px;padding:.25rem .8rem;">
-           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></svg>
-           Agotado
-         </span>`
-      : verStock
-        ? (s.stock <= 5
-            ? `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:700;color:#92400e;background:#fffbeb;border:1px solid #fcd34d;border-radius:999px;padding:.25rem .8rem;">
-                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-                 Quedan ${s.stock} unidades
-               </span>`
-            : `<span style="display:inline-flex;align-items:center;gap:.35rem;font-size:.8rem;font-weight:600;color:#065f46;background:#ecfdf5;border:1px solid #6ee7b7;border-radius:999px;padding:.25rem .8rem;">
-                 <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
-                 ${s.stock} disponibles
-               </span>`)
-        : '';
+    const s       = SC.getStock(p.id);
+    const agotado = !s.disponible || s.stock <= 0;
 
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     const modalBox      = document.getElementById('product-modal-box');
@@ -183,6 +165,9 @@ window.VistaMenu = (function () {
       <div class="modal-img-wrap">
         <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
         <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy">
+        <button class="btn-modal-x" id="btn-cerrar-modal-x" aria-label="Cerrar">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
       </div>
       <div class="modal-body">
         <span class="modal-badge" data-cat="${p.categoria}">${p.categoria}</span>
@@ -191,10 +176,7 @@ window.VistaMenu = (function () {
         <p class="modal-ingredients-title">Ingredientes</p>
         <p class="modal-ingredients">${p.ingredientes.join(' &nbsp;·&nbsp; ')}</p>
         <div class="modal-footer">
-          <div style="display:flex;flex-direction:column;gap:.5rem;">
-            <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
-            ${stockHtml}
-          </div>
+          <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
             <button class="btn-modal-close" id="btn-cerrar-modal">Cerrar</button>
             <button class="btn-modal-add" data-id="${p.id}" ${agotado ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
@@ -208,6 +190,7 @@ window.VistaMenu = (function () {
     modalBackdrop.setAttribute('aria-hidden','false');
     document.body.style.overflow = 'hidden';
 
+    document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
       const s = SC.getStock(p.id);

@@ -226,10 +226,11 @@ window.VistaAdmin = (function () {
 
     const addDropZone = el => {
       if (!el) return;
-      el.addEventListener('dragover', e => { e.preventDefault(); el.style.opacity = '.65'; });
-      el.addEventListener('dragleave', () => { el.style.opacity = ''; });
+      el.addEventListener('dragover', e => { e.preventDefault(); el.style.outline = '2.5px dashed var(--cinnamon)'; el.style.opacity = '.85'; });
+      el.addEventListener('dragleave', e => { if (!el.contains(e.relatedTarget)) { el.style.outline = ''; el.style.opacity = ''; } });
       el.addEventListener('drop', async e => {
         e.preventDefault();
+        el.style.outline = '';
         el.style.opacity = '';
         await processFile(e.dataTransfer?.files?.[0]);
       });
@@ -301,6 +302,17 @@ window.VistaAdmin = (function () {
       if (errNombre)             { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
       if (!precio || precio <= 0){ SC.toast('Precio inválido', 'error'); return; }
       if (!_prodFormImgBase64)   { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
+
+      /* Verificar nombre duplicado (excluyendo el producto que se está editando) */
+      const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
+      const duplicado = SC.getProductosMergeados().find(p =>
+        p.id !== (_prodFormEditId ?? -1) && normStr(p.nombre) === normStr(nombre)
+      );
+      if (duplicado) {
+        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicado.nombre}".`);
+        document.getElementById('pf-nombre').focus();
+        return;
+      }
 
       const saveBtn = document.getElementById('btn-prod-save');
       saveBtn.disabled = true;

@@ -460,7 +460,7 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-stock">Stock inicial</label>
-              <input type="number" id="pf-stock" placeholder="20" min="0" step="1" value="20">
+              <input type="number" id="pf-stock" placeholder="20" min="0" max="999" step="1" value="20">
             </div>
             <div class="prod-form-group prod-form-full">
               <label>Imagen del plato</label>
@@ -1190,11 +1190,18 @@
     };
     const { error } = await db.from('menu_items').upsert(itemDB);
     if (error) { console.error('Supabase menu_items upsert:', error); return false; }
-    /* Asegurar fila de stock para productos nuevos */
+    /* Stock: crear para productos nuevos, actualizar para ediciones */
     if (!_stock[item.id]) {
       _stock[item.id] = { stock: stockInicial, disponible: stockInicial > 0 };
       const { error: errStock } = await db.from('productos').upsert({ prod_id: item.id, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
       if (errStock) console.error('Supabase productos upsert:', errStock);
+    } else {
+      const actualStock = _stock[item.id].stock;
+      if (stockInicial !== actualStock) {
+        const diff = stockInicial - actualStock;
+        if (diff > 0) await reponerStock(item.id, diff);
+        else          await actualizarStock(item.id, Math.abs(diff));
+      }
     }
     return true;
   }
