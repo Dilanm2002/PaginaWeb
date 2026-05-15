@@ -96,7 +96,7 @@
     .auth-form-panel { display: none; }
     .auth-form-panel.active { display: block; }
 
-    .auth-field { margin-bottom: .75rem; }
+    .auth-field { margin-bottom: .35rem; }
     .auth-field label {
       display: block; font-size: .78rem; font-weight: 600;
       color: var(--text-muted); margin-bottom: .35rem;
@@ -1793,9 +1793,9 @@
       .modal-img-wrap { height: 200px; border-radius: var(--radius) var(--radius) 0 0; }
       .modal-body { padding: 1rem; }
 
-      /* ── Hero: quitar padding extra para centrar la frase ── */
-      .hero { padding-top: 2.5rem; }
-      .hero .wrap { padding-bottom: 2rem; }
+      /* ── Hero: compacto en móvil, espacio simétrico para centrar la frase ── */
+      .hero { padding: 2.5rem 0; min-height: 0; }
+      .hero .wrap { padding-bottom: 0; }
     }
 
   /* ══════════════════════════════════════════════════
