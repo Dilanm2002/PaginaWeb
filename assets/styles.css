@@ -1826,8 +1826,7 @@
     border-radius: 18px;
     padding: 2rem 1.75rem;
     color: #fff;
-    position: sticky;
-    top: 5rem;
+    position: relative;
     overflow: hidden;
     isolation: isolate;
   }
@@ -2028,10 +2027,14 @@
     display: none;
   }
 
+  /* Sticky solo en desktop, en móvil queda estático */
+  @media (min-width: 769px) {
+    .contacto-info { position: sticky; top: 5rem; }
+  }
+
   /* ── Responsive contacto ── */
   @media (max-width: 768px) {
     .contacto-grid { grid-template-columns: 1fr; }
-    .contacto-info { position: relative; }
     .contacto-info::before,
     .contacto-info::after { display: none; }
     .cf-row { grid-template-columns: 1fr; }
