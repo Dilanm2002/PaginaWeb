@@ -2094,6 +2094,8 @@
         window.VistaMenu?.setMesaTarget(null);
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
+        const _mswM = document.getElementById('mobile-search-wrap');
+        if (_mswM) _mswM.style.display = 'none';
         // Mesero nunca ve el cajero-view — ocultar el botón toggle por si acaso
         const _btnVM = document.getElementById('btn-cajero-ver-menu');
         if (_btnVM) _btnVM.style.display = 'none';
@@ -2105,6 +2107,8 @@
         sessionStorage.setItem('sc_prev_rol', session.rol ?? 'invitado');
         document.querySelector('.filter-bar-wrap').style.display = '';
         document.querySelector('.hero').style.display = '';
+        const _mswU = document.getElementById('mobile-search-wrap');
+        if (_mswU) _mswU.style.display = '';
         grid.className = 'products-grid';
         grid.closest('section#menu').querySelector('.section-title').style.display = '';
         grid.innerHTML = Array.from({length:8}, () => `
