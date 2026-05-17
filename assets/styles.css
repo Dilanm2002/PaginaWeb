@@ -1784,16 +1784,12 @@
       .mesa-modal-head { padding: .85rem 1rem; }
       .mesa-modal-body { padding: 1rem; }
 
-      /* ── Modal ingredientes — bottom sheet en móvil ── */
-      .modal-backdrop { align-items: flex-end; padding: 0; }
+      /* ── Modal ingredientes — popup centrado en móvil ── */
       .modal-box {
-        max-width: 100%; width: 100%;
-        max-height: 92dvh;
-        border-radius: var(--radius) var(--radius) 0 0;
-        transform: translateY(40px);
+        max-width: calc(100vw - 2rem);
+        max-height: 88dvh;
       }
-      .modal-backdrop.open .modal-box { transform: translateY(0); }
-      .modal-img-wrap { height: 200px; border-radius: var(--radius) var(--radius) 0 0; }
+      .modal-img-wrap { height: 200px; }
       .modal-body { padding: 1rem; }
 
       /* ── Hero: sin padding en la sección ni en el wrap para centrar la frase ── */
