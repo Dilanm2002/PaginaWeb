@@ -723,7 +723,8 @@
   let _gastos    = [];
   let _stock     = {}; // { [productoId]: { stock, disponible } }
   let _menuItems = [];
-  const _pedidoUpdateTimers = {}; // productos gestionados por el admin (Supabase menu_items)
+  const _pedidoUpdateTimers = {}; // debounce timers para actualizarPedido
+  const _cobrando = new Set();    // IDs de pedidos en proceso de cobro (evita flash realtime)
 
   function _rowAPedido(r) {
     return {
@@ -785,7 +786,7 @@
         db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
         db.from('productos').select('prod_id, prod_stock, prod_disponible')
       ]);
-      if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido);
+      if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido).filter(p => !_cobrando.has(String(p.id)));
       if (!rHist.error)   _historial = (rHist.data   || []).map(_rowAPedido);
       if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ id: r.gast_id, descripcion: r.gast_descripcion, monto: Number(r.gast_monto), fecha: r.gast_fecha, hora: r.gast_hora, _dbId: r.gast_id }));
       if (!rStock.error) {
@@ -927,6 +928,10 @@
   }
 
   function cobrarPedido(id) {
+    clearTimeout(_pedidoUpdateTimers[id]);
+    delete _pedidoUpdateTimers[id];
+    _cobrando.add(String(id));
+    setTimeout(() => _cobrando.delete(String(id)), 5000);
     const cobrado = _caja.find(x => String(x.id) === String(id));
     if (cobrado) {
       const hoy    = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
