@@ -1655,6 +1655,14 @@
        RESPONSIVE
     ════════════════════════════════════════ */
 
+    /* ── Pantallas muy grandes (≥1600px): limitar que los elementos crezcan más ── */
+    @media (min-width: 1600px) {
+      .hero { padding-top: 4.5rem; }
+      .hero h1 { font-size: 3.2rem; }
+      .hero-desc { font-size: 1rem; }
+      .products-grid { grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); }
+    }
+
     /* Toasts más pequeños en móvil */
     @media (max-width: 768px) {
       .toast {
