@@ -110,7 +110,7 @@ window.VistaMenu = (function () {
       return `
       <article class="product-card${agotado ? ' product-card--agotado' : ''}" role="listitem" aria-label="${p.nombre}" style="animation-delay:${idx*0.05}s" data-id="${p.id}">
         <div class="product-card__img-wrap">
-          <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy">
+          <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450">
           <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
           ${stockBadge}
         </div>
@@ -164,7 +164,7 @@ window.VistaMenu = (function () {
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
         <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
-        <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy">
+        <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="eager" decoding="async" width="600" height="450">
         <button class="btn-modal-x" id="btn-cerrar-modal-x" aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
