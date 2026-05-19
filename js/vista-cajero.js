@@ -48,11 +48,6 @@ window.VistaCajero = (function () {
         <div class="resumen-kpi__lbl">Total vendido</div>
       </div>`;
 
-    if (!historial.length) {
-      tablaEl.innerHTML = `<p class="resumen-empty">No hay pedidos cobrados este día.</p>`;
-      return;
-    }
-
     const filas = [...historial].reverse();
     tablaEl.innerHTML = `
       <table class="resumen-tabla">
@@ -63,7 +58,7 @@ window.VistaCajero = (function () {
           </tr>
         </thead>
         <tbody>
-          ${filas.map(h => `
+          ${!filas.length ? `<tr><td colspan="6" class="resumen-empty" style="text-align:center;padding:.9rem 0">No hay pedidos cobrados este día.</td></tr>` : filas.map(h => `
             <tr>
               <td><strong>Mesa ${h.mesa}</strong></td>
               <td>${h.nombreUsuario}</td>
