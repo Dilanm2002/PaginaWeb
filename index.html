@@ -1267,12 +1267,13 @@
     const mesaAsignadaNum = document.getElementById('mesa-asignada-num');
 
     // ¿El usuario ya tiene un pedido pendiente en esta sesión?
-    const pedidoPrevio = (session && session.rol !== 'invitado' && session.usuario)
+    // El mesero siempre ingresa la mesa manualmente — no se auto-asigna
+    const pedidoPrevio = (session && session.rol !== 'invitado' && session.rol !== 'mesero' && session.usuario)
       ? leerCaja().find(p => p.idUsuario === session.usuario)
       : null;
 
     if (meseroMesaTarget) {
-      // Mesero con mesa activa seleccionada
+      // Mesero con mesa activa seleccionada desde mesas activas
       mesaInput.value    = meseroMesaTarget.mesa;
       mesaInput.readOnly = true;
       campoMesa.style.display       = '';
