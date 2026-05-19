@@ -990,10 +990,16 @@
         const esMio = (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
                       (!session?.usuario && pedOcupado.rol === 'invitado');
         if (!esMio) {
-          err.textContent = `Mesa ${num} ya está ocupada`;
-          err.style.display = 'block';
-          mesaInput.style.borderColor = '#f59e0b';
-          return;
+          if (session?.rol === 'mesero') {
+            err.textContent = `Mesa ${num} ya tiene un pedido activo — tus ítems se agregarán a él`;
+            err.style.display = 'block';
+            mesaInput.style.borderColor = '#f59e0b';
+          } else {
+            err.textContent = `Mesa ${num} ya está ocupada`;
+            err.style.display = 'block';
+            mesaInput.style.borderColor = '#f59e0b';
+            return;
+          }
         }
       }
     }
@@ -1424,7 +1430,7 @@
         (idUsuario && pedidoExistente.idUsuario && pedidoExistente.idUsuario === idUsuario) ||
         (!idUsuario && !pedidoExistente.idUsuario && pedidoExistente.nombreUsuario === nombreUsuario && pedidoExistente.rol === 'invitado' && rol === 'invitado');
 
-      if (!mismaPersona) {
+      if (!mismaPersona && rol !== 'mesero') {
         mesaInput.style.borderColor = '#dc2626';
         const mesaErrEl2 = document.getElementById('mesa-input-error');
         if (mesaErrEl2) {
