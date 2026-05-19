@@ -125,10 +125,7 @@ window.VistaCajero = (function () {
         <div class="gastos-kpi__val ${ganancia >= 0 ? 'green' : 'red'}">$${ganancia.toFixed(2)}</div>
       </div>`;
 
-    if (!gastos.length) {
-      listaEl.innerHTML = `<p class="gastos-empty">No hay gastos registrados este día.</p>`;
-      return;
-    }
+    const gastosRev = [...gastos].reverse();
     listaEl.innerHTML = `
       <table class="gastos-tabla">
         <thead>
@@ -138,7 +135,9 @@ window.VistaCajero = (function () {
           </tr>
         </thead>
         <tbody>
-          ${[...gastos].reverse().map(g => `
+          ${!gastosRev.length
+            ? `<tr><td colspan="5" class="gastos-empty" style="text-align:center;padding:.9rem 0">No hay gastos registrados este día.</td></tr>`
+            : gastosRev.map(g => `
             <tr>
               <td class="td-desc">${g.descripcion}</td>
               <td class="td-hora">${g.fecha}</td>

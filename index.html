@@ -150,7 +150,6 @@
           <div class="user-chip__avatar" id="user-avatar">?</div>
           <div class="user-chip__info">
             <span class="user-chip__name" id="user-name">—</span>
-            <span class="user-chip__rol"  id="user-rol">—</span>
           </div>
         </div>
 
@@ -995,7 +994,6 @@
   const userChip        = document.getElementById('user-chip');
   const userAvatar      = document.getElementById('user-avatar');
   const userName        = document.getElementById('user-name');
-  const userRol         = document.getElementById('user-rol');
   const btnLogout       = document.getElementById('btn-logout');
 
   /* ══════════════════════════════════════════════════
@@ -1449,6 +1447,7 @@
     renderCarrito();
     window.VistaCajero?.renderCajeroView();
     window.VistaMenu?.renderMesasActivas();
+    if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
     /* Actualizar badges de stock en la grilla inmediatamente */
     if (rol === 'mesero') {
       window.VistaMenu?.renderProductosMesero();
@@ -1990,7 +1989,6 @@
       userAvatar.textContent  = session.nombre.charAt(0).toUpperCase();
       userAvatar.className    = `user-chip__avatar ${session.rol}`;
       userName.textContent    = session.nombre;
-      userRol.textContent     = ROL_LABEL[session.rol] ?? session.rol;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
       if (btnMiPerfil) btnMiPerfil.style.display = 'none';
@@ -2292,6 +2290,7 @@
       window.VistaCajero?.renderCajeroView();
       window.VistaMenu?.renderMesasActivas();
       window.VistaAdmin?.renderAdminView();
+      if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
     };
 
     db.channel('realtime-pedidos')
