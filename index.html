@@ -747,6 +747,41 @@
 
   const _PED_SELECT = 'ped_id, ped_mesa, ped_estado, ped_id_usuario, ped_nombre_usuario, ped_rol, ped_hora, ped_fecha, ped_items, ped_total, ped_iva, ped_subtotal, ped_cobrado_en, ped_created_at';
 
+  async function _migrarProductosJSON() {
+    const enDB = new Set(_menuItems.map(m => m.id));
+    const pendientes = (window.PRODUCTOS ?? []).filter(p => !enDB.has(p.id));
+    if (!pendientes.length) return;
+
+    const rows = pendientes.map(p => ({
+      plat_id:           p.id,
+      plat_nombre:       p.nombre,
+      plat_categoria:    p.categoria,
+      plat_descripcion:  p.descripcion ?? '',
+      plat_precio:       p.precio,
+      plat_ingredientes: Array.isArray(p.ingredientes) ? p.ingredientes : [],
+      plat_tag:          p.tag ?? '',
+      plat_imagen:       p.imagen ?? '',
+      plat_destacado:    p.destacado === true,
+      plat_activo:       true,
+      plat_codigo:       _generarCodigo(p.categoria, p.id)
+    }));
+
+    const { error } = await db.from('menu_items').upsert(rows);
+    if (error) { console.error('Auto-migración menu_items:', error); return; }
+
+    pendientes.forEach(p => {
+      _menuItems.push({ id: p.id, nombre: p.nombre, categoria: p.categoria, descripcion: p.descripcion ?? '', precio: p.precio, ingredientes: Array.isArray(p.ingredientes) ? p.ingredientes : [], tag: p.tag ?? '', imagen: p.imagen ?? '', destacado: p.destacado === true, activo: true, codigo: _generarCodigo(p.categoria, p.id) });
+    });
+    localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
+
+    const sinStock = pendientes.filter(p => !_stock[p.id]);
+    if (sinStock.length) {
+      const stockRows = sinStock.map(p => ({ prod_id: p.id, prod_nombre: p.nombre, prod_stock: 20, prod_disponible: true }));
+      const { error: errStock } = await db.from('productos').upsert(stockRows);
+      if (!errStock) sinStock.forEach(p => { _stock[p.id] = { stock: 20, disponible: true }; });
+    }
+  }
+
   async function inicializarDB() {
     try {
       const [rCaja, rHist, rGastos, rStock, rMenu] = await Promise.all([
@@ -767,6 +802,7 @@
       } else {
         _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado === true, activo: r.plat_activo, codigo: r.plat_codigo }));
         localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
+        await _migrarProductosJSON();
       }
     } catch(e) {
       console.warn('Supabase no disponible, usando localStorage como fallback', e);
@@ -800,18 +836,11 @@
     }
   }
 
-  /* Devuelve la lista completa de productos (base JSON + overrides/nuevos del admin) */
+  /* Devuelve la lista de productos activos desde Supabase (fuente única de verdad) */
   function getProductosMergeados() {
-    const overrides = {};
-    const extras = [];
-    _menuItems.forEach(m => {
-      if (m.id <= 99) overrides[m.id] = m;
-      else if (m.activo !== false) extras.push({ ...m, ingredientes: Array.isArray(m.ingredientes) ? m.ingredientes : (m.ingredientes || []) });
-    });
-    const base = ModuloRepositorio.todos()
-      .filter(p => !overrides[p.id] || overrides[p.id].activo !== false)
-      .map(p => overrides[p.id] ? { ...p, ...overrides[p.id], ingredientes: Array.isArray(overrides[p.id].ingredientes) ? overrides[p.id].ingredientes : (overrides[p.id].ingredientes || p.ingredientes) } : p);
-    return [...base, ...extras];
+    return _menuItems
+      .filter(m => m.activo !== false)
+      .map(m => ({ ...m, ingredientes: Array.isArray(m.ingredientes) ? m.ingredientes : (m.ingredientes || []) }));
   }
 
   function getStock(productoId) {
