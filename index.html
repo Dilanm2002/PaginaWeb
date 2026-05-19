@@ -1137,7 +1137,8 @@
 
   const _CAT_PREFIX = {
     'Desayunos': 'DES', 'Almuerzos': 'ALM', 'Platos Fuertes': 'PLA',
-    'Bebidas': 'BEB', 'Postres': 'POS', 'Entradas': 'ENT', 'Sopas': 'SOP'
+    'Bebidas Calientes': 'BEV', 'Bebidas Frías': 'BEF', 'Postres': 'POS',
+    'Entradas': 'ENT', 'Bocaditos': 'BOC', 'Sopas': 'SOP'
   };
   function _generarCodigo(categoria, id) {
     const prefix = _CAT_PREFIX[categoria] || categoria?.slice(0,3).toUpperCase() || 'PLT';
