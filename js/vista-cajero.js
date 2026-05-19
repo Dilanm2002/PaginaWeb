@@ -62,7 +62,7 @@ window.VistaCajero = (function () {
             <tr>
               <td><strong>Mesa ${h.mesa}</strong></td>
               <td>${h.nombreUsuario}</td>
-              <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${i.nombre}`).join(', ') : '—'}</td>
+              <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${i.nombre}`).join('<br>') : '—'}</td>
               <td class="td-hora">${h.fecha}</td>
               <td class="td-hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</td>
               <td class="td-total">$${h.total.toFixed(2)}</td>
