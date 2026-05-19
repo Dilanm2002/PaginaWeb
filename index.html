@@ -327,6 +327,11 @@
             </svg>
             Ventas del Día
           </div>
+          <div class="resumen-fecha-nav">
+            <button class="btn-fecha-nav" id="btn-dia-ant" aria-label="Día anterior">‹</button>
+            <span id="resumen-fecha-label">Hoy</span>
+            <button class="btn-fecha-nav" id="btn-dia-sig" aria-label="Día siguiente" disabled>›</button>
+          </div>
           <div class="resumen-kpis" id="resumen-kpis"></div>
           <div id="resumen-tabla-wrap"></div>
         </div>
@@ -1368,7 +1373,6 @@
         window.VistaCajero?.renderCajeroView();
         const mesaNum = meseroMesaTarget.mesa;
         window.VistaMenu?.setMesaTarget(null);
-        window.VistaMenu?.setMesaTarget(null);
         window.VistaMenu?.renderMesasActivas();
         cerrarModalMesa();
         cerrarCarrito();
@@ -2027,7 +2031,6 @@
         _btnVM.style.cssText = 'background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)';
       }
       window.VistaCajero?.renderCajeroView();
-      if (aplicarSesion._cajeroInterval) clearInterval(aplicarSesion._cajeroInterval);
     } else {
       // Mesero / usuario / invitado
       if (adminView) adminView.classList.remove('visible');

@@ -681,8 +681,25 @@
     }
     .resumen-dia__title {
       font-size: 1.1rem; font-weight: 700; color: var(--brown-dark);
-      margin-bottom: 1.25rem; display: flex; align-items: center; gap: .5rem;
+      margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem;
     }
+    .resumen-fecha-nav {
+      display: flex; align-items: center; justify-content: center;
+      gap: .75rem; margin-bottom: 1.25rem;
+    }
+    #resumen-fecha-label {
+      font-weight: 700; font-size: .9rem; color: var(--brown-dark);
+      min-width: 110px; text-align: center;
+    }
+    .btn-fecha-nav {
+      background: var(--cream-dk); border: 1.5px solid var(--border);
+      color: var(--brown-dark); border-radius: var(--radius-sm);
+      width: 30px; height: 30px; cursor: pointer; font-size: 1.1rem; line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      transition: background .15s, border-color .15s;
+    }
+    .btn-fecha-nav:hover:not(:disabled) { background: var(--cinnamon); color: #fff; border-color: var(--cinnamon); }
+    .btn-fecha-nav:disabled { opacity: .35; cursor: default; }
 
     /* ── Control de Gastos / Stock ── */
     .gastos-section {

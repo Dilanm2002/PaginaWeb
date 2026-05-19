@@ -5,10 +5,32 @@
  */
 window.VistaCajero = (function () {
 
+  const MAX_STOCK = 20;
+  let _diaOffset = 0;
+
+  function _getFecha(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
+  }
+
+  function _getLabelFecha(offset) {
+    if (offset === 0)  return 'Hoy';
+    if (offset === -1) return 'Ayer';
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d.toLocaleDateString('es-EC', { weekday:'short', day:'2-digit', month:'short' });
+  }
+
   function renderResumenDia() {
     const SC = window.SC;
-    const hoy = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
-    const historial = SC.leerHistorial().filter(h => h.fecha === hoy);
+    const fecha = _getFecha(_diaOffset);
+    const historial = SC.leerHistorial().filter(h => h.fecha === fecha);
+
+    const labelEl = document.getElementById('resumen-fecha-label');
+    const btnSig  = document.getElementById('btn-dia-sig');
+    if (labelEl) labelEl.textContent = _getLabelFecha(_diaOffset);
+    if (btnSig)  btnSig.disabled = _diaOffset >= 0;
     const kpisEl  = document.getElementById('resumen-kpis');
     const tablaEl = document.getElementById('resumen-tabla-wrap');
     if (!kpisEl || !tablaEl) return;
@@ -23,11 +45,11 @@ window.VistaCajero = (function () {
       </div>
       <div class="resumen-kpi">
         <div class="resumen-kpi__val">$${totalVentas.toFixed(2)}</div>
-        <div class="resumen-kpi__lbl">Total vendido hoy</div>
+        <div class="resumen-kpi__lbl">Total vendido</div>
       </div>`;
 
     if (!historial.length) {
-      tablaEl.innerHTML = `<p class="resumen-empty">Aún no se han cobrado pedidos hoy.</p>`;
+      tablaEl.innerHTML = `<p class="resumen-empty">No hay pedidos cobrados este día.</p>`;
       return;
     }
 
@@ -79,9 +101,12 @@ window.VistaCajero = (function () {
 
   function renderGastos() {
     const SC = window.SC;
-    const hoy = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
-    const gastos    = SC.leerGastos().filter(g => g.fecha === hoy);
-    const historial = SC.leerHistorial().filter(h => h.fecha === hoy);
+    const fecha = _getFecha(_diaOffset);
+    const gastos    = SC.leerGastos().filter(g => g.fecha === fecha);
+    const historial = SC.leerHistorial().filter(h => h.fecha === fecha);
+
+    const formEl = document.querySelector('.gastos-form');
+    if (formEl) formEl.style.display = _diaOffset !== 0 ? 'none' : '';
 
     const totalVentas = historial.reduce((s,h) => s + h.total, 0);
     const totalGastos = gastos.reduce((s,g) => s + g.monto, 0);
@@ -106,7 +131,7 @@ window.VistaCajero = (function () {
       </div>`;
 
     if (!gastos.length) {
-      listaEl.innerHTML = `<p class="gastos-empty">No hay gastos registrados hoy.</p>`;
+      listaEl.innerHTML = `<p class="gastos-empty">No hay gastos registrados este día.</p>`;
       return;
     }
     listaEl.innerHTML = `
@@ -144,7 +169,6 @@ window.VistaCajero = (function () {
     const listaEl = document.getElementById('stock-lista');
     if (!listaEl) return;
     const productos = SC.getProductosMergeados();
-    const MAX_STOCK = 20;
 
     const cats = [...new Set(productos.map(p => p.categoria))];
 
@@ -246,7 +270,6 @@ window.VistaCajero = (function () {
         else if (diff < 0) await SC.actualizarStock(id, Math.abs(diff));
 
         // Actualizar solo la fila en el DOM sin re-renderizar la lista completa
-        const MAX_STOCK = 20;
         const esCero = nuevo <= 0;
         const esBajo = !esCero && nuevo <= 5;
         const pct    = Math.min(100, Math.round((nuevo / MAX_STOCK) * 100));
@@ -433,6 +456,15 @@ window.VistaCajero = (function () {
   }
 
   function init() {
+    document.getElementById('btn-dia-ant')?.addEventListener('click', () => {
+      _diaOffset--;
+      renderResumenDia();
+      renderGastos();
+    });
+    document.getElementById('btn-dia-sig')?.addEventListener('click', () => {
+      if (_diaOffset < 0) { _diaOffset++; renderResumenDia(); renderGastos(); }
+    });
+
     const addGastoBtn = document.getElementById('btn-add-gasto');
     if (addGastoBtn) {
       addGastoBtn.addEventListener('click', async () => {
