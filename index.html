@@ -2341,7 +2341,12 @@
           title.setAttribute('aria-expanded', 'true');
           title.nextElementSibling?.classList.remove('hidden');
         });
-        window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(ModuloApp.getFiltroSesion()));
+        const _rolStock = ModuloAutenticacion.getSession()?.rol;
+        if (_rolStock === 'mesero') {
+          window.VistaMenu?.renderProductosMesero?.();
+        } else {
+          window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(ModuloApp.getFiltroSesion()));
+        }
       })
       .subscribe();
   }
