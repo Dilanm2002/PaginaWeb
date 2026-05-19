@@ -1029,7 +1029,7 @@
     .gastos-tabla td { padding: .5rem .85rem; border-bottom: 1px solid var(--border); }
     .gastos-tabla tr:last-child td { border-bottom: none; }
     .gastos-tabla tr:nth-child(even) td { background: var(--cream); }
-    .gastos-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; }
+    .gastos-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
     .gastos-tabla .td-monto { font-weight: 700; color: #dc2626; text-align: right; }
     .gastos-tabla .td-del   { width: 32px; text-align: center; }
     .gasto-del-btn {
@@ -1085,7 +1085,7 @@
     .resumen-tabla tr:last-child td { border-bottom: none; }
     .resumen-tabla tr:nth-child(even) td { background: var(--cream); }
     .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; }
-    .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; }
+    .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
     .resumen-cards { display: none; flex-direction: column; gap: .75rem; }
     .resumen-card {
