@@ -298,17 +298,7 @@ window.VistaMenu = (function () {
             meseroMesaTarget = { id: pid, mesa };
           }
           renderMesasActivas();
-          let fuente = [];
-          if (meseroMesaTarget) {
-            const p2 = SC.leerCaja().find(p => String(p.id) === String(meseroMesaTarget.id));
-            fuente = p2 ? p2.items : [];
-          } else {
-            fuente = LogicaCarrito.leerCarrito();
-          }
-          SC.getProductosMergeados().forEach(prod => {
-            const el = document.getElementById(`mqty-${prod.id}`);
-            if (el) { const it = fuente.find(x => x.id === prod.id); el.textContent = it ? it.cantidad : 0; }
-          });
+          syncQtys();
         });
       });
     }
@@ -381,30 +371,30 @@ window.VistaMenu = (function () {
             <span class="mesero-cat-chevron">▾</span>
           </div>
           <div class="mesero-list">
-            ${prods.map(p => `
-              <div class="mesero-row" data-id="${p.id}">
-                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}</span>
+            ${prods.map(p => {
+                const _s = SC.getStock(p.id);
+                const _agotado = !_s.disponible || _s.stock <= 0;
+                const _stockColor = _s.stock <= 0 ? '#dc2626' : _s.stock <= 5 ? '#d97706' : '#16a34a';
+                const _stockTxt = _s.stock <= 0 ? 'Agotado' : `${_s.stock} en stock`;
+                return `
+              <div class="mesero-row${_agotado ? ' mesero-row--agotado' : ''}" data-id="${p.id}">
+                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_agotado ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>' : ''}</span>
                 <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.join(' · ')}
-                    ${(() => {
-                      const s = SC.getStock(p.id);
-                      const qty = s.stock;
-                      const color = qty <= 0 ? '#dc2626' : qty <= 5 ? '#d97706' : '#16a34a';
-                      const txt   = qty <= 0 ? 'Agotado' : `${qty} en stock`;
-                      return `<span style="display:block;margin-top:.4rem;font-weight:700;color:${color};font-size:.75rem;">${txt}</span>`;
-                    })()}
+                    <span style="display:block;margin-top:.4rem;font-weight:700;color:${_stockColor};font-size:.75rem;">${_stockTxt}</span>
                   </div>
                 </button>
                 <div class="mesero-qty">
                   <button class="mesero-qty__btn dec" data-id="${p.id}" aria-label="Quitar uno de ${p.nombre}">−</button>
                   <span class="mesero-qty__val" id="mqty-${p.id}">0</span>
-                  <button class="mesero-qty__btn add" data-id="${p.id}" aria-label="Agregar ${p.nombre}">+</button>
+                  <button class="mesero-qty__btn add" data-id="${p.id}" aria-label="Agregar ${p.nombre}"${_agotado ? ' disabled style="opacity:.4;cursor:not-allowed;"' : ''}>+</button>
                 </div>
-              </div>`).join('')}
+              </div>`;
+              }).join('')}
           </div>
         </div>`;
     }).join('');
