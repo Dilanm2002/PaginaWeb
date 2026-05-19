@@ -8,6 +8,34 @@ window.VistaAdmin = (function () {
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
 
+  const _CATS_ORDER = ['Desayunos','Entradas','Almuerzos','Postres','Bocaditos','Bebidas Calientes','Bebidas Frías','Platos Fuertes'];
+  const _IMG_FALLBACK = "this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
+
+  function _renderAdminCard(p) {
+    const SC = window.SC;
+    const s = SC.getStock(p.id);
+    const agotado = !s.disponible || s.stock <= 0;
+    const esNuevo = p.id >= 100;
+    return `
+    <div class="admin-card-wrap${agotado ? ' admin-card-inactive' : ''}" data-id="${p.id}">
+      <article class="product-card" role="listitem" aria-label="${p.nombre}">
+        <div class="product-card__img-wrap">
+          <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
+          ${p.destacado ? '<span class="admin-badge-dest">★</span>' : ''}
+          ${esNuevo ? '<span class="admin-badge-nuevo">Nuevo</span>' : ''}
+        </div>
+        <div class="product-card__body">
+          <h3 class="product-card__name">${p.nombre}</h3>
+          <p class="product-card__price">$${Number(p.precio).toFixed(2)} <small>USD</small></p>
+        </div>
+      </article>
+      <div class="admin-card-overlay">
+        <button class="btn-admin-card btn-admin-card--edit" data-action="editar"   data-id="${p.id}">✏️ Editar</button>
+        <button class="btn-admin-card btn-admin-card--del"  data-action="eliminar" data-id="${p.id}">🗑 Eliminar</button>
+      </div>
+    </div>`;
+  }
+
   function renderAdminView() {
     const SC = window.SC;
     const adminView = document.getElementById('admin-view');
@@ -22,29 +50,16 @@ window.VistaAdmin = (function () {
 
     const grid = document.getElementById('admin-productos-grid');
     if (!grid) return;
-    grid.innerHTML = todos.map(p => {
-      const s      = SC.getStock(p.id);
-      const agotado = !s.disponible || s.stock <= 0;
-      const esNuevo = p.id >= 100;
-      return `
-      <div class="admin-card-wrap${agotado ? ' admin-card-inactive' : ''}" data-id="${p.id}">
-        <article class="product-card" role="listitem" aria-label="${p.nombre}">
-          <div class="product-card__img-wrap">
-            <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'">
-            <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
-            ${esNuevo ? '<span class="stock-badge" style="background:#065f46;color:#fff;right:.5rem;top:.5rem;position:absolute;border-radius:999px;padding:.2rem .65rem;font-size:.72rem;font-weight:700;">Nuevo</span>' : ''}
-          </div>
-          <div class="product-card__body">
-            <h3 class="product-card__name">${p.nombre}</h3>
-            <p class="product-card__price">$${Number(p.precio).toFixed(2)} <small>USD</small></p>
-          </div>
-        </article>
-        <div class="admin-card-overlay">
-          <button class="btn-admin-card btn-admin-card--edit" data-action="editar"   data-id="${p.id}">✏️ Editar</button>
-          <button class="btn-admin-card btn-admin-card--del"  data-action="eliminar" data-id="${p.id}">🗑 Eliminar</button>
-        </div>
-      </div>`;
-    }).join('');
+
+    const porCat = {};
+    todos.forEach(p => { if (!porCat[p.categoria]) porCat[p.categoria] = []; porCat[p.categoria].push(p); });
+    const cats = _CATS_ORDER.filter(c => porCat[c]).concat(Object.keys(porCat).filter(c => !_CATS_ORDER.includes(c) && porCat[c]));
+
+    grid.innerHTML = cats.map(cat => `
+      <div class="admin-cat-section">
+        <h3 class="admin-cat-title">${cat} <span class="admin-cat-count">${porCat[cat].length}</span></h3>
+        <div class="admin-cat-grid">${porCat[cat].map(_renderAdminCard).join('')}</div>
+      </div>`).join('');
 
     grid.onclick = async e => {
       const btn = e.target.closest('[data-action]');
@@ -331,6 +346,7 @@ window.VistaAdmin = (function () {
 
       const saveBtn = document.getElementById('btn-prod-save');
       saveBtn.disabled = true;
+      saveBtn.textContent = 'Guardando…';
 
       const id            = _prodFormEditId ?? SC.nextMenuId();
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
@@ -353,6 +369,7 @@ window.VistaAdmin = (function () {
 
       await SC.guardarMenuItemDB(item);
       saveBtn.disabled = false;
+      saveBtn.textContent = 'Guardar';
       cerrarFormProducto();
       renderAdminView();
       const cat = SC.getFiltroSesion();

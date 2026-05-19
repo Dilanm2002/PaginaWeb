@@ -790,6 +790,35 @@
     .btn-admin-card--del:hover  { background: #b91c1c; }
     .admin-card-inactive .product-card { opacity: .4; }
 
+    /* ── Admin — categorías ── */
+    #admin-productos-grid { display: block; }
+    .admin-cat-section { margin-bottom: 2rem; }
+    .admin-cat-title {
+      font-size: .95rem; font-weight: 700; color: var(--brown-dark);
+      margin-bottom: .75rem; padding-bottom: .4rem;
+      border-bottom: 2px solid var(--cinnamon);
+      display: flex; align-items: center; gap: .5rem;
+    }
+    .admin-cat-count {
+      font-size: .75rem; background: var(--cinnamon); color: #fff;
+      border-radius: 999px; padding: .1rem .5rem; font-weight: 600;
+    }
+    .admin-cat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: .75rem;
+    }
+    .admin-badge-dest {
+      position: absolute; left: .5rem; top: .5rem;
+      background: #92400e; color: #fff; border-radius: 999px;
+      padding: .15rem .55rem; font-size: .65rem; font-weight: 700; z-index: 2;
+    }
+    .admin-badge-nuevo {
+      position: absolute; right: .5rem; top: .5rem;
+      background: #065f46; color: #fff; border-radius: 999px;
+      padding: .15rem .55rem; font-size: .65rem; font-weight: 700; z-index: 2;
+    }
+
     /* ── Mensajes de contacto (admin) ── */
     .admin-msg-card {
       background: #fff; border: 1px solid var(--border); border-left: 4px solid var(--cinnamon);

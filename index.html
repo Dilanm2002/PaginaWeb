@@ -765,7 +765,7 @@
       if (rMenu.error) {
         try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
       } else {
-        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado, activo: r.plat_activo, codigo: r.plat_codigo }));
+        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado === true, activo: r.plat_activo, codigo: r.plat_codigo }));
         localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
       }
     } catch(e) {
