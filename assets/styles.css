@@ -458,7 +458,7 @@
     .product-card {
       background: var(--white); border-radius: var(--radius);
       box-shadow: var(--shadow); overflow: hidden;
-      display: flex; flex-direction: column;
+      display: flex; flex-direction: column; height: 100%;
       transition: transform .25s, box-shadow .25s;
       animation: fadeUp .4s both; cursor: pointer;
     }
@@ -802,10 +802,10 @@
     }
     .btn-agregar-producto:hover { background: var(--brown-mid); }
     /* ── Admin — tarjetas ── */
-    .admin-card-wrap { position: relative; }
+    .admin-card-wrap { position: relative; display: flex; flex-direction: column; }
     .admin-card-wrap .product-card {
       pointer-events: auto; opacity: 1; cursor: default;
-      transition: transform .2s, box-shadow .2s;
+      transition: transform .2s, box-shadow .2s; flex: 1;
     }
     .admin-card-wrap:hover .product-card { transform: translateY(-3px); box-shadow: 0 8px 28px rgba(59,26,8,.18); }
 
@@ -813,7 +813,7 @@
     .admin-card-wrap .product-card__img-wrap { height: 115px; }
     .admin-card-wrap .product-card__img-wrap::after { display: none; }
     .admin-card-wrap .product-card__body { padding: .55rem .75rem .4rem; }
-    .admin-card-wrap .product-card__name { font-size: .8rem; margin-bottom: .15rem; line-height: 1.35; }
+    .admin-card-wrap .product-card__name { font-size: .8rem; margin-bottom: .15rem; line-height: 1.35; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
     .admin-card-wrap .product-card__price { font-size: .95rem; margin-top: .25rem; }
     .admin-card-wrap .product-card__footer { display: none; }
 
