@@ -151,7 +151,7 @@ window.VistaAdmin = (function () {
     document.getElementById('prod-form-title').textContent = p ? 'Editar Producto' : 'Agregar Producto';
     document.getElementById('pf-nombre').value       = p?.nombre      ?? '';
     document.getElementById('pf-categoria').value    = p?.categoria   ?? 'Desayunos';
-    document.getElementById('pf-precio').value       = p?.precio      ?? '';
+    document.getElementById('pf-precio').value       = p?.precio != null ? (+p.precio).toFixed(2) : '';
     document.getElementById('pf-descripcion').value  = p?.descripcion ?? '';
     document.getElementById('pf-tag').value          = p?.tag         ?? '';
     document.getElementById('pf-destacado').checked  = p?.destacado   ?? false;
@@ -310,7 +310,7 @@ window.VistaAdmin = (function () {
     document.getElementById('btn-prod-save').addEventListener('click', async () => {
       const SC     = window.SC;
       const nombre = document.getElementById('pf-nombre').value.trim();
-      const precio = parseFloat(document.getElementById('pf-precio').value);
+      const precio = Math.round(parseFloat(document.getElementById('pf-precio').value) * 100) / 100;
       const errNombre = _validarNombre(nombre);
       if (errNombre)             { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
       if (!precio || precio <= 0)    { SC.toast('Precio inválido', 'error'); return; }
