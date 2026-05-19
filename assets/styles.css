@@ -1084,7 +1084,7 @@
     .resumen-tabla td { padding: .5rem .85rem; border-bottom: 1px solid var(--border); vertical-align: top; }
     .resumen-tabla tr:last-child td { border-bottom: none; }
     .resumen-tabla tr:nth-child(even) td { background: var(--cream); }
-    .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; }
+    .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; vertical-align: top; white-space: nowrap; }
     .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
     .resumen-cards { display: none; flex-direction: column; gap: .75rem; }
