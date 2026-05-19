@@ -305,9 +305,6 @@ window.VistaAdmin = (function () {
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
-    document.getElementById('prod-form-backdrop').addEventListener('click', e => {
-      if (e.target === document.getElementById('prod-form-backdrop')) cerrarFormProducto();
-    });
     document.getElementById('btn-agregar-producto').addEventListener('click', () => abrirFormProducto(null));
 
     document.getElementById('btn-prod-save').addEventListener('click', async () => {
