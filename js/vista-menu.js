@@ -387,7 +387,7 @@ window.VistaMenu = (function () {
           <div class="mesero-list">
             ${prods.map(p => `
               <div class="mesero-row" data-id="${p.id}">
-                <span class="mesero-row__name">${p.nombre}</span>
+                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}</span>
                 <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i

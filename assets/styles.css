@@ -857,7 +857,7 @@
     }
     .admin-badge-dest {
       position: absolute; left: .4rem; top: .4rem;
-      background: rgba(146,64,14,.9); color: #fff; border-radius: 999px;
+      background: rgba(234,179,8,.9); color: #fff; border-radius: 999px;
       padding: .12rem .45rem; font-size: .6rem; font-weight: 700; z-index: 2;
       backdrop-filter: blur(4px);
     }
@@ -1278,9 +1278,13 @@
     .mesero-row.has-qty {
       border-left-color: var(--cinnamon); background: #fef9f5;
     }
-    .mesero-row__name { flex: 1; font-size: .9rem; font-weight: 600; color: var(--brown-dark); }
+    .mesero-row__name { flex: 1; font-size: .9rem; font-weight: 600; color: var(--brown-dark); display: flex; align-items: center; gap: .4rem; flex-wrap: wrap; }
     .mesero-row.has-qty .mesero-row__name { color: var(--cinnamon); }
     .mesero-row__price { font-size: .88rem; font-weight: 700; color: var(--cinnamon); min-width: 50px; text-align: right; }
+    .mesero-badge-nuevo {
+      background: #059669; color: #fff;
+      border-radius: 999px; padding: .1rem .45rem; font-size: .65rem; font-weight: 700;
+    }
 
     /* Botón info ingredientes */
     .mesero-info-btn {
