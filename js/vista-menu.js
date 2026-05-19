@@ -318,11 +318,7 @@ window.VistaMenu = (function () {
       btnCancel.onclick = () => {
         meseroMesaTarget = null;
         renderMesasActivas();
-        const carrito = LogicaCarrito.leerCarrito();
-        SC.getProductosMergeados().forEach(prod => {
-          const el = document.getElementById(`mqty-${prod.id}`);
-          if (el) { const it = carrito.find(x => x.id === prod.id); el.textContent = it ? it.cantidad : 0; }
-        });
+        syncQtys();
       };
     }
 
