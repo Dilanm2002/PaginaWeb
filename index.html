@@ -321,16 +321,18 @@
 
         <!-- Resumen del día -->
         <div class="resumen-dia" id="resumen-dia">
-          <div class="resumen-dia__title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-            </svg>
-            Ventas del Día
-          </div>
-          <div class="resumen-fecha-nav">
-            <button class="btn-fecha-nav" id="btn-dia-ant" aria-label="Día anterior">‹</button>
-            <span id="resumen-fecha-label">Hoy</span>
-            <button class="btn-fecha-nav" id="btn-dia-sig" aria-label="Día siguiente" disabled>›</button>
+          <div class="resumen-dia__head">
+            <div class="resumen-dia__title">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+              Ventas del Día
+            </div>
+            <div class="resumen-fecha-nav">
+              <button class="btn-fecha-nav" id="btn-dia-ant" aria-label="Día anterior">‹</button>
+              <span id="resumen-fecha-label">Hoy</span>
+              <button class="btn-fecha-nav" id="btn-dia-sig" aria-label="Día siguiente" disabled>›</button>
+            </div>
           </div>
           <div class="resumen-kpis" id="resumen-kpis"></div>
           <div id="resumen-tabla-wrap"></div>

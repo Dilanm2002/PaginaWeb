@@ -5,7 +5,7 @@
  * Responsabilidades:
  *  - Cookies : registrar primera visita y última visita del usuario.
  *  - sessionStorage : guardar el filtro de categoría activo en la sesión actual.
- *  - Coordinar la inicialización de ModuloRepositorio, CarritoIDB y ModuloVista.
+ *  - Coordinar cookies, sessionStorage y filtro de categoría activo.
  *
  * Mecanismos de almacenamiento que gestiona este módulo:
  *   Cookies        → sc_primer_visita, sc_ultima_visita

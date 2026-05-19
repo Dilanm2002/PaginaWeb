@@ -679,26 +679,31 @@
     .resumen-dia {
       margin-top: 2.5rem; border-top: 2px solid var(--border); padding-top: 2rem;
     }
+    .resumen-dia__head {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 1.25rem;
+    }
     .resumen-dia__title {
       font-size: 1.1rem; font-weight: 700; color: var(--brown-dark);
-      margin-bottom: .75rem; display: flex; align-items: center; gap: .5rem;
+      display: flex; align-items: center; gap: .5rem; margin: 0;
     }
     .resumen-fecha-nav {
-      display: flex; align-items: center; justify-content: center;
-      gap: .75rem; margin-bottom: 1.25rem;
+      display: flex; align-items: center; gap: .25rem;
+      background: var(--cream-dk); border: 1.5px solid var(--border);
+      border-radius: 999px; padding: .2rem .35rem;
     }
     #resumen-fecha-label {
-      font-weight: 700; font-size: .9rem; color: var(--brown-dark);
-      min-width: 110px; text-align: center;
+      font-weight: 600; font-size: .82rem; color: var(--brown-dark);
+      min-width: 68px; text-align: center;
     }
     .btn-fecha-nav {
-      background: var(--cream-dk); border: 1.5px solid var(--border);
-      color: var(--brown-dark); border-radius: var(--radius-sm);
-      width: 30px; height: 30px; cursor: pointer; font-size: 1.1rem; line-height: 1;
+      background: transparent; border: none;
+      color: var(--brown-dark); border-radius: 999px;
+      width: 26px; height: 26px; cursor: pointer; font-size: 1rem; line-height: 1;
       display: flex; align-items: center; justify-content: center;
-      transition: background .15s, border-color .15s;
+      transition: background .15s, color .15s;
     }
-    .btn-fecha-nav:hover:not(:disabled) { background: var(--cinnamon); color: #fff; border-color: var(--cinnamon); }
+    .btn-fecha-nav:hover:not(:disabled) { background: var(--cinnamon); color: #fff; }
     .btn-fecha-nav:disabled { opacity: .35; cursor: default; }
 
     /* ── Control de Gastos / Stock ── */
