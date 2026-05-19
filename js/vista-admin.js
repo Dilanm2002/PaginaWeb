@@ -312,10 +312,14 @@ window.VistaAdmin = (function () {
       const nombre = document.getElementById('pf-nombre').value.trim();
       const precio = Math.round(parseFloat(document.getElementById('pf-precio').value) * 100) / 100;
       const errNombre = _validarNombre(nombre);
-      if (errNombre)             { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
-      if (!precio || precio <= 0)    { SC.toast('Precio inválido', 'error'); return; }
-      if (precio > 99.99)            { SC.toast('El precio no puede superar $99.99', 'error'); return; }
-      if (!_prodFormImgBase64)   { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
+      const descripcion   = document.getElementById('pf-descripcion').value.trim();
+      const ingredientesRaw = document.getElementById('pf-ingredientes').value.trim();
+      if (errNombre)                  { _mostrarErrorNombre(errNombre); document.getElementById('pf-nombre').focus(); return; }
+      if (!precio || precio <= 0)     { SC.toast('Precio inválido', 'error'); return; }
+      if (precio > 99.99)             { SC.toast('El precio no puede superar $99.99', 'error'); return; }
+      if (!descripcion)               { SC.toast('La descripción es obligatoria.', 'error'); document.getElementById('pf-descripcion').focus(); return; }
+      if (!ingredientesRaw)           { SC.toast('Los ingredientes son obligatorios.', 'error'); document.getElementById('pf-ingredientes').focus(); return; }
+      if (!_prodFormImgBase64)        { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
 
       /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -347,14 +351,13 @@ window.VistaAdmin = (function () {
 
       const id            = _prodFormEditId ?? SC.nextMenuId();
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
-      const ingredientesRaw = document.getElementById('pf-ingredientes').value;
       const ingredientes  = ingredientesRaw.split(',').map(s => s.trim()).filter(Boolean);
 
       const item = {
         id,
         nombre,
         categoria:   document.getElementById('pf-categoria').value,
-        descripcion: document.getElementById('pf-descripcion').value.trim(),
+        descripcion,
         precio,
         ingredientes,
         tag:         document.getElementById('pf-tag').value.trim(),
