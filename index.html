@@ -987,8 +987,11 @@
       const session = ModuloAutenticacion.getSession();
       const pedOcupado = leerCaja().find(p => String(p.mesa) === String(num));
       if (pedOcupado) {
-        const esMio = (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
-                      (!session?.usuario && pedOcupado.rol === 'invitado');
+        const esMesero = session?.rol === 'mesero';
+        const esMio = !esMesero && (
+          (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
+          (!session?.usuario && pedOcupado.rol === 'invitado')
+        );
         if (!esMio) {
           err.textContent = `Mesa ${num} ya está ocupada`;
           err.style.display = 'block';
@@ -1421,9 +1424,10 @@
 
     const pedidoExistente = cajaNow.find(p => String(p.mesa) === String(mesa));
     if (pedidoExistente && !meseroMesaTarget) {
-      const mismaPersona =
+      const mismaPersona = rol !== 'mesero' && (
         (idUsuario && pedidoExistente.idUsuario && pedidoExistente.idUsuario === idUsuario) ||
-        (!idUsuario && !pedidoExistente.idUsuario && pedidoExistente.nombreUsuario === nombreUsuario && pedidoExistente.rol === 'invitado' && rol === 'invitado');
+        (!idUsuario && !pedidoExistente.idUsuario && pedidoExistente.nombreUsuario === nombreUsuario && pedidoExistente.rol === 'invitado' && rol === 'invitado')
+      );
 
       if (!mismaPersona) {
         mesaInput.style.borderColor = '#dc2626';
