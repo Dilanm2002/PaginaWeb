@@ -990,16 +990,10 @@
         const esMio = (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
                       (!session?.usuario && pedOcupado.rol === 'invitado');
         if (!esMio) {
-          if (session?.rol === 'mesero') {
-            err.textContent = `Mesa ${num} ya tiene un pedido activo — tus ítems se agregarán a él`;
-            err.style.display = 'block';
-            mesaInput.style.borderColor = '#f59e0b';
-          } else {
-            err.textContent = `Mesa ${num} ya está ocupada`;
-            err.style.display = 'block';
-            mesaInput.style.borderColor = '#f59e0b';
-            return;
-          }
+          err.textContent = `Mesa ${num} ya está ocupada`;
+          err.style.display = 'block';
+          mesaInput.style.borderColor = '#f59e0b';
+          return;
         }
       }
     }
@@ -1430,7 +1424,7 @@
         (idUsuario && pedidoExistente.idUsuario && pedidoExistente.idUsuario === idUsuario) ||
         (!idUsuario && !pedidoExistente.idUsuario && pedidoExistente.nombreUsuario === nombreUsuario && pedidoExistente.rol === 'invitado' && rol === 'invitado');
 
-      if (!mismaPersona && rol !== 'mesero') {
+      if (!mismaPersona) {
         mesaInput.style.borderColor = '#dc2626';
         const mesaErrEl2 = document.getElementById('mesa-input-error');
         if (mesaErrEl2) {
@@ -2071,12 +2065,12 @@
       if (usuarioView) usuarioView.style.display = 'none';
       menuView.style.display = '';
 
-      const prevRol = sessionStorage.getItem('sc_prev_rol');
+      const prevRol = localStorage.getItem('sc_prev_rol');
 
       if (session.rol === 'mesero') {
         // Limpiar carrito solo si el rol cambió (no en simples recargas)
         if (prevRol !== null && prevRol !== 'mesero') LogicaCarrito.vaciarCarrito();
-        sessionStorage.setItem('sc_prev_rol', 'mesero');
+        localStorage.setItem('sc_prev_rol', 'mesero');
         window.VistaMenu?.setMesaTarget(null);
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
@@ -2090,7 +2084,7 @@
       } else {
         // Limpiar carrito si venía de mesero, o si se pasó a invitado desde un rol logueado
         if (prevRol === 'mesero' || (session.rol === 'invitado' && prevRol !== null && prevRol !== 'invitado')) LogicaCarrito.vaciarCarrito();
-        sessionStorage.setItem('sc_prev_rol', session.rol ?? 'invitado');
+        localStorage.setItem('sc_prev_rol', session.rol ?? 'invitado');
         document.querySelector('.filter-bar-wrap').style.display = '';
         document.querySelector('.hero').style.display = '';
         const _mswU = document.getElementById('mobile-search-wrap');
