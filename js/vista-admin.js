@@ -15,14 +15,12 @@ window.VistaAdmin = (function () {
     const SC = window.SC;
     const s = SC.getStock(p.id);
     const agotado = !s.disponible || s.stock <= 0;
-    const esNuevo = p.id >= 100;
     return `
     <div class="admin-card-wrap${agotado ? ' admin-card-inactive' : ''}" data-id="${p.id}">
       <article class="product-card" role="listitem" aria-label="${p.nombre}">
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           ${p.destacado ? '<span class="admin-badge-dest">★</span>' : ''}
-          ${esNuevo ? '<span class="admin-badge-nuevo">Nuevo</span>' : ''}
         </div>
         <div class="product-card__body">
           <h3 class="product-card__name">${p.nombre}</h3>

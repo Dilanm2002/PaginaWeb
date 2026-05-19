@@ -102,6 +102,7 @@ window.VistaMenu = (function () {
     grid.innerHTML = lista.map((p,idx) => {
       const s       = SC.getStock(p.id);
       const agotado = !s.disponible || s.stock <= 0;
+      const esNuevo = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000;
       const stockBadge = agotado
         ? `<span class="stock-badge stock-badge--agotado">Agotado</span>`
         : (verStock && s.stock <= 5)
@@ -112,6 +113,7 @@ window.VistaMenu = (function () {
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450">
           <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
+          ${esNuevo ? '<span class="badge-nuevo">Nuevo</span>' : ''}
           ${stockBadge}
         </div>
         <div class="product-card__body">

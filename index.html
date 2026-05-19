@@ -727,7 +727,7 @@
       if (rMenu.error) {
         try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
       } else {
-        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado === true, activo: r.plat_activo, codigo: r.plat_codigo }));
+        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado === true, activo: r.plat_activo, codigo: r.plat_codigo, createdAt: r.plat_created_at ?? null }));
         localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
       }
     } catch(e) {
@@ -1149,8 +1149,11 @@
     if (item.imagen?.startsWith('data:image')) {
       item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id) };
     }
+    const _existente = _menuItems.find(m => m.id === item.id);
+    const createdAt  = item.createdAt || _existente?.createdAt || new Date().toISOString();
+    const itemConFecha = { ...item, createdAt };
     _menuItems = _menuItems.filter(m => m.id !== item.id);
-    _menuItems.push(item);
+    _menuItems.push(itemConFecha);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
     const stockInicial = item.stock_inicial ?? 20;
     const itemDB = {
@@ -1164,7 +1167,8 @@
       plat_imagen:      item.imagen ?? '',
       plat_destacado:   item.destacado ?? false,
       plat_activo:      item.activo ?? true,
-      plat_codigo:      _generarCodigo(item.categoria, item.id)
+      plat_codigo:      _generarCodigo(item.categoria, item.id),
+      plat_created_at:  createdAt
     };
     const { error } = await db.from('menu_items').upsert(itemDB);
     if (error) { console.error('Supabase menu_items upsert:', error); return false; }
