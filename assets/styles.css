@@ -583,7 +583,8 @@
     .cajero-refresh:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
     .cajero-refresh svg { width: 14px; height: 14px; }
 
-    .cajero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; }
+    .cajero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; max-width: none; }
+    #cajero-view .wrap { max-width: none; }
 
     .cajero-order-card {
       background: var(--white); border: 1px solid var(--border);
