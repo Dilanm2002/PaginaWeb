@@ -29,7 +29,7 @@
       --cat-fuertes:         #C4890A;
     }
 
-    html { scroll-behavior: smooth; overflow-x: hidden; }
+    html { scroll-behavior: smooth; overflow-x: hidden; background: var(--brown-dark); }
     body { font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text); min-height: 100vh; min-height: 100dvh; display: flex; flex-direction: column; }
     main { flex: 1; display: flex; flex-direction: column; }
     .wrap { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem; }
@@ -824,6 +824,10 @@
       gap: .5rem; opacity: 0; transition: opacity .18s; z-index: 3;
     }
     .admin-card-wrap:hover .admin-card-overlay { opacity: 1; }
+    @media (hover: none) {
+      .admin-card-overlay { opacity: 0 !important; pointer-events: none; }
+      .admin-card-wrap.tapped .admin-card-overlay { opacity: 1 !important; pointer-events: auto; }
+    }
     .btn-admin-card {
       width: 80%; padding: .4rem .75rem; border-radius: var(--radius-sm); border: none;
       font-size: .78rem; font-weight: 700; cursor: pointer; transition: background .15s;

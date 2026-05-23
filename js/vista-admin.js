@@ -61,6 +61,16 @@ window.VistaAdmin = (function () {
         <div class="admin-cat-grid">${porCat[cat].map(_renderAdminCard).join('')}</div>
       </div>`).join('');
 
+    if (window.matchMedia('(hover: none)').matches) {
+      grid.querySelectorAll('.admin-card-wrap').forEach(wrap => {
+        wrap.addEventListener('click', e => {
+          if (e.target.closest('[data-action]')) return;
+          grid.querySelectorAll('.admin-card-wrap.tapped').forEach(w => { if (w !== wrap) w.classList.remove('tapped'); });
+          wrap.classList.toggle('tapped');
+        });
+      });
+    }
+
     grid.onclick = async e => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
