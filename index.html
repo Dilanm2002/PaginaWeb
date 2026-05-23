@@ -1393,6 +1393,7 @@
             ped.items.push({ ...nuevoItem });
           }
         });
+        _skipNextRealtime = true;
         actualizarPedido(ped.id, ped.items);
         LogicaCarrito.vaciarCarrito();
         renderCarrito();
@@ -1469,6 +1470,7 @@
       return;
     }
 
+    _skipNextRealtime = true;
     enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items });
     LogicaCarrito.vaciarCarrito();
     renderCarrito();
@@ -2311,8 +2313,11 @@
     }
   });
 
+  let _skipNextRealtime = false;
+
   function _iniciarRealtime() {
     const refrescar = async () => {
+      if (_skipNextRealtime) { _skipNextRealtime = false; return; }
       await recargarCaja();
       window.VistaCajero?.renderCajeroView();
       window.VistaMenu?.renderMesasActivas();
