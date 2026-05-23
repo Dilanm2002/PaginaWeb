@@ -1236,9 +1236,49 @@
       border-top: 1px solid #f5c9a8; font-size: .79rem; color: var(--cinnamon);
       font-weight: 600;
     }
+    .mesero-mesa-detalle__cta-btns {
+      display: flex; align-items: center; gap: .7rem;
+    }
     .mesero-mesa-detalle__cta-cancel {
       background: none; border: none; color: var(--text-muted);
       font-size: .78rem; cursor: pointer; text-decoration: underline; padding: 0;
+    }
+    .mesero-mesa-detalle__cta-save {
+      background: var(--cinnamon); color: #fff; border: none; border-radius: 6px;
+      font-size: .8rem; font-weight: 700; cursor: pointer;
+      padding: .35rem .85rem; transition: background .15s;
+    }
+    .mesero-mesa-detalle__cta-save:hover { background: var(--brown-dark); }
+
+    @media (max-width: 540px) {
+      .mesero-mesa-detalle__cta {
+        flex-direction: column;
+        align-items: stretch;
+        gap: .6rem;
+        padding: .75rem 1rem;
+      }
+      .mesero-mesa-detalle__cta > span {
+        text-align: center;
+        font-size: .75rem;
+      }
+      .mesero-mesa-detalle__cta-btns {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: .5rem;
+      }
+      .mesero-mesa-detalle__cta-save {
+        flex: 1;
+        padding: .55rem .5rem;
+        font-size: .85rem;
+        min-height: 44px;
+      }
+      .mesero-mesa-detalle__cta-cancel {
+        min-height: 44px;
+        display: flex;
+        align-items: center;
+        padding: 0 .5rem;
+      }
     }
 
     /* Banner legacy — oculto, reemplazado por CTA integrado */

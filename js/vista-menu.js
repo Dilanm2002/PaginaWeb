@@ -6,6 +6,7 @@
 window.VistaMenu = (function () {
 
   let meseroMesaTarget = null;
+  let _meseroOriginalItems = null;
 
   /* ── Helpers de filtro ── */
   function setFiltroActivo(cat) {
@@ -259,6 +260,9 @@ window.VistaMenu = (function () {
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
         </div>`).join('');
 
+      const _hayNuevos = _meseroOriginalItems !== null &&
+        JSON.stringify(pedidoSeleccionado?.items) !== JSON.stringify(_meseroOriginalItems);
+
       const detalle = pedidoSeleccionado ? `
         <div class="mesero-mesa-detalle">
           <div class="mesero-mesa-detalle__head">
@@ -282,7 +286,10 @@ window.VistaMenu = (function () {
           </div>
           <div class="mesero-mesa-detalle__cta">
             <span>⬇ Selecciona productos abajo para agregar a esta mesa</span>
-            <button class="mesero-mesa-detalle__cta-cancel" id="btn-cancel-mesa-target">Cancelar</button>
+            <div class="mesero-mesa-detalle__cta-btns">
+              <button class="mesero-mesa-detalle__cta-cancel" id="btn-cancel-mesa-target">Cancelar</button>
+              <button class="mesero-mesa-detalle__cta-save" id="btn-save-mesa-target" style="${_hayNuevos ? '' : 'display:none'}">Guardar ✓</button>
+            </div>
           </div>
         </div>` : '';
 
@@ -294,8 +301,11 @@ window.VistaMenu = (function () {
           const mesa = card.dataset.mesa;
           if (meseroMesaTarget && String(meseroMesaTarget.id) === String(pid)) {
             meseroMesaTarget = null;
+            _meseroOriginalItems = null;
           } else {
             meseroMesaTarget = { id: pid, mesa };
+            const _snapPed = SC.leerCaja().find(p => String(p.id) === String(pid));
+            _meseroOriginalItems = _snapPed ? JSON.parse(JSON.stringify(_snapPed.items)) : [];
           }
           renderMesasActivas();
           syncQtys();
@@ -306,7 +316,31 @@ window.VistaMenu = (function () {
     const btnCancel = document.getElementById('btn-cancel-mesa-target');
     if (btnCancel) {
       btnCancel.onclick = () => {
+        if (_meseroOriginalItems && meseroMesaTarget) {
+          const peds = SC.leerCaja();
+          const ped  = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
+          if (ped) ped.items = JSON.parse(JSON.stringify(_meseroOriginalItems));
+        }
         meseroMesaTarget = null;
+        _meseroOriginalItems = null;
+        renderMesasActivas();
+        syncQtys();
+      };
+    }
+
+    const btnSave = document.getElementById('btn-save-mesa-target');
+    if (btnSave) {
+      btnSave.onclick = () => {
+        if (!meseroMesaTarget) return;
+        const peds = SC.leerCaja();
+        const ped  = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
+        if (ped) {
+          SC.actualizarPedido(ped.id, ped.items);
+          window.VistaCajero?.renderCajeroView();
+          SC.toast(`Mesa ${meseroMesaTarget.mesa} actualizada`, 'success');
+        }
+        meseroMesaTarget = null;
+        _meseroOriginalItems = null;
         renderMesasActivas();
         syncQtys();
       };
@@ -332,8 +366,6 @@ window.VistaMenu = (function () {
         } else if (action === 'del') {
           ped.items.splice(idx, 1);
         }
-        SC.actualizarPedido(ped.id, ped.items);
-        window.VistaCajero?.renderCajeroView();
         renderMesasActivas();
         syncQtys();
       };
@@ -453,8 +485,6 @@ window.VistaMenu = (function () {
               if (existente.cantidad <= 0) ped.items.splice(ped.items.indexOf(existente), 1);
             }
           }
-          SC.actualizarPedido(ped.id, ped.items);
-          window.VistaCajero?.renderCajeroView();
           renderMesasActivas();
           syncQtys();
         }
