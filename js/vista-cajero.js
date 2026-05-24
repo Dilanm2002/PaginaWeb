@@ -205,7 +205,7 @@ window.VistaCajero = (function () {
 
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title collapsed" data-cat="${cat}" role="button" aria-expanded="false">
+          <div class="mesero-cat-title collapsed" data-cat="${cat}" role="button" tabindex="0" aria-expanded="false">
             ${cat}
             <span class="mesero-cat-chevron">▾</span>
           </div>
@@ -216,12 +216,14 @@ window.VistaCajero = (function () {
     }).join('');
 
     listaEl.querySelectorAll('.mesero-cat-title').forEach(title => {
-      title.addEventListener('click', () => {
+      const toggle = () => {
         const list = title.nextElementSibling;
         const isCollapsed = title.classList.toggle('collapsed');
         title.setAttribute('aria-expanded', String(!isCollapsed));
         list.classList.toggle('hidden', isCollapsed);
-      });
+      };
+      title.addEventListener('click', toggle);
+      title.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggle(); } });
     });
 
     listaEl.querySelectorAll('.stock-input').forEach(inp => {

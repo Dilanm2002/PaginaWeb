@@ -183,8 +183,11 @@ window.VistaAdmin = (function () {
       imgPlaceholder.style.display = '';
     }
 
-    document.getElementById('prod-form-backdrop').classList.add('open');
+    const backdrop = document.getElementById('prod-form-backdrop');
+    backdrop.classList.add('open');
+    backdrop.setAttribute('aria-hidden', 'false');
     document.body.style.overflow = 'hidden';
+    window._trapProdForm?.activar();
   }
 
   function _modalConfirmar(nombre) {
@@ -215,12 +218,15 @@ window.VistaAdmin = (function () {
   }
 
   function cerrarFormProducto() {
-    document.getElementById('prod-form-backdrop').classList.remove('open');
+    const backdrop = document.getElementById('prod-form-backdrop');
+    backdrop.classList.remove('open');
+    backdrop.setAttribute('aria-hidden', 'true');
     document.body.style.overflow = '';
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
     _mostrarErrorNombre('');
     _mostrarErrorImagen('');
+    window._trapProdForm?.desactivar();
   }
 
   function _setupDragDrop() {
@@ -315,6 +321,11 @@ window.VistaAdmin = (function () {
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape' && document.getElementById('prod-form-backdrop').classList.contains('open')) {
+        cerrarFormProducto();
+      }
+    });
     document.getElementById('btn-agregar-producto').addEventListener('click', () => abrirFormProducto(null));
 
     document.getElementById('btn-prod-save').addEventListener('click', async () => {

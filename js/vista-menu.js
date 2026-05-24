@@ -251,14 +251,20 @@ window.VistaMenu = (function () {
         ? pedidos.find(p => String(p.id) === String(meseroMesaTarget.id))
         : null;
 
-      const chips = pedidos.map(p => `
-        <div class="mesero-mesa-card${meseroMesaTarget && String(meseroMesaTarget.id) === String(p.id) ? ' selected' : ''}"
-             data-pedido-id="${p.id}" data-mesa="${p.mesa}">
+      const chips = pedidos.map(p => {
+        const seleccionada = meseroMesaTarget && String(meseroMesaTarget.id) === String(p.id);
+        return `
+        <div class="mesero-mesa-card${seleccionada ? ' selected' : ''}"
+             data-pedido-id="${p.id}" data-mesa="${p.mesa}"
+             role="button" tabindex="0"
+             aria-pressed="${seleccionada ? 'true' : 'false'}"
+             aria-label="Mesa ${p.mesa}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
           <span class="mesero-mesa-card__num">🍽️ Mesa ${p.mesa}</span>
           <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
           <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
-        </div>`).join('');
+        </div>`;
+      }).join('');
 
       const _hayNuevos = _meseroOriginalItems !== null &&
         JSON.stringify(pedidoSeleccionado?.items) !== JSON.stringify(_meseroOriginalItems);
@@ -296,7 +302,7 @@ window.VistaMenu = (function () {
       seccion.innerHTML = `<div class="mesero-mesas-chips">${chips}</div>${detalle}`;
 
       seccion.querySelector('.mesero-mesas-chips').querySelectorAll('.mesero-mesa-card').forEach(card => {
-        card.addEventListener('click', () => {
+        const activar = () => {
           const pid  = card.dataset.pedidoId;
           const mesa = card.dataset.mesa;
           if (meseroMesaTarget && String(meseroMesaTarget.id) === String(pid)) {
@@ -309,7 +315,9 @@ window.VistaMenu = (function () {
           }
           renderMesasActivas();
           syncQtys();
-        });
+        };
+        card.addEventListener('click', activar);
+        card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
       });
     }
 

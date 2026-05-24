@@ -825,7 +825,8 @@
       align-items: center; justify-content: center;
       gap: .5rem; opacity: 0; transition: opacity .18s; z-index: 3;
     }
-    .admin-card-wrap:hover .admin-card-overlay { opacity: 1; }
+    .admin-card-wrap:hover .admin-card-overlay,
+    .admin-card-wrap:focus-within .admin-card-overlay { opacity: 1; }
     @media (hover: none) {
       .admin-card-overlay { opacity: 0 !important; pointer-events: none; }
       .admin-card-wrap.tapped .admin-card-overlay { opacity: 1 !important; pointer-events: auto; }
@@ -1165,7 +1166,8 @@
       content: ''; position: absolute; top: 0; left: 0; width: 3px; height: 100%;
       background: var(--border); transition: background .18s;
     }
-    .mesero-mesa-card:hover { border-color: var(--cinnamon); box-shadow: 0 3px 12px rgba(185,85,40,.15); transform: translateY(-2px); }
+    .mesero-mesa-card:hover,
+    .mesero-mesa-card:focus { border-color: var(--cinnamon); box-shadow: 0 3px 12px rgba(185,85,40,.15); transform: translateY(-2px); outline: 2px solid var(--cinnamon); outline-offset: 2px; }
     .mesero-mesa-card:hover::after { background: var(--cinnamon); }
     .mesero-mesa-card.selected {
       border-color: var(--cinnamon); background: #fef7f2;

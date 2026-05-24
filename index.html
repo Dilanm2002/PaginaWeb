@@ -28,8 +28,6 @@
     <div style="width:44px;height:44px;border:3.5px solid rgba(245,236,215,.2);border-top-color:#E07A3A;border-radius:50%;animation:spin .75s linear infinite;"></div>
   </div>
 
-  <a class="skip-link" href="#contenido">Saltar al contenido</a>
-
   <!-- ══ MODAL AUTENTICACIÓN ══ -->
   <div id="auth-backdrop" class="auth-backdrop">
     <div class="auth-box">
@@ -434,18 +432,18 @@
     </div>
 
     <!-- Modal formulario de producto (admin) -->
-    <div id="prod-form-backdrop" class="prod-form-backdrop" role="dialog" aria-modal="true" aria-label="Formulario de producto">
+    <div id="prod-form-backdrop" class="prod-form-backdrop" role="dialog" aria-modal="true" aria-labelledby="prod-form-title" aria-hidden="true">
       <div class="prod-form-box" id="prod-form-box">
         <div class="prod-form-header">
           <h3 id="prod-form-title">Agregar Producto</h3>
-          <button id="btn-cerrar-prod-form" style="background:none;border:none;cursor:pointer;color:var(--cream);font-size:1.4rem;line-height:1;" aria-label="Cerrar">×</button>
+          <button id="btn-cerrar-prod-form" style="background:none;border:none;cursor:pointer;color:var(--cream);font-size:1.4rem;line-height:1;" aria-label="Cerrar formulario de producto">×</button>
         </div>
         <div class="prod-form-body">
           <div class="prod-form-grid">
             <div class="prod-form-group prod-form-full">
               <label for="pf-nombre">Nombre del plato</label>
-              <input type="text" id="pf-nombre" placeholder="Ej: Ceviche de Camarón" maxlength="80">
-              <span id="pf-nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+              <input type="text" id="pf-nombre" placeholder="Ej: Ceviche de Camarón" maxlength="80" aria-required="true" aria-describedby="pf-nombre-error">
+              <span id="pf-nombre-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
               <label for="pf-categoria">Categoría</label>
@@ -461,7 +459,7 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-precio">Precio (USD, IVA incluido)</label>
-              <input type="number" id="pf-precio" placeholder="0.00" min="0.01" max="99.99" step="0.01">
+              <input type="number" id="pf-precio" placeholder="0.00" min="0.01" max="99.99" step="0.01" aria-required="true">
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-descripcion">Descripción</label>
@@ -497,16 +495,16 @@
               <input type="number" id="pf-stock" placeholder="20" min="0" max="999" step="1">
             </div>
             <div class="prod-form-group prod-form-full">
-              <label>Imagen del plato</label>
-              <div class="prod-form-img-preview" id="pf-img-preview">
+              <label for="btn-elegir-imagen">Imagen del plato</label>
+              <div class="prod-form-img-preview" id="pf-img-preview" role="img" aria-label="Vista previa de la imagen del plato">
                 <div id="pf-img-placeholder" style="display:flex;align-items:center;justify-content:center;">
                   <span style="color:var(--text-muted);font-size:.88rem;">Arrastra una imagen aquí</span>
                 </div>
-                <img id="pf-img-actual" style="display:none;width:100%;height:100%;object-fit:cover;" alt="Preview">
+                <img id="pf-img-actual" style="display:none;width:100%;height:100%;object-fit:cover;" alt="Vista previa del plato seleccionado">
               </div>
-              <button type="button" id="btn-elegir-imagen" style="margin-top:.6rem;width:100%;padding:.6rem 1rem;background:#C8561A;color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:.01em;">📁 Elegir imagen desde el dispositivo</button>
-              <input type="file" id="pf-imagen" accept="image/*" style="display:none;">
-              <span id="pf-imagen-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+              <button type="button" id="btn-elegir-imagen" aria-describedby="pf-imagen-error" style="margin-top:.6rem;width:100%;padding:.6rem 1rem;background:#C8561A;color:#fff;border:none;border-radius:10px;font-size:.85rem;font-weight:600;cursor:pointer;letter-spacing:.01em;">📁 Elegir imagen desde el dispositivo</button>
+              <input type="file" id="pf-imagen" accept="image/*" style="display:none;" aria-hidden="true">
+              <span id="pf-imagen-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
               <label class="prod-form-check">
@@ -1380,6 +1378,20 @@
 
     const items = LogicaCarrito.leerCarrito();
 
+    // Validar stock antes de enviar
+    const sinStock = items.filter(item => {
+      const s = getStock(item.id);
+      return !s.disponible || item.cantidad > s.stock;
+    });
+    if (sinStock.length > 0) {
+      sinStock.forEach(item => {
+        const s = getStock(item.id);
+        const dispMsg = s.stock <= 0 ? 'agotado' : `solo hay ${s.stock} disponibles`;
+        toast(`"${item.nombre}" no se puede pedir: ${dispMsg}`, 'error');
+      });
+      return;
+    }
+
     // Si el mesero seleccionó una mesa activa, agregar ítems al pedido existente
     if (meseroMesaTarget) {
       const pedidos = leerCaja();
@@ -1534,6 +1546,9 @@
   window._trapProducto = trapProducto;
   var trapMesa     = crearFocusTrap(document.getElementById('mesa-modal-backdrop'));
   var trapAuth     = crearFocusTrap(document.getElementById('auth-backdrop'));
+  var trapProdForm      = crearFocusTrap(document.getElementById('prod-form-backdrop'));
+  window._trapProdForm  = trapProdForm;
+  var trapEditarPerfil  = crearFocusTrap(document.getElementById('editar-perfil-backdrop'));
 
   /* ══════════════════════════════════════════════════
      PANEL CARRITO
@@ -1557,9 +1572,12 @@
   cartOverlay.addEventListener('click', cerrarCarrito);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (modalBackdrop.classList.contains('open')) { window.VistaMenu?.cerrarModalProducto(); return; }
-    if (mesaBackdrop.classList.contains('open'))  { cerrarModalMesa(); return; }
-    if (cartPanel.classList.contains('open')) cerrarCarrito();
+    if (modalBackdrop.classList.contains('open'))         { window.VistaMenu?.cerrarModalProducto(); return; }
+    if (mesaBackdrop.classList.contains('open'))          { cerrarModalMesa(); return; }
+    if (document.getElementById('prod-form-backdrop').classList.contains('open')) return; // handled in vista-admin.js
+    if (document.getElementById('editar-perfil-backdrop').classList.contains('open')) { cerrarEditarPerfil(); return; }
+    if (authBackdrop.classList.contains('open'))          { trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open'); document.documentElement.style.overflow = ''; return; }
+    if (cartPanel.classList.contains('open'))             cerrarCarrito();
   });
   btnClear.addEventListener('click', () => { LogicaCarrito.vaciarCarrito(); renderCarrito(); toast('Orden vaciada'); });
   checkoutBtn.addEventListener('click', () => { cerrarCarrito(); abrirModalMesa(); });
@@ -2202,10 +2220,11 @@
     });
     editarPerfilBackdrop.classList.add('open');
     document.documentElement.style.overflow = 'hidden';
-    document.getElementById('ep-nombre').focus();
+    setTimeout(function() { trapEditarPerfil.activar(); }, 0);
   }
 
   function cerrarEditarPerfil() {
+    trapEditarPerfil.desactivar();
     editarPerfilBackdrop.classList.remove('open');
     document.documentElement.style.overflow = '';
   }
