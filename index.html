@@ -543,6 +543,10 @@
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
+    <div id="edit-mode-banner" class="edit-mode-banner" style="display:none" role="status" aria-live="polite">
+      <span>✏️ Editando pedido — Mesa <strong id="edit-mode-mesa">—</strong></span>
+      <button id="btn-cancelar-edicion" aria-label="Cancelar edición">✕ Cancelar</button>
+    </div>
     <div id="cart-items" class="cart-items" role="list" aria-live="polite"></div>
     <div class="cart-panel__foot">
       <div class="cart-summary">
@@ -1035,6 +1039,18 @@
     const totales = LogicaCarrito.calcularTotales(items);
     const ultima  = localStorage.getItem(LS_UPDATED);
 
+    // Mostrar/ocultar banner de modo edición
+    const editBanner = document.getElementById('edit-mode-banner');
+    const editMesaEl = document.getElementById('edit-mode-mesa');
+    if (editBanner && editMesaEl) {
+      if (window._modoEdicion) {
+        editBanner.style.display = '';
+        editMesaEl.textContent = window._modoEdicion.mesa;
+      } else {
+        editBanner.style.display = 'none';
+      }
+    }
+
     cartCount.textContent   = totales.nItems;
     cartItemsCt.textContent = `(${totales.nItems})`;
     cartCount.classList.remove('bump');
@@ -1257,6 +1273,7 @@
     const items   = LogicaCarrito.leerCarrito();
     const totales = LogicaCarrito.calcularTotales(items);
     const meseroMesaTarget = window.VistaMenu?.getMesaTarget() ?? null;
+    const editando = window._modoEdicion ?? null;
 
     // Limpiar error de mesa
     const mesaErrEl = document.getElementById('mesa-input-error');
@@ -1266,6 +1283,11 @@
     const campoMesa       = document.getElementById('campo-mesa');
     const mesaAsignadaDiv = document.getElementById('mesa-asignada-info');
     const mesaAsignadaNum = document.getElementById('mesa-asignada-num');
+
+    // Cambiar título y botón según modo
+    const modalHead = document.querySelector('#mesa-modal-backdrop .mesa-modal-head h2');
+    if (modalHead) modalHead.textContent = editando ? 'Actualizar Pedido' : 'Confirmar Pedido';
+    btnConfirmarMesa.textContent = editando ? '✓ Actualizar Pedido' : '✓ Enviar a Caja';
 
     // ¿El usuario ya tiene un pedido pendiente en esta sesión?
     // El mesero siempre ingresa la mesa manualmente — no se auto-asigna
@@ -1279,6 +1301,13 @@
       mesaInput.readOnly = true;
       campoMesa.style.display       = '';
       mesaAsignadaDiv.style.display = 'none';
+    } else if (editando) {
+      // Modo edición: mesa fija, no se puede cambiar
+      mesaInput.value    = editando.mesa;
+      mesaInput.readOnly = true;
+      campoMesa.style.display       = 'none';
+      mesaAsignadaDiv.style.display = '';
+      mesaAsignadaNum.textContent   = editando.mesa;
     } else if (pedidoPrevio) {
       // Usuario con pedido ya activo → mesa autoasignada, no se pide de nuevo
       mesaInput.value    = pedidoPrevio.mesa;
@@ -1340,6 +1369,53 @@
   btnConfirmarMesa.addEventListener('click', async () => {
     const session = ModuloAutenticacion.getSession();
     let meseroMesaTarget = window.VistaMenu?.getMesaTarget() ?? null;
+
+    // ── Modo edición: reemplazar ítems del pedido existente ──
+    if (window._modoEdicion) {
+      const { pedidoId, mesa: mesaEdicion, itemsOriginales } = window._modoEdicion;
+      const itemsEdicion = LogicaCarrito.leerCarrito();
+      if (!itemsEdicion.length) {
+        toast('Agrega al menos un platillo para actualizar el pedido', 'error');
+        return;
+      }
+      // Validar stock solo para incrementos
+      const sinStock = itemsEdicion.filter(item => {
+        const s = getStock(item.id);
+        const oldItem = itemsOriginales.find(x => x.id === item.id);
+        const incremento = item.cantidad - (oldItem?.cantidad ?? 0);
+        return incremento > 0 && incremento > s.stock;
+      });
+      if (sinStock.length) {
+        sinStock.forEach(item => {
+          const s = getStock(item.id);
+          toast(`"${item.nombre}": solo hay ${s.stock} disponibles adicionales`, 'error');
+        });
+        return;
+      }
+      const nuevosItems = itemsEdicion.map(i => ({ id:i.id, nombre:i.nombre, cantidad:i.cantidad, precio:i.precio, imagen:i.imagen||null }));
+      // Ajustar stock por diferencia
+      for (const oldItem of itemsOriginales) {
+        const newItem = nuevosItems.find(x => x.id === oldItem.id);
+        const diff = oldItem.cantidad - (newItem?.cantidad ?? 0);
+        if (diff > 0) reponerStock(oldItem.id, diff);
+        else if (diff < 0) actualizarStock(oldItem.id, Math.abs(diff));
+      }
+      for (const newItem of nuevosItems) {
+        if (!itemsOriginales.find(x => x.id === newItem.id)) actualizarStock(newItem.id, newItem.cantidad);
+      }
+      actualizarPedido(pedidoId, nuevosItems);
+      window._modoEdicion = null;
+      LogicaCarrito.vaciarCarrito();
+      renderCarrito();
+      window.VistaCajero?.renderCajeroView();
+      window.VistaMenu?.renderMesasActivas();
+      cerrarModalMesa();
+      cerrarCarrito();
+      if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
+      toast(`Pedido de Mesa ${mesaEdicion} actualizado ✓`, 'success');
+      return;
+    }
+
     const mesa = Number(mesaInput.value.trim());
     if (!mesa || mesa < 1 || mesa > 12) {
       mesaInput.style.borderColor = '#dc2626';
@@ -1579,7 +1655,13 @@
     if (authBackdrop.classList.contains('open'))          { trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open'); document.documentElement.style.overflow = ''; return; }
     if (cartPanel.classList.contains('open'))             cerrarCarrito();
   });
-  btnClear.addEventListener('click', () => { LogicaCarrito.vaciarCarrito(); renderCarrito(); toast('Orden vaciada'); });
+  btnClear.addEventListener('click', () => { LogicaCarrito.vaciarCarrito(); window._modoEdicion = null; renderCarrito(); toast('Orden vaciada'); });
+  document.getElementById('btn-cancelar-edicion').addEventListener('click', () => {
+    window._modoEdicion = null;
+    LogicaCarrito.vaciarCarrito();
+    renderCarrito();
+    toast('Edición cancelada');
+  });
   checkoutBtn.addEventListener('click', () => { cerrarCarrito(); abrirModalMesa(); });
 
   if (btnCaja) {
@@ -1852,6 +1934,7 @@
 
 
   btnLogout.addEventListener('click', () => {
+    window._modoEdicion = null;
     ModuloAutenticacion.clearSession();
     LogicaCarrito.vaciarCarrito();
     ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
@@ -1962,6 +2045,9 @@
             <span class="perfil-card-total-lbl">Total</span>
             <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
           </div>
+          <button class="btn-editar-pedido" data-pedido-id="${p.id}" aria-label="Editar pedido de Mesa ${p.mesa}">
+            ✏️ Editar pedido
+          </button>
         </div>
       </article>`).join('');
 
@@ -1995,6 +2081,28 @@
     historialEl.innerHTML = cardsPendientes + cardsPagados;
 
     historialEl.onclick = e => {
+      const btnEditar = e.target.closest('.btn-editar-pedido');
+      if (btnEditar) {
+        const pedidoId = btnEditar.dataset.pedidoId;
+        const pedido = pendientes.find(p => String(p.id) === String(pedidoId));
+        if (!pedido) return;
+        window._modoEdicion = {
+          pedidoId: pedido.id,
+          mesa: pedido.mesa,
+          itemsOriginales: JSON.parse(JSON.stringify(pedido.items))
+        };
+        LogicaCarrito.vaciarCarrito();
+        pedido.items.forEach(item => {
+          for (let i = 0; i < item.cantidad; i++) LogicaCarrito.agregarItem(item);
+        });
+        irAlMenu();
+        setTimeout(() => {
+          renderCarrito();
+          document.getElementById('btn-cart')?.click();
+        }, 80);
+        return;
+      }
+
       const btn = e.target.closest('.btn-volver-pedir');
       if (!btn) return;
       const pedido = sorted[Number(btn.dataset.idx)];

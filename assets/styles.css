@@ -1449,6 +1449,9 @@
 
     .btn-clear { width: 100%; padding: .65rem; background: none; color: var(--text-muted); border: 1px solid var(--border); border-radius: var(--radius-sm); font-size: .82rem; cursor: pointer; transition: background .15s; }
     .btn-clear:hover { background: var(--cream-dk); }
+    .edit-mode-banner { display: flex; align-items: center; justify-content: space-between; gap: .5rem; padding: .65rem 1.25rem; background: #fef3c7; border-bottom: 1px solid #fcd34d; font-size: .82rem; font-weight: 600; color: #92400e; flex-shrink: 0; }
+    .edit-mode-banner button { background: none; border: 1px solid #d97706; color: #b45309; border-radius: 999px; padding: .25rem .75rem; font-size: .75rem; font-weight: 700; cursor: pointer; transition: background .15s; white-space: nowrap; }
+    .edit-mode-banner button:hover { background: #fde68a; }
 
     .last-updated { font-size: .72rem; color: var(--text-muted); margin-top: .6rem; text-align: center; }
 
@@ -1748,6 +1751,15 @@
       box-shadow: 0 3px 10px rgba(200,86,26,.35); white-space: nowrap;
     }
     .btn-volver-pedir:hover { background: var(--cinnamon-lt); box-shadow: 0 5px 16px rgba(200,86,26,.45); transform: translateY(-1px); }
+
+    .btn-editar-pedido {
+      display: inline-flex; align-items: center; gap: .4rem;
+      background: #fff; color: #b45309; border: 1.5px solid #f59e0b;
+      border-radius: 999px; padding: .5rem 1.2rem; font-size: .82rem; font-weight: 700;
+      cursor: pointer; transition: background .15s, transform .15s;
+      white-space: nowrap;
+    }
+    .btn-editar-pedido:hover { background: #fef3c7; transform: translateY(-1px); }
 
     /* Pending — borde y fondo ámbar */
     .perfil-pedido-card--pending {
