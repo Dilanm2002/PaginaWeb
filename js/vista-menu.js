@@ -95,6 +95,19 @@ window.VistaMenu = (function () {
     if (!grid) return;
     grid.setAttribute('aria-busy','false');
     if (!lista.length) {
+      const todosLosCargados = SC.getProductosMergeados();
+      if (!todosLosCargados.length) {
+        grid.innerHTML = Array.from({length:8}, () => `
+          <div class="skeleton" aria-hidden="true">
+            <div class="skeleton-img"></div>
+            <div class="skeleton-body">
+              <div class="skeleton-line"></div>
+              <div class="skeleton-line short"></div>
+              <div class="skeleton-line xshort"></div>
+            </div>
+          </div>`).join('');
+        return;
+      }
       grid.innerHTML = `<p style="color:var(--text-muted);grid-column:1/-1;text-align:center;padding:3rem">Sin platillos en esta categoría.</p>`;
       return;
     }
