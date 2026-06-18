@@ -94,6 +94,7 @@ window.VistaAdmin = (function () {
 
     window.VistaCajero?.renderStock();
     renderMensajes();
+    renderReportes();
   }
 
   async function renderMensajes() {
@@ -396,6 +397,100 @@ window.VistaAdmin = (function () {
       const cat = SC.getFiltroSesion();
       window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
       SC.toast(`Producto "${nombre}" guardado ✓`, 'success');
+    });
+  }
+
+  let _chartVentas = null;
+  let _chartTop    = null;
+
+  function renderReportes() {
+    const SC       = window.SC;
+    const historial = SC.leerHistorial();
+    const kpisEl   = document.getElementById('reportes-kpis');
+    if (!kpisEl) return;
+
+    // KPIs globales
+    const totalVentas  = historial.reduce((s, h) => s + h.total, 0);
+    const numPedidos   = historial.length;
+    const promedio     = numPedidos ? totalVentas / numPedidos : 0;
+
+    kpisEl.innerHTML = `
+      <div class="reportes-kpi"><div class="reportes-kpi__val">$${totalVentas.toFixed(2)}</div><div class="reportes-kpi__lbl">Total vendido</div></div>
+      <div class="reportes-kpi"><div class="reportes-kpi__val">${numPedidos}</div><div class="reportes-kpi__lbl">Pedidos cobrados</div></div>
+      <div class="reportes-kpi"><div class="reportes-kpi__val">$${promedio.toFixed(2)}</div><div class="reportes-kpi__lbl">Promedio por pedido</div></div>`;
+
+    // Últimos 7 días
+    const hoy   = new Date();
+    const dias  = [];
+    const venDia = [];
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(hoy);
+      d.setDate(d.getDate() - i);
+      const label = d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' });
+      const fecha = d.toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' });
+      dias.push(label);
+      venDia.push(historial.filter(h => h.fecha === fecha).reduce((s, h) => s + h.total, 0));
+    }
+
+    // Top 5 productos
+    const conteo = {};
+    historial.forEach(h => {
+      (h.items || []).forEach(i => {
+        conteo[i.nombre] = (conteo[i.nombre] || 0) + i.cantidad;
+      });
+    });
+    const top5 = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    const topNombres = top5.map(([n]) => n.length > 18 ? n.slice(0, 16) + '…' : n);
+    const topCants   = top5.map(([, c]) => c);
+
+    if (!window.Chart) return; // Chart.js aún no cargado
+
+    const canvasVentas = document.getElementById('chart-ventas-dia');
+    const canvasTop    = document.getElementById('chart-top-productos');
+    if (!canvasVentas || !canvasTop) return;
+
+    if (_chartVentas) { _chartVentas.destroy(); _chartVentas = null; }
+    if (_chartTop)    { _chartTop.destroy();    _chartTop    = null; }
+
+    _chartVentas = new window.Chart(canvasVentas, {
+      type: 'bar',
+      data: {
+        labels: dias,
+        datasets: [{
+          label: 'Ventas ($)',
+          data:  venDia,
+          backgroundColor: 'rgba(224,122,58,.75)',
+          borderColor:     '#c0651a',
+          borderWidth:     1,
+          borderRadius:    4
+        }]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { y: { beginAtZero: true, ticks: { callback: v => '$' + v.toFixed(0) } } }
+      }
+    });
+
+    _chartTop = new window.Chart(canvasTop, {
+      type: 'bar',
+      data: {
+        labels: topNombres,
+        datasets: [{
+          label: 'Unidades',
+          data:  topCants,
+          backgroundColor: 'rgba(59,26,8,.7)',
+          borderColor:     '#3B1A08',
+          borderWidth:     1,
+          borderRadius:    4
+        }]
+      },
+      options: {
+        indexAxis: 'y',
+        responsive: true,
+        plugins: { legend: { display: false } },
+        scales: { x: { beginAtZero: true, ticks: { stepSize: 1 } } }
+      }
     });
   }
 

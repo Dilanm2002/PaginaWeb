@@ -2260,3 +2260,112 @@
     .cf-field textarea { font-size: .85rem; padding: .5rem .7rem; }
     .cf-submit { width: 100%; justify-content: center; }
   }
+
+  /* ══════════════════════════════════════════════════
+     MODAL DE PAGO
+  ══════════════════════════════════════════════════ */
+  .pago-modal-backdrop {
+    position: fixed; inset: 0; background: rgba(30,10,0,.6); backdrop-filter: blur(4px);
+    z-index: 500; display: flex; align-items: center; justify-content: center; padding: 1rem;
+    opacity: 0; pointer-events: none; transition: opacity .25s;
+  }
+  .pago-modal-backdrop.open { opacity: 1; pointer-events: all; }
+  .pago-modal-box {
+    background: var(--white); border-radius: var(--radius); width: 100%; max-width: 400px;
+    box-shadow: 0 20px 60px rgba(30,10,0,.35);
+    transform: translateY(20px) scale(.97); transition: transform .3s cubic-bezier(.4,0,.2,1); overflow: hidden;
+  }
+  .pago-modal-backdrop.open .pago-modal-box { transform: none; }
+  .pago-modal-head {
+    background: var(--brown-dark); color: var(--cream);
+    padding: 1.1rem 1.4rem; display: flex; align-items: center; justify-content: space-between;
+  }
+  .pago-modal-head h3 { font-family: 'Dancing Script', cursive; font-size: 1.3rem; }
+  .pago-modal-body { padding: 1.25rem 1.4rem 1.4rem; }
+  .pago-total-display {
+    text-align: center; font-size: 1.05rem; color: var(--text);
+    background: #fdf6ef; border: 1px solid #e8d5bd; border-radius: .6rem;
+    padding: .65rem 1rem; margin-bottom: 1.1rem;
+  }
+  .pago-total-display strong { font-size: 1.4rem; color: var(--cinnamon); }
+  .pago-section-label { font-size: .8rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .05em; margin-bottom: .55rem; display: block; }
+  .pago-metodos { display: flex; flex-direction: column; gap: .4rem; margin-bottom: 1rem; }
+  .pago-metodo-opt {
+    display: flex; align-items: center; gap: .6rem;
+    border: 1.5px solid var(--border); border-radius: .6rem;
+    padding: .6rem .9rem; cursor: pointer; transition: border-color .18s, background .18s;
+  }
+  .pago-metodo-opt:has(input:checked) { border-color: var(--cinnamon); background: #fef5eb; }
+  .pago-metodo-opt input { accent-color: var(--cinnamon); width: 16px; height: 16px; }
+  .pago-metodo-label { font-size: .92rem; font-weight: 500; display: flex; align-items: center; gap: .5rem; }
+  .pago-metodo-icon { font-size: 1.1rem; }
+  .pago-efectivo-section { margin-bottom: 1rem; }
+  .pago-monto-input {
+    width: 100%; border: 1.5px solid var(--border); border-radius: .6rem;
+    padding: .6rem .9rem; font-size: 1rem; margin-top: .4rem;
+    transition: border-color .18s;
+  }
+  .pago-monto-input:focus { outline: none; border-color: var(--cinnamon); }
+  .pago-cambio-display {
+    margin-top: .5rem; font-size: 1.05rem; font-weight: 700; min-height: 1.5rem;
+    text-align: center;
+  }
+  .pago-modal-foot { display: flex; gap: .75rem; margin-top: .5rem; }
+  .btn-pago-cancel {
+    flex: 1; padding: .7rem; border-radius: .6rem; border: 1.5px solid var(--border);
+    background: #fff; color: var(--text-muted); font-size: .92rem; font-weight: 600;
+    cursor: pointer; transition: border-color .18s;
+  }
+  .btn-pago-cancel:hover { border-color: #aaa; }
+  .btn-pago-confirm {
+    flex: 2; padding: .7rem; border-radius: .6rem; border: none;
+    background: var(--cinnamon); color: #fff; font-size: .95rem; font-weight: 700;
+    cursor: pointer; transition: background .18s, transform .15s;
+  }
+  .btn-pago-confirm:hover:not(:disabled) { background: #c0651a; transform: translateY(-1px); }
+  .btn-pago-confirm:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* Post-cobro */
+  .postcobro-info {
+    text-align: center; font-size: .95rem; color: var(--text);
+    background: #f0fdf4; border: 1px solid #bbf7d0; border-radius: .6rem;
+    padding: .8rem 1rem; margin-bottom: 1rem; line-height: 1.5;
+  }
+  .postcobro-btns { display: flex; flex-direction: column; gap: .5rem; }
+  .btn-print-recibo, .btn-print-sri {
+    width: 100%; padding: .7rem; border-radius: .6rem; border: 1.5px solid;
+    font-size: .92rem; font-weight: 700; cursor: pointer; transition: background .18s, transform .15s;
+  }
+  .btn-print-recibo { border-color: var(--cinnamon); background: var(--cinnamon); color: #fff; }
+  .btn-print-recibo:hover { background: #c0651a; transform: translateY(-1px); }
+  .btn-print-sri { border-color: var(--brown-dark); background: var(--brown-dark); color: var(--cream); }
+  .btn-print-sri:hover { background: #2a1005; transform: translateY(-1px); }
+
+  /* ══════════════════════════════════════════════════
+     REPORTES DE VENTAS (admin-view)
+  ══════════════════════════════════════════════════ */
+  .reportes-kpis {
+    display: flex; gap: 1rem; flex-wrap: wrap; margin-bottom: 1.5rem;
+  }
+  .reportes-kpi {
+    flex: 1; min-width: 120px; background: #fff; border: 1px solid var(--border);
+    border-radius: .9rem; padding: 1rem 1.25rem; text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .reportes-kpi__val { font-size: 1.5rem; font-weight: 900; color: var(--cinnamon); line-height: 1; }
+  .reportes-kpi__lbl { font-size: .75rem; color: var(--text-muted); margin-top: .3rem; }
+  .reportes-charts {
+    display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem;
+  }
+  .reportes-chart-wrap {
+    background: #fff; border: 1px solid var(--border); border-radius: .9rem;
+    padding: 1rem 1.25rem; box-shadow: 0 2px 8px rgba(0,0,0,.06);
+  }
+  .reportes-chart-title {
+    font-size: .82rem; font-weight: 700; color: var(--text-muted);
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: .75rem;
+  }
+  @media (max-width: 640px) {
+    .reportes-charts { grid-template-columns: 1fr; }
+    .pago-modal-box { max-width: 100%; }
+  }

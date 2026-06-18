@@ -428,6 +428,30 @@
           </div>
           <div id="admin-mensajes-lista"></div>
         </div>
+
+        <!-- Reportes de Ventas -->
+        <div class="gastos-section" id="admin-reportes-section">
+          <div class="gastos-title">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+            Reportes de Ventas
+          </div>
+          <div id="admin-reportes-content">
+            <div class="reportes-kpis" id="reportes-kpis"></div>
+            <div class="reportes-charts">
+              <div class="reportes-chart-wrap">
+                <p class="reportes-chart-title">Ventas últimos 7 días</p>
+                <canvas id="chart-ventas-dia" height="220"></canvas>
+              </div>
+              <div class="reportes-chart-wrap">
+                <p class="reportes-chart-title">Top 5 productos más vendidos</p>
+                <canvas id="chart-top-productos" height="220"></canvas>
+              </div>
+            </div>
+          </div>
+        </div>
+
       </div>
     </div>
 
@@ -639,10 +663,75 @@
     </div>
   </div>
 
+  <!-- ══ MODAL PAGO ══ -->
+  <div id="pago-modal-backdrop" class="pago-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pago-modal-title">
+    <div class="pago-modal-box">
+      <div class="pago-modal-head">
+        <h3 id="pago-modal-title">Cobrar Pedido</h3>
+        <button id="btn-cerrar-pago-modal" class="btn-close" aria-label="Cancelar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="pago-modal-body">
+        <div id="pago-total-display" class="pago-total-display"></div>
+        <p class="pago-section-label">Método de pago</p>
+        <div class="pago-metodos" role="radiogroup" aria-labelledby="pago-modal-title">
+          <label class="pago-metodo-opt">
+            <input type="radio" name="metodo-pago" value="met001" checked>
+            <span class="pago-metodo-label"><span class="pago-metodo-icon">💵</span> Efectivo</span>
+          </label>
+          <label class="pago-metodo-opt">
+            <input type="radio" name="metodo-pago" value="met002">
+            <span class="pago-metodo-label"><span class="pago-metodo-icon">💳</span> Tarjeta de crédito</span>
+          </label>
+          <label class="pago-metodo-opt">
+            <input type="radio" name="metodo-pago" value="met003">
+            <span class="pago-metodo-label"><span class="pago-metodo-icon">💳</span> Tarjeta de débito</span>
+          </label>
+          <label class="pago-metodo-opt">
+            <input type="radio" name="metodo-pago" value="met004">
+            <span class="pago-metodo-label"><span class="pago-metodo-icon">🔄</span> Transferencia</span>
+          </label>
+        </div>
+        <div id="pago-efectivo-section" class="pago-efectivo-section">
+          <label class="pago-section-label" for="pago-monto-recibido">Monto recibido ($)</label>
+          <input type="number" id="pago-monto-recibido" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
+          <div id="pago-cambio-display" class="pago-cambio-display"></div>
+        </div>
+        <div class="pago-modal-foot">
+          <button id="btn-cancelar-pago" class="btn-pago-cancel">Cancelar</button>
+          <button id="btn-confirmar-pago" class="btn-pago-confirm">✓ Cobrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL POST-COBRO (imprimir) ══ -->
+  <div id="postcobro-backdrop" class="pago-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="postcobro-title">
+    <div class="pago-modal-box">
+      <div class="pago-modal-head" style="background:var(--verde,#16a34a)">
+        <h3 id="postcobro-title" style="color:#fff">✓ Pedido Cobrado</h3>
+        <button id="btn-cerrar-postcobro" class="btn-close" aria-label="Cerrar" style="color:#fff">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="pago-modal-body">
+        <p id="postcobro-info" class="postcobro-info"></p>
+        <div class="postcobro-btns">
+          <button id="btn-imprimir-recibo" class="btn-print-recibo">🖨️ Recibo POS</button>
+          <button id="btn-imprimir-sri" class="btn-print-sri">📄 Factura SRI</button>
+          <button id="btn-cerrar-postcobro2" class="btn-pago-cancel" style="margin-top:.25rem">Cerrar</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ══ SUPABASE CLIENT ══ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <!-- Chart.js para reportes -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
   <script>
     const SUPABASE_URL = 'https://aagcxtggeqkzfngzfqne.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2N4dGdnZXFremZuZ3pmcW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzIyMDYsImV4cCI6MjA5Mzk0ODIwNn0.Byyo-cRfRvZ4ww7dBNF1dPK51rYAFjjpw-JnEzg7-G8';
@@ -997,14 +1086,14 @@
     return _caja;
   }
 
-  async function cobrarPedido(id) {
+  async function cobrarPedido(id, metodoPagoId, montoPagado, cambio) {
     clearTimeout(_pedidoUpdateTimers[id]);
     delete _pedidoUpdateTimers[id];
     _cobrando.add(String(id));
     setTimeout(() => _cobrando.delete(String(id)), 5000);
 
     const cobrado = _caja.find(x => String(x.id) === String(id));
-    if (!cobrado) return _caja;
+    if (!cobrado) return null;
 
     const ahora = new Date().toISOString();
     const fechaISO = ahora.split('T')[0];
@@ -1020,7 +1109,7 @@
       console.error('Supabase cobrar pedido:', pedError);
       toast('Error al cobrar pedido', 'error');
       _cobrando.delete(String(id));
-      return _caja;
+      return null;
     }
 
     // Crear factura (cabecera)
@@ -1051,13 +1140,25 @@
       );
     }
 
+    // Guardar pago
+    if (factData?.fact_id && metodoPagoId) {
+      const montoFinal = (typeof montoPagado === 'number' && montoPagado > 0) ? montoPagado : cobrado.total;
+      const cambioFinal = (typeof cambio === 'number' && cambio >= 0) ? cambio : 0;
+      await db.from('pagos').insert({
+        fact_id:     factData.fact_id,
+        metodo_id:   metodoPagoId,
+        pago_monto:  montoFinal,
+        pago_cambio: cambioFinal
+      }).catch(e => console.warn('pagos insert:', e));
+    }
+
     // Actualizar caché local
     const entrada = { ...cobrado, fecha: _isoFechaALocale(fechaISO), cobradoEn: ahora, estado: 'cobrado' };
     _historial.unshift(entrada);
     _caja = _caja.filter(x => String(x.id) !== String(id));
 
     CarritoIDB.guardar(entrada).catch(() => {});
-    return _caja;
+    return { pedido: cobrado, factNumero, factId: factData?.fact_id };
   }
 
   function actualizarPedido(pedidoId, nuevoItems) {
@@ -1838,6 +1939,8 @@
   cartOverlay.addEventListener('click', cerrarCarrito);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
+    if (document.getElementById('postcobro-backdrop')?.classList.contains('open')) { document.getElementById('postcobro-backdrop').classList.remove('open'); document.getElementById('postcobro-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow=''; return; }
+    if (document.getElementById('pago-modal-backdrop')?.classList.contains('open')) { document.getElementById('pago-modal-backdrop').classList.remove('open'); document.getElementById('pago-modal-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow=''; return; }
     if (modalBackdrop.classList.contains('open'))         { window.VistaMenu?.cerrarModalProducto(); return; }
     if (mesaBackdrop.classList.contains('open'))          { cerrarModalMesa(); return; }
     if (document.getElementById('prod-form-backdrop').classList.contains('open')) return; // handled in vista-admin.js
