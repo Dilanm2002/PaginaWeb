@@ -626,7 +626,7 @@
         </div>
         <div class="mesa-field" id="campo-mesa">
           <label for="mesa-input">Número de Mesa</label>
-          <input type="number" id="mesa-input" min="1" max="12" placeholder="Ej: 5" autocomplete="off" />
+          <input type="number" id="mesa-input" min="1" max="16" step="1" placeholder="Ej: 5" autocomplete="off" />
           <span id="mesa-input-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
         </div>
         <div id="mesa-asignada-info" style="display:none" class="mesa-asignada-info">
@@ -707,53 +707,114 @@
   const _pedidoUpdateTimers = {}; // debounce timers para actualizarPedido
   const _cobrando = new Set();    // IDs de pedidos en proceso de cobro (evita flash realtime)
 
+  function _isoFechaALocale(isoDate) {
+    if (!isoDate) return '';
+    const d = new Date(isoDate + 'T00:00:00');
+    return d.toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' });
+  }
+
   function _rowAPedido(r) {
     return {
       id:            r.ped_id,
-      mesa:          r.ped_mesa,
+      mesa:          r.mesas?.mes_numero ?? null,
+      mesId:         r.mes_id,
       estado:        r.ped_estado,
-      idUsuario:     r.ped_id_usuario,
-      nombreUsuario: r.ped_nombre_usuario,
-      rol:           r.ped_rol,
-      hora:          r.ped_hora,
-      fecha:         r.ped_fecha,
-      items:         (() => { const v = r.ped_items; if (Array.isArray(v)) return v; if (v && typeof v === 'string') { try { const p = JSON.parse(v); return Array.isArray(p) ? p : []; } catch { return []; } } return []; })(),
-      total:         Number(r.ped_total    ?? 0),
-      iva:           Number(r.ped_iva      ?? 0),
-      subtotal:      Number(r.ped_subtotal ?? 0),
-      cobradoEn:     r.ped_cobrado_en ?? null,
-      createdAt:     r.ped_created_at ?? null
+      idUsuario:     r.usu_id ?? null,
+      nombreUsuario: r.usu_id
+        ? (r.usuarios?.usu_nombre ?? 'Usuario')
+        : (r.ped_nombre_invitado ?? 'Invitado'),
+      rol:           r.usu_id
+        ? (r.usuarios?.usuario_rol?.[0]?.roles?.rol_nombre ?? 'usuario')
+        : 'invitado',
+      hora:          r.ped_hora ? r.ped_hora.slice(0, 5) : '',
+      fecha:         _isoFechaALocale(r.ped_fecha),
+      items:         (r.detalle_pedidos || []).map(d => ({
+        id:          d.plat_id,
+        nombre:      d.platos?.plat_nombre ?? '?',
+        precio:      parseFloat(d.detped_precio_unit ?? 0),
+        cantidad:    d.detped_cantidad ?? 1,
+        imagen:      d.platos?.plat_imagen ?? null,
+        exclusiones: (d.det_exclusiones || []).map(e => e.ingredientes?.ing_nombre).filter(Boolean)
+      })),
+      total:     parseFloat(r.ped_total    ?? 0),
+      iva:       parseFloat(r.ped_iva      ?? 0),
+      subtotal:  parseFloat(r.ped_subtotal ?? 0),
+      cobradoEn: r.ped_cobrado_en ?? null,
+      createdAt: r.ped_created_at ?? null
     };
   }
 
-  const _PED_SELECT = 'ped_id, ped_mesa, ped_estado, ped_id_usuario, ped_nombre_usuario, ped_rol, ped_hora, ped_fecha, ped_items, ped_total, ped_iva, ped_subtotal, ped_cobrado_en, ped_created_at';
+  const _PED_SELECT = `
+    ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
+    ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
+    usu_id, mes_id,
+    mesas(mes_numero),
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre))),
+    usuarios(usu_nombre, usu_usuario, usuario_rol(roles(rol_nombre)))
+  `;
+
+  function _mapGasto(r) {
+    return {
+      id:          r.gast_id,
+      descripcion: r.gast_descripcion,
+      monto:       parseFloat(r.gast_monto),
+      fecha:       _isoFechaALocale(r.gast_fecha),
+      hora:        r.gast_hora ? r.gast_hora.slice(0, 5) : '',
+      usuId:       r.usu_id ?? null
+    };
+  }
+
+  function _mapPlato(r) {
+    return {
+      id:           r.plat_id,
+      nombre:       r.plat_nombre,
+      categoria:    r.categorias?.cat_nombre ?? 'Sin categoría',
+      descripcion:  r.plat_descripcion ?? '',
+      precio:       parseFloat(r.plat_precio),
+      imagen:       r.plat_imagen ?? '',
+      tag:          r.plat_tag ?? '',
+      codigo:       r.plat_codigo ?? '',
+      destacado:    r.plat_destacado === true,
+      activo:       r.plat_activo !== false,
+      createdAt:    r.plat_created_at ?? null,
+      ingredientes: (r.plato_ingredientes || []).map(pi => ({
+        id:     pi.ingredientes?.ing_id,
+        nombre: pi.ingredientes?.ing_nombre
+      })).filter(pi => pi.id && pi.nombre)
+    };
+  }
 
   async function inicializarDB() {
     try {
-      const [rCaja, rHist, rGastos, rStock, rMenu] = await Promise.all([
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null).order('ped_created_at', { ascending: true }),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
-        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
-        db.from('productos').select('prod_id, prod_stock, prod_disponible'),
-        db.from('menu_items').select('*').then(r => r).catch(() => ({ data: null }))
+      const [rCaja, rHist, rGastos, rPlatos] = await Promise.all([
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
+        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true }),
+        db.from('platos').select(`
+          plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen,
+          plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at,
+          categorias(cat_nombre),
+          productos(prod_stock, prod_disponible),
+          plato_ingredientes(ingredientes(ing_id, ing_nombre))
+        `).eq('plat_activo', true)
       ]);
+
       _caja      = (rCaja.data   || []).map(_rowAPedido);
       _historial = (rHist.data   || []).map(_rowAPedido);
-      _gastos    = (rGastos.data || []).map(r => ({ id: r.gast_id, descripcion: r.gast_descripcion, monto: Number(r.gast_monto), fecha: r.gast_fecha, hora: r.gast_hora, _dbId: r.gast_id }));
-      _stock     = {};
-      (rStock.data || []).forEach(r => { _stock[r.prod_id] = { stock: r.prod_stock, disponible: r.prod_disponible }; });
-      /* Si menu_items no existe en Supabase, usar localStorage como fallback */
-      if (rMenu.error) {
-        try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
-      } else {
-        _menuItems = (rMenu.data || []).map(r => ({ id: r.plat_id, nombre: r.plat_nombre, categoria: r.plat_categoria, descripcion: r.plat_descripcion, precio: Number(r.plat_precio), ingredientes: r.plat_ingredientes, tag: r.plat_tag, imagen: r.plat_imagen, destacado: r.plat_destacado === true, activo: r.plat_activo, codigo: r.plat_codigo, createdAt: r.plat_created_at ?? null }));
-        localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-      }
+      _gastos    = (rGastos.data || []).map(_mapGasto);
+      _menuItems = (rPlatos.data || []).map(_mapPlato);
+
+      _stock = {};
+      (rPlatos.data || []).forEach(r => {
+        _stock[r.plat_id] = {
+          stock:      r.productos?.prod_stock      ?? 0,
+          disponible: r.productos?.prod_disponible ?? false
+        };
+      });
+
+      localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
     } catch(e) {
       console.warn('Supabase no disponible, usando localStorage como fallback', e);
-      try { _caja      = JSON.parse(localStorage.getItem(LS_CAJA))      ?? []; } catch { _caja = []; }
-      try { _historial = JSON.parse(localStorage.getItem(LS_HISTORIAL)) ?? []; } catch { _historial = []; }
-      try { _gastos    = JSON.parse(localStorage.getItem(LS_GASTOS))    ?? []; } catch { _gastos = []; }
       try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
     }
     await ModuloAutenticacion.cargarUsuarios();
@@ -761,19 +822,14 @@
 
   async function recargarCaja() {
     try {
-      const [rCaja, rHist, rGastos, rStock] = await Promise.all([
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').not('ped_items', 'is', null).order('ped_created_at', { ascending: true }),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').not('ped_items', 'is', null),
-        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora').order('gast_id', { ascending: true }),
-        db.from('productos').select('prod_id, prod_stock, prod_disponible')
+      const [rCaja, rHist, rGastos] = await Promise.all([
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
+        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true })
       ]);
       if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido).filter(p => !_cobrando.has(String(p.id)));
       if (!rHist.error)   _historial = (rHist.data   || []).map(_rowAPedido);
-      if (!rGastos.error) _gastos    = (rGastos.data || []).map(r => ({ id: r.gast_id, descripcion: r.gast_descripcion, monto: Number(r.gast_monto), fecha: r.gast_fecha, hora: r.gast_hora, _dbId: r.gast_id }));
-      if (!rStock.error) {
-        _stock = {};
-        (rStock.data || []).forEach(r => { _stock[r.prod_id] = { stock: r.prod_stock, disponible: r.prod_disponible }; });
-      }
+      if (!rGastos.error) _gastos    = (rGastos.data || []).map(_mapGasto);
       return !rCaja.error;
     } catch(e) {
       console.warn('recargarCaja:', e);
@@ -792,21 +848,25 @@
     return _stock[productoId] ?? { stock: 99, disponible: true };
   }
 
-  async function actualizarStock(productoId, cantidad) {
-    const actual = getStock(productoId);
+  async function actualizarStock(platId, cantidad) {
+    const actual = getStock(platId);
     const nuevoStock = Math.max(0, actual.stock - cantidad);
     const disponible = nuevoStock > 0;
-    _stock[productoId] = { stock: nuevoStock, disponible };
-    const { error } = await db.from('productos').update({ prod_stock: nuevoStock, prod_disponible: disponible, prod_updated_at: new Date().toISOString() }).eq('prod_id', productoId);
+    _stock[platId] = { stock: nuevoStock, disponible };
+    const { error } = await db.from('productos')
+      .update({ prod_stock: nuevoStock, prod_disponible: disponible, prod_updated_at: new Date().toISOString() })
+      .eq('plat_id', platId);
     if (error) console.error('Supabase actualizarStock:', error);
     return nuevoStock;
   }
 
-  async function reponerStock(productoId, cantidad) {
-    const actual = getStock(productoId);
+  async function reponerStock(platId, cantidad) {
+    const actual = getStock(platId);
     const nuevoStock = actual.stock + cantidad;
-    _stock[productoId] = { stock: nuevoStock, disponible: true };
-    const { error } = await db.from('productos').update({ prod_stock: nuevoStock, prod_disponible: true, prod_updated_at: new Date().toISOString() }).eq('prod_id', productoId);
+    _stock[platId] = { stock: nuevoStock, disponible: true };
+    const { error } = await db.from('productos')
+      .update({ prod_stock: nuevoStock, prod_disponible: true, prod_updated_at: new Date().toISOString() })
+      .eq('plat_id', platId);
     if (error) console.error('Supabase reponerStock:', error);
     return nuevoStock;
   }
@@ -822,131 +882,223 @@
   }
   function guardarGastos(g) { _gastos = g; }
 
-  async function insertarGasto(gasto) {
-    _gastos.push(gasto);
-    try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
+  async function insertarGasto({ descripcion, monto, fecha, hora }) {
+    const session = ModuloAutenticacion.getSession();
     try {
-      const resp = await db.from('gastos').insert({
-        gast_descripcion: gasto.descripcion,
-        gast_monto:       gasto.monto,
-        gast_fecha:       gasto.fecha,
-        gast_hora:        gasto.hora
-      }).select('gast_id').single();
-      if (resp.error) {
-        console.error('Supabase insertarGasto:', resp.error);
-        toast('⚠ Gasto guardado solo localmente: ' + (resp.error.message || resp.error.code || 'error desconocido'), 'error');
-      } else if (resp.data?.gast_id) {
-        const idx = _gastos.findIndex(g => g.id === gasto.id);
-        if (idx >= 0) _gastos[idx]._dbId = resp.data.gast_id;
+      const { data, error } = await db.from('gastos').insert({
+        usu_id:           session?.id ?? null,
+        gast_descripcion: descripcion,
+        gast_monto:       monto,
+        gast_fecha:       new Date().toISOString().split('T')[0],
+        gast_hora:        new Date().toTimeString().slice(0, 8)
+      }).select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').single();
+
+      if (error) {
+        console.error('Supabase insertarGasto:', error);
+        toast('Error al registrar gasto', 'error');
+        return null;
       }
+
+      const nuevoGasto = _mapGasto(data);
+      _gastos.push(nuevoGasto);
+      return nuevoGasto;
     } catch(e) {
       console.error('insertarGasto exception:', e);
       toast('Error de conexión al guardar gasto', 'error');
+      return null;
     }
   }
 
-  async function eliminarGasto(gastoLocalId) {
-    const gasto = _gastos.find(g => g.id === gastoLocalId);
-    _gastos = _gastos.filter(g => g.id !== gastoLocalId);
-    try { localStorage.setItem(LS_GASTOS, JSON.stringify(_gastos)); } catch(_) {}
-    if (gasto?._dbId) {
-      db.from('gastos').delete().eq('gast_id', gasto._dbId)
-        .then(({ error }) => { if (error) console.error('Supabase eliminarGasto:', error); });
-    }
+  async function eliminarGasto(gastoId) {
+    _gastos = _gastos.filter(g => g.id !== gastoId);
+    const { error } = await db.from('gastos').delete().eq('gast_id', gastoId);
+    if (error) console.error('Supabase eliminarGasto:', error);
   }
 
-  function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items }) {
+  async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items }) {
     const totales = LogicaCarrito.calcularTotales(items);
-    const _todosIds = [..._caja, ..._historial].map(p => Number(p.id)).filter(n => n > 0 && n < 1_000_000);
-    const pedido  = {
-      id: Math.max(0, ..._todosIds) + 1,
+
+    // Buscar mes_id desde el número de mesa
+    const { data: mesaData } = await db.from('mesas').select('mes_id').eq('mes_numero', mesa).single();
+
+    // Limpiar pedido pendiente previo para esta mesa (evita fantasmas)
+    if (mesaData?.mes_id) {
+      await db.from('pedidos').delete().eq('mes_id', mesaData.mes_id).eq('ped_estado', 'pendiente');
+    }
+
+    const hora  = new Date().toTimeString().slice(0, 8);
+    const fecha = new Date().toISOString().split('T')[0];
+
+    const { data: pedData, error: pedError } = await db.from('pedidos').insert({
+      mes_id:             mesaData?.mes_id ?? null,
+      usu_id:             idUsuario || null,
+      ped_nombre_invitado: idUsuario ? null : nombreUsuario,
+      ped_estado:         'pendiente',
+      ped_hora:           hora,
+      ped_fecha:          fecha,
+      ped_subtotal:       totales.subtotal,
+      ped_iva:            totales.iva,
+      ped_total:          totales.total
+    }).select('ped_id').single();
+
+    if (pedError || !pedData) {
+      console.error('Supabase insert pedido:', pedError);
+      toast('Error al enviar pedido. Intenta de nuevo.', 'error');
+      return _caja;
+    }
+
+    // Insertar detalle_pedidos
+    const detalles = items.map(i => ({
+      ped_id:             pedData.ped_id,
+      plat_id:            i.id,
+      detped_cantidad:    i.cantidad,
+      detped_precio_unit: i.precio,
+      detped_subtotal:    i.precio * i.cantidad
+    }));
+    const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(detalles).select('detped_id, plat_id');
+    if (detError) console.error('Supabase insert detalle_pedidos:', detError);
+
+    // Insertar exclusiones de ingredientes
+    if (detData?.length) {
+      const exclRows = [];
+      detData.forEach(det => {
+        const item = items.find(i => i.id === det.plat_id);
+        (item?.exclusiones || []).forEach(excl => {
+          if (excl?.id) exclRows.push({ detped_id: det.detped_id, ing_id: excl.id });
+        });
+      });
+      if (exclRows.length) {
+        const { error: exclError } = await db.from('det_exclusiones').insert(exclRows);
+        if (exclError) console.error('Supabase insert det_exclusiones:', exclError);
+      }
+    }
+
+    // Agregar a caché local
+    const pedido = {
+      id:            pedData.ped_id,
       mesa,
-      nombreUsuario,
-      idUsuario: idUsuario || null,
+      mesId:         mesaData?.mes_id ?? null,
+      nombreUsuario: idUsuario ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === idUsuario)?.nombre ?? nombreUsuario) : nombreUsuario,
+      idUsuario:     idUsuario || null,
       rol,
-      items: items.map(i => ({ id:i.id, nombre:i.nombre, cantidad:i.cantidad, precio:i.precio, imagen:i.imagen||null })),
-      total:    totales.total,
-      iva:      totales.iva,
-      subtotal: totales.subtotal,
-      hora:      new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' }),
-      createdAt: new Date().toISOString(),
-      estado: 'pendiente'
+      hora:          hora.slice(0, 5),
+      fecha:         _isoFechaALocale(fecha),
+      createdAt:     new Date().toISOString(),
+      estado:        'pendiente',
+      items:         items.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, imagen: i.imagen || null, exclusiones: (i.exclusiones || []).map(e => e.nombre) })),
+      total:         totales.total,
+      iva:           totales.iva,
+      subtotal:      totales.subtotal
     };
     _caja.push(pedido);
-    (async () => {
-      /* Limpiar cualquier fila fantasma pendiente para esta mesa antes de insertar */
-      await db.from('pedidos').delete()
-        .eq('ped_mesa', pedido.mesa).eq('ped_estado', 'pendiente');
-      const { error } = await db.from('pedidos').insert({
-        ped_id:             pedido.id,
-        ped_mesa:           pedido.mesa,
-        ped_estado:         'pendiente',
-        ped_id_usuario:     pedido.idUsuario,
-        ped_nombre_usuario: pedido.nombreUsuario,
-        ped_rol:            pedido.rol,
-        ped_hora:           pedido.hora,
-        ped_items:          pedido.items,
-        ped_total:          pedido.total,
-        ped_iva:            pedido.iva,
-        ped_subtotal:       pedido.subtotal
-      });
-      if (error) {
-        console.error('Supabase insert pedido:', error);
-        toast('⚠ Pedido guardado solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
-      }
-    })();
-    /* Descontar stock por cada ítem del pedido (en paralelo) */
-    Promise.all(pedido.items.map(i => actualizarStock(i.id, i.cantidad)))
-      .catch(e => console.error('Error actualizando stock del pedido:', e));
+
+    // Descontar stock
+    await Promise.all(items.map(i => actualizarStock(i.id, i.cantidad)));
     return _caja;
   }
 
-  function cobrarPedido(id) {
+  async function cobrarPedido(id) {
     clearTimeout(_pedidoUpdateTimers[id]);
     delete _pedidoUpdateTimers[id];
     _cobrando.add(String(id));
     setTimeout(() => _cobrando.delete(String(id)), 5000);
+
     const cobrado = _caja.find(x => String(x.id) === String(id));
-    if (cobrado) {
-      const hoy    = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
-      const entrada = { ...cobrado, fecha: hoy, cobradoEn: new Date().toISOString(), estado: 'cobrado' };
-      _historial.push(entrada);
-      try { localStorage.setItem(LS_HISTORIAL, JSON.stringify(_historial)); } catch(_) {}
-      db.from('pedidos').update({
-        ped_estado:     'cobrado',
-        ped_fecha:      hoy,
-        ped_cobrado_en: new Date().toISOString()
-      }).eq('ped_id', cobrado.id).then(({ error }) => {
-        if (error) {
-          console.error('Supabase cobrar:', error);
-          toast('⚠ Venta guardada solo localmente: ' + (error.message || error.code || 'error desconocido'), 'error');
-        }
-      });
-      CarritoIDB.guardar(entrada).catch(() => {});
+    if (!cobrado) return _caja;
+
+    const ahora = new Date().toISOString();
+    const fechaISO = ahora.split('T')[0];
+
+    // Actualizar estado del pedido
+    const { error: pedError } = await db.from('pedidos').update({
+      ped_estado:     'cobrado',
+      ped_fecha:      fechaISO,
+      ped_cobrado_en: ahora
+    }).eq('ped_id', id);
+
+    if (pedError) {
+      console.error('Supabase cobrar pedido:', pedError);
+      toast('Error al cobrar pedido', 'error');
+      _cobrando.delete(String(id));
+      return _caja;
     }
+
+    // Crear factura (cabecera)
+    const { count } = await db.from('facturas').select('*', { count: 'exact', head: true });
+    const factNumero = 'FACT-' + String((count ?? 0) + 1).padStart(6, '0');
+
+    const { data: factData } = await db.from('facturas').insert({
+      ped_id:        id,
+      usu_id:        cobrado.idUsuario ?? null,
+      fact_numero:   factNumero,
+      fact_subtotal: cobrado.subtotal,
+      fact_iva:      cobrado.iva,
+      fact_total:    cobrado.total,
+      fact_estado:   'emitida'
+    }).select('fact_id').single();
+
+    // Crear detalle_facturas
+    if (factData?.fact_id && cobrado.items.length > 0) {
+      await db.from('detalle_facturas').insert(
+        cobrado.items.map(i => ({
+          fact_id:             factData.fact_id,
+          plat_id:             i.id,
+          detfact_descripcion: i.nombre,
+          detfact_cantidad:    i.cantidad,
+          detfact_precio_unit: i.precio,
+          detfact_subtotal:    i.precio * i.cantidad
+        }))
+      );
+    }
+
+    // Actualizar caché local
+    const entrada = { ...cobrado, fecha: _isoFechaALocale(fechaISO), cobradoEn: ahora, estado: 'cobrado' };
+    _historial.unshift(entrada);
     _caja = _caja.filter(x => String(x.id) !== String(id));
+
+    CarritoIDB.guardar(entrada).catch(() => {});
     return _caja;
   }
 
   function actualizarPedido(pedidoId, nuevoItems) {
     const idx = _caja.findIndex(p => String(p.id) === String(pedidoId));
     if (idx < 0) return;
+
     if (!nuevoItems.length) {
       _caja.splice(idx, 1);
-      db.from('pedidos').delete().eq('ped_id', pedidoId).then(({ error }) => { if (error) console.error('Supabase delete pedido:', error); });
+      db.from('detalle_pedidos').delete().eq('ped_id', pedidoId)
+        .then(() => db.from('pedidos').delete().eq('ped_id', pedidoId))
+        .then(({ error }) => { if (error) console.error('Supabase delete pedido:', error); });
       return;
     }
-    const total    = nuevoItems.reduce((s,i) => s + i.precio * i.cantidad, 0);
+
+    const total    = nuevoItems.reduce((s, i) => s + i.precio * i.cantidad, 0);
     const iva      = total * (IVA / (1 + IVA));
     const subtotal = total - iva;
     _caja[idx].items    = nuevoItems;
     _caja[idx].total    = total;
     _caja[idx].iva      = iva;
     _caja[idx].subtotal = subtotal;
+
     clearTimeout(_pedidoUpdateTimers[pedidoId]);
-    _pedidoUpdateTimers[pedidoId] = setTimeout(() => {
-      db.from('pedidos').update({ ped_items: nuevoItems, ped_total: total, ped_iva: iva, ped_subtotal: subtotal }).eq('ped_id', pedidoId)
-        .then(({ error }) => { if (error) console.error('Supabase update pedido:', error); });
+    _pedidoUpdateTimers[pedidoId] = setTimeout(async () => {
+      // Reemplazar detalle_pedidos: eliminar y reinsertar
+      await db.from('detalle_pedidos').delete().eq('ped_id', pedidoId);
+      await db.from('detalle_pedidos').insert(
+        nuevoItems.map(i => ({
+          ped_id:             pedidoId,
+          plat_id:            i.id,
+          detped_cantidad:    i.cantidad,
+          detped_precio_unit: i.precio,
+          detped_subtotal:    i.precio * i.cantidad
+        }))
+      );
+      const { error } = await db.from('pedidos').update({
+        ped_total:    total,
+        ped_iva:      iva,
+        ped_subtotal: subtotal
+      }).eq('ped_id', pedidoId);
+      if (error) console.error('Supabase update pedido:', error);
     }, 600);
   }
 
@@ -985,7 +1137,7 @@
     const err = document.getElementById('mesa-input-error');
     if (!err) return;
     const num = Number(mesaInput.value.trim());
-    if (num >= 1 && num <= 12) {
+    if (num >= 1 && num <= 16) {
       const session = ModuloAutenticacion.getSession();
       const pedOcupado = leerCaja().find(p => String(p.mesa) === String(num));
       if (pedOcupado) {
@@ -1076,6 +1228,7 @@
           <img class="cart-item__img" src="${item.imagen}" alt="${item.nombre}" loading="lazy" decoding="async">
           <div>
             <p class="cart-item__name">${item.nombre}</p>
+            ${item.exclusiones?.length ? `<p class="cart-item__excl">sin: ${item.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</p>` : ''}
             <p class="cart-item__price">$${(item.precio * item.cantidad).toFixed(2)}</p>
           </div>
           <div class="cart-item__controls">
@@ -1096,7 +1249,7 @@
       cartItemsEl.onclick = e => {
         const btn = e.target.closest('[data-action],[data-id]');
         if (!btn) return;
-        const id = Number(btn.dataset.id);
+        const id = btn.dataset.id;
         if (btn.classList.contains('btn-remove')) {
           const nombre = items.find(i => i.id === id)?.nombre ?? 'Platillo';
           LogicaCarrito.eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
@@ -1143,11 +1296,6 @@
     });
   }
 
-  function nextMenuId() {
-    const ids = _menuItems.map(m => Number(m.id));
-    return Math.max(100, ...ids) + 1;
-  }
-
   async function subirImagenStorage(base64, itemId) {
     if (!base64 || !base64.startsWith('data:image')) return base64;
     try {
@@ -1179,65 +1327,96 @@
     return `${prefix}-${String(id).padStart(3, '0')}`;
   }
 
+  async function _obtenerOCrearCategoria(catNombre) {
+    const { data } = await db.from('categorias').select('cat_id').eq('cat_nombre', catNombre).single();
+    if (data?.cat_id) return data.cat_id;
+    const { data: nueva } = await db.from('categorias').insert({ cat_nombre: catNombre }).select('cat_id').single();
+    return nueva?.cat_id ?? null;
+  }
+
+  async function _obtenerOCrearIngrediente(ingNombre) {
+    const { data } = await db.from('ingredientes').select('ing_id').ilike('ing_nombre', ingNombre).single();
+    if (data?.ing_id) return data.ing_id;
+    const { data: nuevo } = await db.from('ingredientes').insert({ ing_nombre: ingNombre }).select('ing_id').single();
+    return nuevo?.ing_id ?? null;
+  }
+
   async function guardarMenuItemDB(item) {
-    /* Subir imagen a Storage si es base64 */
     if (item.imagen?.startsWith('data:image')) {
-      item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id) };
+      item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id || 'nuevo') };
     }
-    const _existente = _menuItems.find(m => m.id === item.id);
-    const createdAt  = item.createdAt || _existente?.createdAt || new Date().toISOString();
-    const itemConFecha = { ...item, createdAt };
-    _menuItems = _menuItems.filter(m => m.id !== item.id);
-    _menuItems.push(itemConFecha);
-    localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-    const stockInicial = item.stock_inicial ?? 20;
-    const itemDB = {
-      plat_id:          item.id,
+
+    const catId = await _obtenerOCrearCategoria(item.categoria);
+    const createdAt = item.createdAt || new Date().toISOString();
+
+    const platData = {
+      cat_id:           catId,
       plat_nombre:      item.nombre,
-      plat_categoria:   item.categoria,
       plat_descripcion: item.descripcion ?? '',
       plat_precio:      item.precio,
-      plat_ingredientes:item.ingredientes ?? [],
-      plat_tag:         item.tag ?? '',
       plat_imagen:      item.imagen ?? '',
+      plat_tag:         item.tag ?? '',
       plat_destacado:   item.destacado ?? false,
       plat_activo:      item.activo ?? true,
-      plat_codigo:      _generarCodigo(item.categoria, item.id),
       plat_created_at:  createdAt
     };
-    const { error } = await db.from('menu_items').upsert(itemDB);
-    if (error) { console.error('Supabase menu_items upsert:', error); return false; }
-    /* Stock: crear para productos nuevos, actualizar para ediciones */
-    if (!_stock[item.id]) {
-      _stock[item.id] = { stock: stockInicial, disponible: stockInicial > 0 };
-      const { error: errStock } = await db.from('productos').upsert({ prod_id: item.id, prod_nombre: item.nombre, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
-      if (errStock) console.error('Supabase productos upsert:', errStock);
+
+    let platId = item.id;
+
+    if (item.id) {
+      // Edición
+      const { error } = await db.from('platos').update(platData).eq('plat_id', item.id);
+      if (error) { console.error('Supabase update plato:', error); return false; }
     } else {
-      await db.from('productos').update({ prod_nombre: item.nombre }).eq('prod_id', item.id);
-      const actualStock = _stock[item.id].stock;
-      if (stockInicial !== actualStock) {
-        const diff = stockInicial - actualStock;
-        if (diff > 0) await reponerStock(item.id, diff);
-        else          await actualizarStock(item.id, Math.abs(diff));
+      // Nuevo
+      const { data: nuevo, error } = await db.from('platos').insert({
+        ...platData,
+        plat_codigo: _generarCodigo(item.categoria, Date.now())
+      }).select('plat_id').single();
+      if (error || !nuevo) { console.error('Supabase insert plato:', error); return false; }
+      platId = nuevo.plat_id;
+    }
+
+    // Stock
+    const stockInicial = item.stock_inicial ?? 20;
+    if (!_stock[platId]) {
+      _stock[platId] = { stock: stockInicial, disponible: stockInicial > 0 };
+      await db.from('productos').insert({ plat_id: platId, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
+    } else {
+      const diff = stockInicial - _stock[platId].stock;
+      if (diff > 0)      await reponerStock(platId, diff);
+      else if (diff < 0) await actualizarStock(platId, Math.abs(diff));
+    }
+
+    // Ingredientes
+    const ingredientesConId = [];
+    if (Array.isArray(item.ingredientes) && item.ingredientes.length > 0) {
+      await db.from('plato_ingredientes').delete().eq('plat_id', platId);
+      for (const ingRaw of item.ingredientes) {
+        const ingNombre = typeof ingRaw === 'string' ? ingRaw.trim() : ingRaw.nombre;
+        const ingId = await _obtenerOCrearIngrediente(ingNombre);
+        if (ingId) {
+          await db.from('plato_ingredientes').insert({ plat_id: platId, ing_id: ingId });
+          ingredientesConId.push({ id: ingId, nombre: ingNombre });
+        }
       }
     }
+
+    // Actualizar caché local
+    const itemActualizado = { ...item, id: platId, categoria: item.categoria, createdAt, ingredientes: ingredientesConId };
+    _menuItems = _menuItems.filter(m => m.id !== platId);
+    _menuItems.push(itemActualizado);
+    localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
+
     return true;
   }
 
   async function eliminarMenuItemDB(id) {
-    if (id <= 99) {
-      const ok = await guardarMenuItemDB({ id, activo: false, nombre: '', categoria: '', precio: 0 });
-      return ok;
-    } else {
-      _menuItems = _menuItems.filter(m => m.id !== id);
-      localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-      const { error: errDel } = await db.from('menu_items').delete().eq('plat_id', id);
-      if (errDel) {
-        console.error('Supabase delete menu_item:', errDel);
-        return false;
-      }
-      return true;
-    }
+    _menuItems = _menuItems.filter(m => m.id !== id);
+    localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
+    const { error } = await db.from('platos').delete().eq('plat_id', id);
+    if (error) { console.error('Supabase delete plato:', error); return false; }
+    return true;
   }
 
   const ROL_LABEL = { mesero:'Mesero', usuario:'Cliente', invitado:'Invitado', cajero:'Cajero', administrador:'Admin' };
@@ -1249,7 +1428,7 @@
     getStock, getProductosMergeados,
     cobrarPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
-    nextMenuId, comprimirImagen, toast,
+    comprimirImagen, toast,
     IVA, ROL_LABEL,
     getFiltroSesion:     () => ModuloApp.getFiltroSesion(),
     guardarFiltroSesion: cat => ModuloApp.guardarFiltroSesion(cat),
@@ -1417,11 +1596,11 @@
     }
 
     const mesa = Number(mesaInput.value.trim());
-    if (!mesa || mesa < 1 || mesa > 12) {
+    if (!mesa || mesa < 1 || mesa > 16 || !Number.isInteger(mesa)) {
       mesaInput.style.borderColor = '#dc2626';
       const mesaErrRango = document.getElementById('mesa-input-error');
       if (mesaErrRango) {
-        mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 12.';
+        mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 16.';
         mesaErrRango.style.display = 'block';
       }
       mesaInput.focus();
@@ -1841,7 +2020,7 @@
     });
   })();
 
-  document.getElementById('btn-register').addEventListener('click', () => {
+  document.getElementById('btn-register').addEventListener('click', async () => {
     const nombre    = document.getElementById('reg-nombre').value.trim();
     const apellido  = document.getElementById('reg-apellido').value.trim();
     const email     = document.getElementById('reg-email').value.trim();
@@ -1925,7 +2104,12 @@
       return;
     }
 
-    const res = ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
+    const btnReg = document.getElementById('btn-register');
+    btnReg.disabled = true;
+    btnReg.textContent = 'Registrando...';
+    const res = await ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
+    btnReg.disabled = false;
+    btnReg.textContent = 'Crear cuenta';
     if (!res.ok) { show(res.msg); return; }
     limpiarFormAuth();
     ModuloAutenticacion.setSession({ id:res.user.id, nombre:res.user.nombre, usuario:res.user.usuario, rol:res.user.rol });

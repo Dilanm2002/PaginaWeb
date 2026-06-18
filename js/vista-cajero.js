@@ -85,7 +85,7 @@ window.VistaCajero = (function () {
                 ${Array.isArray(h.items) ? h.items.map(i => `
                   <div class="resumen-card__item-row">
                     <span class="resumen-card__item-qty">${i.cantidad}×</span>
-                    <span>${i.nombre}</span>
+                    <span>${i.nombre}${i.exclusiones?.length ? `<span class="cajero-excl">sin: ${i.exclusiones.join(', ')}</span>` : ''}</span>
                   </div>`).join('') : ''}
               </div>
               <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
@@ -150,7 +150,7 @@ window.VistaCajero = (function () {
 
     listaEl.querySelectorAll('.gasto-del-btn').forEach(btn => {
       btn.onclick = async () => {
-        const id = Number(btn.dataset.delId);
+        const id = btn.dataset.delId;
         btn.disabled = true;
         await SC.eliminarGasto(id);
         renderGastos();
@@ -251,7 +251,7 @@ window.VistaCajero = (function () {
       if (e.target.closest('.mesero-cat-title')) return;
       const btn = e.target.closest('.stock-btn');
       if (!btn) return;
-      const id  = Number(btn.dataset.id);
+      const id  = btn.dataset.id;
       const act = btn.dataset.action;
       const row = listaEl.querySelector(`.stock-row[data-id="${id}"]`);
       const inp = row?.querySelector('.stock-input');
@@ -380,7 +380,7 @@ window.VistaCajero = (function () {
         <div class="cajero-order-items">
           ${items.map((it, idx) => `
             <div class="cajero-order-item">
-              <span class="cajero-order-item__name">${it.nombre}</span>
+              <span class="cajero-order-item__name">${it.nombre}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.join(', ')}</span>` : ''}</span>
               <div class="caj-qty">
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
                 <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
@@ -403,17 +403,19 @@ window.VistaCajero = (function () {
       </div>`;
     }).join('');
 
-    cajeroGrid.onclick = e => {
+    cajeroGrid.onclick = async e => {
       const btnCobrar = e.target.closest('.btn-cobrar');
       if (btnCobrar) {
-        SC.cobrarPedido(Number(btnCobrar.dataset.pedidoId));
+        btnCobrar.disabled = true;
+        btnCobrar.textContent = 'Procesando…';
+        await SC.cobrarPedido(btnCobrar.dataset.pedidoId);
         renderCajeroView();
         SC.toast('Pedido cobrado ✓', 'success');
         return;
       }
       const btnDel = e.target.closest('.caj-del');
       if (btnDel) {
-        const pid = Number(btnDel.dataset.pid);
+        const pid = btnDel.dataset.pid;
         const idx = Number(btnDel.dataset.idx);
         const peds = SC.leerCaja();
         const ped = peds.find(p => String(p.id) === String(pid));
@@ -425,7 +427,7 @@ window.VistaCajero = (function () {
       }
       const btnQty = e.target.closest('.caj-qty__btn');
       if (btnQty) {
-        const pid    = Number(btnQty.dataset.pid);
+        const pid    = btnQty.dataset.pid;
         const idx    = Number(btnQty.dataset.idx);
         const action = btnQty.dataset.action;
         const peds   = SC.leerCaja();
@@ -442,7 +444,7 @@ window.VistaCajero = (function () {
         if (ped.items[idx].cantidad <= 0) {
           ped.items.splice(idx, 1);
           SC.actualizarPedido(pid, ped.items);
-          renderCajeroView(); // ítem eliminado — necesita re-render estructural
+          renderCajeroView();
           return;
         }
         SC.actualizarPedido(pid, ped.items);
@@ -475,15 +477,14 @@ window.VistaCajero = (function () {
         if (!monto || monto <= 0) { montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
         if (monto > 5000) { SC.toast('El monto no puede superar $5,000 por gasto.', 'error'); montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
         addGastoBtn.disabled = true;
-        const hoy  = new Date().toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
-        const hora = new Date().toLocaleTimeString('es-EC', { hour:'2-digit', minute:'2-digit' });
-        const gasto = { id: Date.now(), descripcion: desc, monto, fecha: hoy, hora };
-        await SC.insertarGasto(gasto);
-        descEl.value  = '';
-        montoEl.value = '';
-        descEl.focus();
-        renderGastos();
-        SC.toast(`Gasto "${desc}" registrado`, 'success');
+        const resultado = await SC.insertarGasto({ descripcion: desc, monto });
+        if (resultado) {
+          descEl.value  = '';
+          montoEl.value = '';
+          descEl.focus();
+          renderGastos();
+          SC.toast(`Gasto "${desc}" registrado`, 'success');
+        }
         addGastoBtn.disabled = false;
       });
     }

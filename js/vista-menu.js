@@ -151,19 +151,19 @@ window.VistaMenu = (function () {
       const btnAdd = e.target.closest('.btn-add');
       if (btnAdd) {
         e.stopPropagation();
-        const prod = SC.getProductosMergeados().find(x => x.id === Number(btnAdd.dataset.id));
+        const prod = SC.getProductosMergeados().find(x => x.id === btnAdd.dataset.id);
         if (!prod) return;
         const s = SC.getStock(prod.id);
         if (!s.disponible || s.stock <= 0) return;
         const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === prod.id);
         if (enCarrito && enCarrito.cantidad >= s.stock) return;
         LogicaCarrito.agregarItem(prod); SC.renderCarrito();
-        SC.toast(`"${prod.nombre}" agregado a tu orden 🍽️`, 'success');
+        SC.toast(`"${prod.nombre}" agregado a tu orden`, 'success');
         return;
       }
       const card = e.target.closest('.product-card');
       if (card) {
-        const prod = SC.getProductosMergeados().find(x => x.id === Number(card.dataset.id));
+        const prod = SC.getProductosMergeados().find(x => x.id === card.dataset.id);
         if (prod) abrirModalProducto(prod);
       }
     };
@@ -177,6 +177,17 @@ window.VistaMenu = (function () {
 
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     const modalBox      = document.getElementById('product-modal-box');
+
+    const ingsConId = Array.isArray(p.ingredientes) ? p.ingredientes.filter(i => i && i.id) : [];
+    const tieneIngredientes = ingsConId.length > 0;
+    const ingChips = tieneIngredientes
+      ? ingsConId.map(ing => `
+          <label class="ing-chip">
+            <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
+            <span class="ing-chip__label">${ing.nombre}</span>
+          </label>`).join('')
+      : '';
+
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
         <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
@@ -189,8 +200,10 @@ window.VistaMenu = (function () {
         <span class="modal-badge" data-cat="${p.categoria}">${p.categoria}</span>
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
-        <p class="modal-ingredients-title">Ingredientes</p>
-        <p class="modal-ingredients">${p.ingredientes.join(' &nbsp;·&nbsp; ')}</p>
+        ${tieneIngredientes ? `
+          <p class="modal-ingredients-title">Ingredientes <small style="font-weight:400;font-size:.72rem;text-transform:none;letter-spacing:0;color:var(--text-muted)">(desmarca para excluir)</small></p>
+          <div class="modal-ingredients-chips">${ingChips}</div>
+        ` : ''}
         <div class="modal-footer">
           <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
@@ -214,8 +227,18 @@ window.VistaMenu = (function () {
       if (!s.disponible || s.stock <= 0) { SC.toast(`"${p.nombre}" está agotado`, 'error'); return; }
       const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === p.id);
       if (enCarrito && enCarrito.cantidad >= s.stock) return;
-      LogicaCarrito.agregarItem(p); SC.renderCarrito();
-      SC.toast(`"${p.nombre}" agregado a tu orden 🍽️`, 'success');
+
+      const exclusiones = [];
+      modalBox.querySelectorAll('.ing-check:not(:checked)').forEach(cb => {
+        exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
+      });
+
+      LogicaCarrito.agregarItem(p, exclusiones);
+      SC.renderCarrito();
+      const msg = exclusiones.length
+        ? `"${p.nombre}" sin: ${exclusiones.map(e => e.nombre).join(', ')}`
+        : `"${p.nombre}" agregado a tu orden`;
+      SC.toast(msg, 'success');
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -373,11 +396,11 @@ window.VistaMenu = (function () {
         const btn = e.target.closest('[data-det-action]');
         if (!btn || !meseroMesaTarget) return;
         const action = btn.dataset.detAction;
-        const itemId = Number(btn.dataset.itemId);
+        const itemId = btn.dataset.itemId;
         const peds   = SC.leerCaja();
         const ped    = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
         if (!ped) return;
-        const idx = ped.items.findIndex(x => x.id === itemId);
+        const idx = ped.items.findIndex(x => String(x.id) === String(itemId));
         if (idx < 0) return;
         if (action === 'inc') {
           ped.items[idx].cantidad += 1;
@@ -437,7 +460,7 @@ window.VistaMenu = (function () {
                   i
                   <div class="mesero-ing-pop" id="mpop-${p.id}">
                     <strong>Ingredientes</strong>
-                    ${p.ingredientes.join(' · ')}
+                    ${p.ingredientes.map(i => i.nombre).join(' · ')}
                     <span style="display:block;margin-top:.4rem;font-weight:700;color:${_stockColor};font-size:.75rem;">${_stockTxt}</span>
                   </div>
                 </button>
@@ -480,7 +503,7 @@ window.VistaMenu = (function () {
 
       const btn = e.target.closest('.mesero-qty__btn');
       if (!btn) return;
-      const prod = SC.getProductosMergeados().find(x => x.id === Number(btn.dataset.id));
+      const prod = SC.getProductosMergeados().find(x => x.id === btn.dataset.id);
       if (!prod) return;
 
       if (btn.classList.contains('add')) {
@@ -496,9 +519,13 @@ window.VistaMenu = (function () {
           if (btn.classList.contains('add')) {
             const totalEnPedido = existente ? existente.cantidad : 0;
             const s = SC.getStock(prod.id);
-            if (totalEnPedido >= s.stock) return;
+            if (!s.disponible || s.stock <= 0 || totalEnPedido >= s.stock) {
+              SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error');
+              return;
+            }
             if (existente) { existente.cantidad += 1; }
             else { ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 }); }
+            SC.actualizarStock(prod.id, 1);
             SC.toast(`"${prod.nombre}" agregado a Mesa ${meseroMesaTarget.mesa}`, 'success');
           } else {
             if (existente) {
@@ -567,7 +594,7 @@ window.VistaMenu = (function () {
             ${prods.map(p => {
               const s = SC.getStock(p.id);
               const agotado = !s.disponible || s.stock <= 0;
-              const ings = Array.isArray(p.ingredientes) ? p.ingredientes.join(' · ') : (p.ingredientes || '—');
+              const ings = Array.isArray(p.ingredientes) ? p.ingredientes.map(i => i.nombre).join(' · ') : '—';
               return `
               <div class="mesero-row" style="cursor:default;">
                 <span class="mesero-row__name" style="${agotado ? 'opacity:.45;' : ''}">${p.nombre}</span>

@@ -74,12 +74,12 @@ window.VistaAdmin = (function () {
     grid.onclick = async e => {
       const btn = e.target.closest('[data-action]');
       if (!btn) return;
-      const id = Number(btn.dataset.id);
+      const id = btn.dataset.id;
       if (btn.dataset.action === 'editar') {
         const prod = SC.getProductosMergeados().find(p => p.id === id);
         if (prod) abrirFormProducto(prod);
       } else if (btn.dataset.action === 'eliminar') {
-        const prod = SC.getProductosMergeados().find(p => p.id === id);
+        const prod = SC.getProductosMergeados().find(p => String(p.id) === String(id));
         const confirmado = await _modalConfirmar(prod?.nombre ?? 'este producto');
         if (!confirmado) return;
         btn.disabled = true;
@@ -166,7 +166,7 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-tag').value          = p?.tag         ?? '';
     document.getElementById('pf-destacado').checked  = p?.destacado   ?? false;
     document.getElementById('pf-stock').value        = p ? SC.getStock(p.id).stock : '';
-    const ings = Array.isArray(p?.ingredientes) ? p.ingredientes.join(', ') : (p?.ingredientes || '');
+    const ings = Array.isArray(p?.ingredientes) ? p.ingredientes.map(i => typeof i === 'string' ? i : i.nombre).join(', ') : '';
     document.getElementById('pf-ingredientes').value = ings;
     document.getElementById('pf-imagen').value       = '';
 
@@ -353,11 +353,11 @@ window.VistaAdmin = (function () {
         return;
       }
       /* Consulta directa a Supabase para detectar duplicados de otras sesiones */
-      const { data: dbRows } = await window.db.from('menu_items')
+      const { data: dbRows } = await window.db.from('platos')
         .select('plat_id, plat_nombre')
         .ilike('plat_nombre', nombre);
       const duplicadoDB = (dbRows || []).find(r =>
-        Number(r.plat_id) !== (_prodFormEditId ?? -1) &&
+        r.plat_id !== _prodFormEditId &&
         normStr(r.plat_nombre) === normStr(nombre)
       );
       if (duplicadoDB) {
@@ -370,7 +370,7 @@ window.VistaAdmin = (function () {
       saveBtn.disabled = true;
       saveBtn.textContent = 'Guardando…';
 
-      const id            = _prodFormEditId ?? SC.nextMenuId();
+      const id            = _prodFormEditId ?? null;
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
       const ingredientes  = ingredientesRaw.split(',').map(s => s.trim()).filter(Boolean);
 

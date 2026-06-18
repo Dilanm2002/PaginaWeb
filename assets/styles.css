@@ -1496,6 +1496,15 @@
     .modal-ingredients-title { font-size: .72rem; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; color: var(--cinnamon); margin-bottom: .65rem; display: flex; align-items: center; gap: .5rem; }
     .modal-ingredients-title::after { content: ''; flex: 1; height: 1px; background: var(--border); }
     .modal-ingredients { margin-bottom: 1.5rem; font-size: .86rem; color: var(--text-muted); line-height: 1.7; }
+    .modal-ingredients-chips { display: flex; flex-wrap: wrap; gap: .4rem; margin-bottom: 1.5rem; }
+    .ing-chip { display: inline-flex; cursor: pointer; }
+    .ing-chip input[type="checkbox"] { position: absolute; opacity: 0; width: 0; height: 0; }
+    .ing-chip__label { display: inline-flex; align-items: center; gap: .3rem; font-size: .8rem; padding: .28rem .65rem; border-radius: 999px; background: var(--cream-dk); color: var(--brown-dark); border: 1.5px solid var(--border); cursor: pointer; transition: background .15s, color .15s, border-color .15s; user-select: none; }
+    .ing-chip__label::before { content: '✓'; font-size: .68rem; color: var(--cinnamon); font-weight: 700; }
+    .ing-chip input[type="checkbox"]:not(:checked) + .ing-chip__label { background: #fee2e2; color: #b91c1c; border-color: #fca5a5; }
+    .ing-chip input[type="checkbox"]:not(:checked) + .ing-chip__label::before { content: '✕'; color: #b91c1c; }
+    .cart-item__excl { font-size: .72rem; color: #b91c1c; margin-top: .1rem; font-style: italic; }
+    .cajero-excl { font-size: .72rem; color: #b91c1c; font-weight: 400; font-style: italic; display: block; }
     .modal-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); gap: 1rem; }
     .modal-price { font-size: 1.4rem; font-weight: 700; color: var(--cinnamon); }
     .modal-price small { font-size: .72rem; color: var(--text-muted); font-weight: 400; }

@@ -30,14 +30,15 @@ window.LogicaCarrito = (function () {
    * @param {Object} producto — Debe tener id, nombre, precio, imagen.
    * @returns {Array} Carrito actualizado.
    */
-  const agregarItem = producto => {
+  const agregarItem = (producto, exclusiones = []) => {
     const items = leerCarrito();
     const idx   = items.findIndex(i => i.id === producto.id);
     if (idx >= 0) {
       items[idx].cantidad += 1;
+      if (exclusiones.length > 0) items[idx].exclusiones = exclusiones;
     } else {
       const { id, nombre, precio, imagen } = producto;
-      items.push({ id, nombre, precio, imagen, cantidad: 1 });
+      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones });
     }
     guardarCarrito(items);
     return items;
