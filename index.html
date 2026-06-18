@@ -1421,6 +1421,17 @@
 
   const ROL_LABEL = { mesero:'Mesero', usuario:'Cliente', invitado:'Invitado', cajero:'Cajero', administrador:'Admin' };
 
+  /* Utilidad XSS: escapar contenido antes de insertar en innerHTML */
+  function escapeHtml(s) {
+    if (s == null) return '';
+    return String(s)
+      .replace(/&/g,  '&amp;')
+      .replace(/</g,  '&lt;')
+      .replace(/>/g,  '&gt;')
+      .replace(/"/g,  '&quot;')
+      .replace(/'/g,  '&#x27;');
+  }
+
   /* -- API compartida con los modulos de vista -- */
   window.SC = {
     leerCaja, leerHistorial, leerGastos, guardarGastos,
@@ -1428,7 +1439,7 @@
     getStock, getProductosMergeados,
     cobrarPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
-    comprimirImagen, toast,
+    comprimirImagen, toast, escapeHtml,
     IVA, ROL_LABEL,
     getFiltroSesion:     () => ModuloApp.getFiltroSesion(),
     guardarFiltroSesion: cat => ModuloApp.guardarFiltroSesion(cat),
@@ -1899,14 +1910,27 @@
     });
   });
 
-  document.getElementById('btn-login').addEventListener('click', () => {
+  document.getElementById('btn-login').addEventListener('click', async () => {
     const usuario  = document.getElementById('login-usuario').value.trim();
     const password = document.getElementById('login-password').value;
-    const user     = ModuloAutenticacion.login(usuario, password);
     const errEl    = document.getElementById('login-error');
-    if (!user) { errEl.classList.add('visible'); return; }
+    const btnLogin = document.getElementById('btn-login');
+
+    btnLogin.disabled = true;
+    btnLogin.textContent = 'Ingresando...';
+
+    const result = await ModuloAutenticacion.login(usuario, password);
+
+    btnLogin.disabled = false;
+    btnLogin.textContent = 'Ingresar';
+
+    if (!result.ok) {
+      errEl.textContent = result.msg || 'Credenciales incorrectas.';
+      errEl.classList.add('visible');
+      return;
+    }
     errEl.classList.remove('visible');
-    ModuloAutenticacion.setSession({ id:user.id, nombre:user.nombre, usuario:user.usuario, rol:user.rol });
+    ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol });
     aplicarSesion();
   });
 

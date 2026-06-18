@@ -1,130 +1,166 @@
 'use strict';
-/**
- * autenticacion.js — Módulo de autenticación y sesión de usuario.
- * Gestiona usuarios en Supabase (con fallback a localStorage).
- * Requiere window.SC_CONFIG y window.db (cliente Supabase).
- */
 window.ModuloAutenticacion = (function () {
   const cfg = window.SC_CONFIG;
-
-  /* ── Cache local de usuarios (se llena al iniciar) ── */
   let _users = [];
 
-  /** Carga usuarios desde Supabase (o localStorage como fallback). */
+  /* ── Rate limiter ────────────────────────────────────────────
+     Bloquea el login tras 5 intentos fallidos durante 5 minutos.
+     Se persiste en sessionStorage para sobrevivir recargas en la
+     misma pestaña, pero se resetea al abrir una nueva.
+  ──────────────────────────────────────────────────────────── */
+  const MAX_ATTEMPTS    = 5;
+  const LOCK_MS         = 5 * 60 * 1000; // 5 minutos
+  const RL_KEY          = 'sc_rl';
+
+  function _rlLoad()  { try { return JSON.parse(sessionStorage.getItem(RL_KEY)) ?? { count: 0, lockedUntil: 0 }; } catch { return { count: 0, lockedUntil: 0 }; } }
+  function _rlSave(s) { try { sessionStorage.setItem(RL_KEY, JSON.stringify(s)); } catch {} }
+
+  function _rlCheck() {
+    const s = _rlLoad();
+    const now = Date.now();
+    if (s.lockedUntil > now) {
+      const secs = Math.ceil((s.lockedUntil - now) / 1000);
+      return { locked: true, msg: `Demasiados intentos fallidos. Espera ${secs} segundos.` };
+    }
+    return { locked: false };
+  }
+
+  function _rlFail() {
+    const s   = _rlLoad();
+    s.count  += 1;
+    if (s.count >= MAX_ATTEMPTS) {
+      s.lockedUntil = Date.now() + LOCK_MS;
+      s.count = 0;
+      _rlSave(s);
+      return `Demasiados intentos fallidos. Cuenta bloqueada por 5 minutos.`;
+    }
+    _rlSave(s);
+    const left = MAX_ATTEMPTS - s.count;
+    return left > 0 ? `Credenciales incorrectas. ${left} intento${left !== 1 ? 's' : ''} restante${left !== 1 ? 's' : ''}.` : 'Credenciales incorrectas.';
+  }
+
+  function _rlReset() { _rlSave({ count: 0, lockedUntil: 0 }); }
+
+  /* ── Cargar usuarios (sin contraseñas) ───────────────────────
+     Usa la función listar_usuarios() de Supabase (SECURITY DEFINER)
+     que devuelve usuarios sin el campo usu_password.
+  ──────────────────────────────────────────────────────────── */
   const cargarUsuarios = async () => {
     try {
-      const { data, error } = await window.db.from('usuarios').select('usu_data');
+      const { data, error } = await window.db.rpc('listar_usuarios');
       if (error) throw error;
-      _users = (data || []).map(r => r.usu_data);
 
-      /* Fusionar usuarios de localStorage que no llegaron a Supabase (insert fallido) */
-      try {
-        const local = JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? [];
-        for (const lu of local) {
-          if (!lu.usuario) continue;
-          if (!_users.some(u => u.usuario === lu.usuario)) {
-            _users.push(lu);
-            /* Re-intentar upsert en Supabase */
-            window.db.from('usuarios')
-              .upsert({ usu_id: lu.id, usu_data: lu, usu_usuario: lu.usuario, usu_email: lu.email || '' })
-              .catch(e => console.warn('Supabase sync usuario local:', e?.message));
-          }
-        }
-      } catch (_le) { /* localStorage no disponible */ }
+      _users = (data || []).map(r => ({
+        id:       r.usu_id,
+        nombre:   r.usu_nombre,
+        apellido: r.usu_apellido ?? '',
+        email:    r.usu_email,
+        telefono: r.usu_telefono ?? '',
+        usuario:  r.usu_usuario,
+        rol:      r.rol ?? 'usuario'
+        // 'password' deliberadamente omitido — nunca en el cliente
+      }));
 
-      /* Asegurar que existan cajero/mesero/admin en Supabase */
-      await seedUsers();
-      /* Sincronizar localStorage con el estado final */
+      // Guardar en localStorage sin contraseña
       localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
     } catch (_e) {
-      _users = (() => { try { return JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? []; } catch { return []; } })();
-      seedUsersLocal();
-    }
-  };
-
-  const seedUsersLocal = () => {
-    const defaults = [
-      { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero' },
-      { id: 2, nombre: 'Mesero',           usuario: 'mesero', password: '1234', rol: 'mesero' },
-      { id: 3, nombre: 'Administrador',    usuario: 'admin',  password: '1234', rol: 'administrador' }
-    ];
-    let changed = false;
-    defaults.forEach(u => {
-      if (!_users.some(x => x.usuario === u.usuario)) { _users.push(u); changed = true; }
-    });
-    if (changed) localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
-  };
-
-  const seedUsers = async () => {
-    const defaults = [
-      { id: 1, nombre: 'Cajero Principal', usuario: 'caja',   password: '1234', rol: 'cajero',        email: 'caja@salycanela.ec',   telefono: '' },
-      { id: 2, nombre: 'Mesero',           usuario: 'mesero', password: '1234', rol: 'mesero',        email: 'mesero@salycanela.ec', telefono: '' },
-      { id: 3, nombre: 'Administrador',    usuario: 'admin',  password: '1234', rol: 'administrador', email: 'admin@salycanela.ec',  telefono: '' }
-    ];
-    for (const u of defaults) {
-      if (!_users.some(x => x.usuario === u.usuario)) {
-        try {
-          await window.db.from('usuarios').upsert({ usu_id: u.id, usu_data: u, usu_usuario: u.usuario, usu_email: u.email });
-          _users.push(u);
-        } catch (e) { console.warn('seedUsers upsert:', e?.message); }
-      }
+      console.warn('Supabase no disponible, cargando usuarios desde localStorage:', _e);
+      try {
+        const cached = JSON.parse(localStorage.getItem(cfg.LS_USERS)) ?? [];
+        // Sanitizar: eliminar password si quedó de versiones anteriores
+        _users = cached.map(u => {
+          const { password: _omit, ...rest } = u;
+          return rest;
+        });
+      } catch { _users = []; }
     }
   };
 
   const leerUsuarios = () => _users;
 
-  const getSession = () => {
-    try { return JSON.parse(sessionStorage.getItem(cfg.LS_SESSION)) ?? null; }
-    catch (_e) { return null; }
+  /* ── Sesión ──────────────────────────────────────────────── */
+  const getSession  = () => { try { return JSON.parse(sessionStorage.getItem(cfg.LS_SESSION)) ?? null; } catch { return null; } };
+  const setSession  = data => sessionStorage.setItem(cfg.LS_SESSION, JSON.stringify(data));
+  const clearSession = () => sessionStorage.removeItem(cfg.LS_SESSION);
+
+  /* ── Login (async) ───────────────────────────────────────────
+     Llama al RPC verificar_login() que:
+       1. Corre con SECURITY DEFINER (puede leer usu_password).
+       2. Compara usando crypt() de pgcrypto (bcrypt).
+       3. Solo devuelve datos si la contraseña es correcta.
+     Así la contraseña (ni el hash) nunca sale de la base de datos.
+  ──────────────────────────────────────────────────────────── */
+  const login = async (usuario, password) => {
+    const check = _rlCheck();
+    if (check.locked) return { ok: false, msg: check.msg };
+
+    try {
+      const { data, error } = await window.db.rpc('verificar_login', {
+        p_usuario:  usuario,
+        p_password: password
+      });
+
+      if (error || !data || data.length === 0) {
+        const msg = _rlFail();
+        return { ok: false, msg };
+      }
+
+      _rlReset();
+      const u = data[0];
+      return {
+        ok: true,
+        user: {
+          id:       u.usu_id,
+          nombre:   u.usu_nombre,
+          apellido: u.usu_apellido ?? '',
+          email:    u.usu_email,
+          telefono: u.usu_telefono ?? '',
+          usuario:  u.usu_usuario,
+          rol:      u.rol_nombre ?? 'usuario'
+        }
+      };
+    } catch (e) {
+      console.error('login error:', e);
+      return { ok: false, msg: 'Error de conexión. Intenta de nuevo.' };
+    }
   };
 
-  const setSession = data => {
-    sessionStorage.setItem(cfg.LS_SESSION, JSON.stringify(data));
-  };
-
-  const clearSession = () => {
-    sessionStorage.removeItem(cfg.LS_SESSION);
-  };
-
-  const login = (usuario, password) => {
-    return _users.find(u => u.usuario === usuario && u.password === password) ?? null;
-  };
-
-  const registrar = (nombre, apellido, email, telefono, usuario, password, rol) => {
-    if (_users.find(u => u.usuario === usuario))
-      return { ok: false, msg: 'Ese nombre de usuario ya existe.' };
-    if (_users.find(u => u.email === email))
-      return { ok: false, msg: 'Ya existe una cuenta con ese correo.' };
-    if (telefono && _users.find(u => u.telefono && u.telefono === telefono))
-      return { ok: false, msg: 'Ya existe una cuenta con ese número de teléfono.' };
+  /* ── Registro (async) ────────────────────────────────────────
+     Llama al RPC registrar_usuario() que hashea la contraseña
+     server-side con bcrypt antes de guardarla.
+  ──────────────────────────────────────────────────────────── */
+  const registrar = async (nombre, apellido, email, telefono, usuario, password, rol) => {
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 
-    const ROL_ID = { administrador: 1, cajero: 2, mesero: 3, usuario: 4 };
-    // Solo considerar IDs "normales" (excluye los antiguos timestamp-IDs de Date.now())
-    const ids = _users.map(u => Number(u.id)).filter(n => n > 0 && n < 1_000_000);
-    const id  = Math.max(3, ...ids) + 1;
-    const nuevo = { id, nombre, apellido, email, telefono, usuario, password, rol };
-    _users.push(nuevo);
+    const ROL_IDS = { administrador: 'rol001', cajero: 'rol002', mesero: 'rol003', usuario: 'rol004' };
 
-    /* Guardar en Supabase (fire-and-forget) */
-    window.db.from('usuarios')
-      .upsert({ usu_id: nuevo.id, usu_data: nuevo, usu_usuario: nuevo.usuario, usu_email: nuevo.email, usu_rol_id: ROL_ID[rol] ?? 4 })
-      .then(({ error }) => { if (error) console.error('Supabase registrar:', error); });
+    try {
+      const { data, error } = await window.db.rpc('registrar_usuario', {
+        p_usuario:  usuario,
+        p_email:    email,
+        p_nombre:   nombre,
+        p_apellido: apellido ?? '',
+        p_telefono: telefono ?? '',
+        p_password: password,
+        p_rol_id:   ROL_IDS[rol] ?? 'rol004'
+      });
 
-    /* Fallback localStorage */
-    localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
+      if (error) {
+        console.error('registrar RPC error:', error);
+        return { ok: false, msg: 'Error al registrar. Intenta de nuevo.' };
+      }
+      if (!data?.ok) return { ok: false, msg: data?.msg || 'Error al registrar.' };
 
-    return { ok: true, user: nuevo };
+      const nuevo = { id: data.usu_id, nombre, apellido, email, telefono, usuario, rol };
+      _users.push(nuevo);
+      localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
+      return { ok: true, user: nuevo };
+    } catch (e) {
+      console.error('registrar exception:', e);
+      return { ok: false, msg: 'Sin conexión. Intenta de nuevo.' };
+    }
   };
 
-  return {
-    cargarUsuarios,
-    leerUsuarios,
-    getSession,
-    setSession,
-    clearSession,
-    login,
-    registrar
-  };
+  return { cargarUsuarios, leerUsuarios, getSession, setSession, clearSession, login, registrar };
 })();

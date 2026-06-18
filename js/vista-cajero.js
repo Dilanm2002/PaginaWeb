@@ -61,8 +61,8 @@ window.VistaCajero = (function () {
           ${!filas.length ? `<tr><td colspan="6" class="resumen-empty" style="text-align:center;padding:.9rem 0">No hay pedidos cobrados este día.</td></tr>` : filas.map(h => `
             <tr>
               <td><strong>Mesa ${h.mesa}</strong></td>
-              <td>${h.nombreUsuario}</td>
-              <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${i.nombre}`).join('<br>') : '—'}</td>
+              <td>${SC.escapeHtml(h.nombreUsuario)}</td>
+              <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${SC.escapeHtml(i.nombre)}`).join('<br>') : '—'}</td>
               <td class="td-hora">${h.fecha}</td>
               <td class="td-hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</td>
               <td class="td-total">$${h.total.toFixed(2)}</td>
@@ -79,7 +79,7 @@ window.VistaCajero = (function () {
             <div class="resumen-card__body">
               <div class="resumen-card__cliente">
                 <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${(h.nombreUsuario || '?').charAt(0).toUpperCase()}</span>
-                ${h.nombreUsuario}
+                ${SC.escapeHtml(h.nombreUsuario)}
               </div>
               <div class="resumen-card__items">
                 ${Array.isArray(h.items) ? h.items.map(i => `
@@ -139,7 +139,7 @@ window.VistaCajero = (function () {
             ? `<tr><td colspan="5" class="gastos-empty" style="text-align:center;padding:.9rem 0">No hay gastos registrados este día.</td></tr>`
             : gastosRev.map(g => `
             <tr>
-              <td class="td-desc">${g.descripcion}</td>
+              <td class="td-desc">${SC.escapeHtml(g.descripcion)}</td>
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
@@ -372,7 +372,7 @@ window.VistaCajero = (function () {
             <div class="cajero-order-mesa">🪑 Mesa ${p.mesa}</div>
             <div class="cajero-order-quien">
               <span class="rol-pill ${p.rol}">${ROL_LABEL[p.rol] ?? p.rol}</span>
-              <span>${p.nombreUsuario}${p.idUsuario ? ` <small style="opacity:.6;font-size:.72rem">@${p.idUsuario}</small>` : ''}</span>
+              <span>${SC.escapeHtml(p.nombreUsuario)}${p.idUsuario ? ` <small style="opacity:.6;font-size:.72rem">@${SC.escapeHtml(p.idUsuario)}</small>` : ''}</span>
             </div>
           </div>
           <div class="cajero-order-time">🕐 ${p.hora}</div>
