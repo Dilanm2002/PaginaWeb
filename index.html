@@ -1064,8 +1064,8 @@
       _googleHandled = true;
       const email  = session.user.email;
       const nombre = session.user.user_metadata?.full_name || session.user.user_metadata?.name || email;
-      await window.db.auth.signOut();
       const { data } = await window.db.rpc('login_con_google', { p_email: email, p_nombre: nombre });
+      await window.db.auth.signOut();
       const u = data?.[0];
       if (!u) {
         const errEl = document.getElementById('login-error');
