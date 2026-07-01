@@ -1808,9 +1808,8 @@
     }
 
     const catId = await _obtenerOCrearCategoria(item.categoria);
-    const createdAt = item.createdAt || new Date().toISOString();
 
-    const platData = {
+    const platDataBase = {
       cat_id:           catId,
       plat_nombre:      item.nombre,
       plat_descripcion: item.descripcion ?? '',
@@ -1819,20 +1818,20 @@
       plat_tag:              item.tag ?? '',
       plat_destacado:        item.destacado ?? false,
       plat_permite_excluir:  item.permiteExcluir ?? false,
-      plat_activo:           item.activo ?? true,
-      plat_created_at:       createdAt
+      plat_activo:           item.activo ?? true
     };
 
     let platId = item.id;
 
     if (item.id) {
-      // Edición
-      const { error } = await db.from('platos').update(platData).eq('plat_id', item.id);
+      // Edición — no tocar plat_created_at para que el badge "Nuevo" no se resetee
+      const { error } = await db.from('platos').update(platDataBase).eq('plat_id', item.id);
       if (error) { console.error('Supabase update plato:', error); return false; }
     } else {
       // Nuevo
       const { data: nuevo, error } = await db.from('platos').insert({
-        ...platData,
+        ...platDataBase,
+        plat_created_at: new Date().toISOString(),
         plat_codigo: _generarCodigo(item.categoria, Date.now())
       }).select('plat_id').single();
       if (error || !nuevo) { console.error('Supabase insert plato:', error); return false; }
