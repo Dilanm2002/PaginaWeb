@@ -278,18 +278,21 @@
       <div class="wrap">
         <div class="perfil-stats" aria-label="Resumen de actividad">
           <div class="perfil-stat">
-            <span class="perfil-stat__icon" aria-hidden="true">🛍️</span>
+            <span class="perfil-stat__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            </span>
             <span class="perfil-stat__val" id="perfil-total-pedidos">0</span>
             <span class="perfil-stat__lbl">Pedidos realizados</span>
           </div>
           <div class="perfil-stat">
-            <span class="perfil-stat__icon" aria-hidden="true">💰</span>
+            <span class="perfil-stat__icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="22" height="22"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
+            </span>
             <span class="perfil-stat__val" id="perfil-total-gastado">$0.00</span>
             <span class="perfil-stat__lbl">Total gastado</span>
           </div>
         </div>
 
-        <h3 class="perfil-section-title">Pedidos anteriores</h3>
         <div id="perfil-historial" class="perfil-historial" aria-live="polite"></div>
       </div>
     </div>
@@ -1224,8 +1227,8 @@
 
   async function inicializarDB() {
     try {
-      await ModuloAutenticacion.cargarUsuarios();
-      const [rCaja, rHist, rGastos, rPlatos] = await Promise.all([
+      const [, rCaja, rHist, rGastos, rPlatos] = await Promise.all([
+        ModuloAutenticacion.cargarUsuarios(),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
         db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true }),
@@ -2811,7 +2814,6 @@
   function renderUsuarioView() {
     const session = ModuloAutenticacion.getSession();
 
-    // Buscar datos completos del usuario para mostrar nombre + apellido
     let nombreCompleto = session.nombre;
     try {
       const users = JSON.parse(localStorage.getItem('salycanela_users') || '[]');
@@ -2829,133 +2831,162 @@
     if (rolBadge)   rolBadge.textContent   = ROL_LABEL[session.rol] ?? session.rol;
 
     const historial    = leerHistorial();
-    const pagados      = historial.filter(h => h.idUsuario === session.usuario);
-    const pendientes   = leerCaja().filter(p => p.idUsuario === session.usuario);
+    // FIX: comparar por session.id (UUID), no session.usuario (string)
+    const pagados      = historial.filter(h => h.idUsuario === session.id);
+    const pendientes   = leerCaja().filter(p => p.idUsuario === session.id);
     const totalGastado = pagados.reduce((s, p) => s + (p.total || 0), 0);
 
-    const totalPedidosEl  = document.getElementById('perfil-total-pedidos');
-    const totalGastadoEl  = document.getElementById('perfil-total-gastado');
+    const totalPedidosEl = document.getElementById('perfil-total-pedidos');
+    const totalGastadoEl = document.getElementById('perfil-total-gastado');
     if (totalPedidosEl) totalPedidosEl.textContent = pagados.length + pendientes.length;
     if (totalGastadoEl) totalGastadoEl.textContent = '$' + totalGastado.toFixed(2);
 
     const historialEl = document.getElementById('perfil-historial');
     if (!historialEl) return;
 
+    // ── SVG icons ──────────────────────────────────────
+    const IC_CLOCK   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="12" height="12" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>`;
+    const IC_CHECK   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12" aria-hidden="true"><polyline points="20 6 9 17 4 12"/></svg>`;
+    const IC_TABLE   = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+    const IC_CAL     = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>`;
+    const IC_EDIT    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>`;
+    const IC_REPEAT  = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14" aria-hidden="true"><polyline points="17 1 21 5 17 9"/><path d="M3 11V9a4 4 0 014-4h14"/><polyline points="7 23 3 19 7 15"/><path d="M21 13v2a4 4 0 01-4 4H3"/></svg>`;
+    const IC_CHEVRON = `<svg class="ped-toggle-chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14" aria-hidden="true"><polyline points="6 9 12 15 18 9"/></svg>`;
+    const IC_FORK    = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="36" height="36" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 002-2V2"/><path d="M7 2v20"/><path d="M21 15V2a5 5 0 00-5 5v6c0 1.1.9 2 2 2h3zm0 0v7"/></svg>`;
+
     if (!pagados.length && !pendientes.length) {
       historialEl.innerHTML = `
-        <div class="perfil-empty">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="52" height="52" aria-hidden="true">
-            <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-            <line x1="3" y1="6" x2="21" y2="6"/>
-            <path d="M16 10a4 4 0 01-8 0"/>
-          </svg>
-          <p>Aún no tienes pedidos. ¡Haz tu primer pedido!</p>
+        <div class="ped-empty">
+          ${IC_FORK}
+          <h4>Sin pedidos aún</h4>
+          <p>¡Haz tu primer pedido y aparecerá aquí!</p>
+          <button class="btn-ir-menu-empty" onclick="irAlMenu()">Ver el menú</button>
         </div>`;
       return;
     }
 
-    function buildImgStrip(items) {
-      const conImg = (items || []).filter(i => i.imagen);
-      if (!conImg.length) {
-        return `<div class="perfil-card-imgs"><div class="perfil-card-img-placeholder">🍽️</div></div>`;
-      }
-      const imgs = conImg.map(i =>
-        `<img src="${i.imagen}" alt="${i.nombre}" loading="lazy" onerror="this.style.display='none'">`
-      ).join('');
-      return `<div class="perfil-card-imgs">${imgs}</div>`;
+    function buildImgs(items) {
+      const conImg = (items || []).filter(i => i.imagen).slice(0, 3);
+      if (!conImg.length) return `<div class="ped-card__imgs ped-card__imgs--empty">${IC_FORK}</div>`;
+      const rest = (items || []).filter(i => i.imagen).length - 3;
+      return `<div class="ped-card__imgs">
+        ${conImg.map(i => `<img src="${i.imagen}" alt="${i.nombre}" loading="lazy" onerror="this.style.display='none'">`).join('')}
+        ${rest > 0 ? `<span class="ped-img-more">+${rest}</span>` : ''}
+      </div>`;
     }
 
-    function buildNombres(items) {
-      return (items || []).map(i => `${i.cantidad}× ${i.nombre}`).join(' · ');
+    function buildItems(items) {
+      return (items || []).map(i => {
+        const sub = ((i.precio || 0) * (i.cantidad || 1)).toFixed(2);
+        const excl = i.exclusiones?.length
+          ? `<span class="ped-item-excl">sin ${i.exclusiones.join(', ')}</span>` : '';
+        return `<div class="ped-item-row">
+          <span class="ped-item-qty">${i.cantidad}×</span>
+          <div class="ped-item-info"><span class="ped-item-name">${i.nombre}</span>${excl}</div>
+          <span class="ped-item-price">$${sub}</span>
+        </div>`;
+      }).join('');
     }
 
-    const cardsPendientes = pendientes.map(p => `
-      <article class="perfil-pedido-card perfil-pedido-card--pending" aria-label="Pedido en proceso Mesa ${p.mesa}">
-        <div class="perfil-card-top">
-          ${buildImgStrip(p.items)}
-          <span class="perfil-card-status perfil-card-status--pending">⏳ En proceso</span>
-        </div>
-        <div class="perfil-card-body">
-          <span class="perfil-card-fecha">🪑 Mesa ${p.mesa}${p.hora ? ' · ' + p.hora : ''}</span>
-          <p class="perfil-card-nombres">${buildNombres(p.items)}</p>
-        </div>
-        <div class="perfil-card-foot">
-          <div class="perfil-card-total-wrap">
-            <span class="perfil-card-total-lbl">Total</span>
-            <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
+    function buildBreakdown(p) {
+      const sub = (p.subtotal || 0).toFixed(2);
+      const iva = (p.iva     || 0).toFixed(2);
+      const tot = (p.total   || 0).toFixed(2);
+      return `<div class="ped-breakdown">
+        <div class="ped-brow"><span>Subtotal</span><span>$${sub}</span></div>
+        <div class="ped-brow"><span>IVA (15%)</span><span>$${iva}</span></div>
+        <div class="ped-brow ped-brow--total"><span>Total</span><span>$${tot}</span></div>
+      </div>`;
+    }
+
+    function buildCard(p, isPending, idx) {
+      const id    = `ped-${p.id}`;
+      const meta  = isPending
+        ? `${IC_TABLE} ${p.mesa === 'Para llevar' ? 'Para llevar' : 'Mesa ' + p.mesa}${p.hora ? ' · ' + p.hora : ''}`
+        : `${IC_CAL} ${p.fecha}${p.cobradoEn ? ' · ' + new Date(p.cobradoEn).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}) : (p.hora ? ' · ' + p.hora : '')}`;
+      const badge = isPending
+        ? `<span class="ped-badge ped-badge--pending">${IC_CLOCK} En proceso</span>`
+        : `<span class="ped-badge ped-badge--done">${IC_CHECK} Completado</span>`;
+      const actionBtn = isPending
+        ? `<button class="btn-ped-action btn-ped-editar" data-pedido-id="${p.id}" aria-label="Editar pedido">${IC_EDIT} Editar pedido</button>`
+        : `<button class="btn-ped-action btn-ped-repetir" data-idx="${idx}" aria-label="Pedir de nuevo">${IC_REPEAT} Pedir de nuevo</button>`;
+
+      return `
+        <article class="ped-card ${isPending ? 'ped-card--pending' : 'ped-card--done'}">
+          <div class="ped-card__head">
+            <div class="ped-card__meta">${meta}</div>
+            ${badge}
           </div>
-          <button class="btn-editar-pedido" data-pedido-id="${p.id}" aria-label="Editar pedido de Mesa ${p.mesa}">
-            ✏️ Editar pedido
-          </button>
-        </div>
-      </article>`).join('');
+          ${buildImgs(p.items)}
+          <div class="ped-card__body">
+            <p class="ped-card__nombres">${(p.items||[]).map(i=>`${i.cantidad}× ${i.nombre}`).join(' · ')}</p>
+            <button class="ped-card__toggle" aria-expanded="false" aria-controls="${id}-det">
+              ${IC_CHEVRON}<span>Ver detalle</span>
+            </button>
+          </div>
+          <div class="ped-card__details" id="${id}-det" hidden>
+            <div class="ped-items-list">${buildItems(p.items)}</div>
+            ${buildBreakdown(p)}
+          </div>
+          <div class="ped-card__foot">
+            <div class="ped-card__total">
+              <span class="ped-card__total-lbl">Total</span>
+              <span class="ped-card__total-val">$${(p.total||0).toFixed(2)}</span>
+            </div>
+            ${actionBtn}
+          </div>
+        </article>`;
+    }
 
     const sorted = [...pagados].reverse();
-    const cardsPagados = sorted.map((p, idx) => {
-      const hora = p.cobradoEn
-        ? new Date(p.cobradoEn).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
-        : (p.hora || '');
-      return `
-      <article class="perfil-pedido-card" aria-label="Pedido del ${p.fecha}">
-        <div class="perfil-card-top">
-          ${buildImgStrip(p.items)}
-          <span class="perfil-card-status perfil-card-status--done">✅ Completado</span>
-        </div>
-        <div class="perfil-card-body">
-          <span class="perfil-card-fecha">📅 ${p.fecha}${hora ? ' · ' + hora : ''}</span>
-          <p class="perfil-card-nombres">${buildNombres(p.items)}</p>
-        </div>
-        <div class="perfil-card-foot">
-          <div class="perfil-card-total-wrap">
-            <span class="perfil-card-total-lbl">Total</span>
-            <span class="perfil-card-total">$${(p.total || 0).toFixed(2)}</span>
-          </div>
-          <button class="btn-volver-pedir" data-idx="${idx}" aria-label="Volver a pedir lo mismo del ${p.fecha}">
-            🔄 Volver a pedir
-          </button>
-        </div>
-      </article>`;
-    }).join('');
 
-    historialEl.innerHTML = cardsPendientes + cardsPagados;
+    const secPendientes = pendientes.length ? `
+      <div class="ped-section">
+        <div class="ped-section__title"><span class="ped-dot ped-dot--pending"></span>En proceso (${pendientes.length})</div>
+        ${pendientes.map((p,i) => buildCard(p, true, i)).join('')}
+      </div>` : '';
+
+    const secHistorial = sorted.length ? `
+      <div class="ped-section">
+        <div class="ped-section__title"><span class="ped-dot ped-dot--done"></span>Historial de pedidos (${sorted.length})</div>
+        ${sorted.map((p,i) => buildCard(p, false, i)).join('')}
+      </div>` : '';
+
+    historialEl.innerHTML = secPendientes + secHistorial;
 
     historialEl.onclick = e => {
-      const btnEditar = e.target.closest('.btn-editar-pedido');
-      if (btnEditar) {
-        const pedidoId = btnEditar.dataset.pedidoId;
-        const pedido = pendientes.find(p => String(p.id) === String(pedidoId));
-        if (!pedido) return;
-        window._modoEdicion = {
-          pedidoId: pedido.id,
-          mesa: pedido.mesa,
-          itemsOriginales: JSON.parse(JSON.stringify(pedido.items))
-        };
-        LogicaCarrito.vaciarCarrito();
-        pedido.items.forEach(item => {
-          for (let i = 0; i < item.cantidad; i++) LogicaCarrito.agregarItem(item);
-        });
-        irAlMenu();
-        setTimeout(() => {
-          renderCarrito();
-          document.getElementById('btn-cart')?.click();
-        }, 80);
+      // Toggle detalle
+      const tog = e.target.closest('.ped-card__toggle');
+      if (tog) {
+        const open = tog.getAttribute('aria-expanded') === 'true';
+        const det  = document.getElementById(tog.getAttribute('aria-controls'));
+        tog.setAttribute('aria-expanded', String(!open));
+        tog.querySelector('span').textContent = open ? 'Ver detalle' : 'Ocultar detalle';
+        tog.querySelector('.ped-toggle-chevron').style.transform = open ? '' : 'rotate(180deg)';
+        if (det) open ? det.setAttribute('hidden','') : det.removeAttribute('hidden');
         return;
       }
-
-      const btn = e.target.closest('.btn-volver-pedir');
-      if (!btn) return;
-      const pedido = sorted[Number(btn.dataset.idx)];
+      // Editar pedido pendiente
+      const btnEd = e.target.closest('.btn-ped-editar');
+      if (btnEd) {
+        const pedido = pendientes.find(p => String(p.id) === String(btnEd.dataset.pedidoId));
+        if (!pedido) return;
+        window._modoEdicion = { pedidoId: pedido.id, mesa: pedido.mesa, itemsOriginales: JSON.parse(JSON.stringify(pedido.items)) };
+        LogicaCarrito.vaciarCarrito();
+        pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item); });
+        irAlMenu();
+        setTimeout(() => { renderCarrito(); document.getElementById('btn-cart')?.click(); }, 80);
+        return;
+      }
+      // Repetir pedido completado
+      const btnRep = e.target.closest('.btn-ped-repetir');
+      if (!btnRep) return;
+      const pedido = sorted[Number(btnRep.dataset.idx)];
       if (!pedido?.items?.length) return;
       LogicaCarrito.vaciarCarrito();
-      pedido.items.forEach(item => {
-        for (let i = 0; i < item.cantidad; i++) LogicaCarrito.agregarItem(item);
-      });
+      pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item); });
       irAlMenu();
-      setTimeout(() => {
-        renderCarrito();
-        const btnCart = document.getElementById('btn-cart');
-        if (btnCart) btnCart.click();
-      }, 80);
+      setTimeout(() => { renderCarrito(); document.getElementById('btn-cart')?.click(); }, 80);
     };
   }
 
@@ -3063,27 +3094,15 @@
         if (_mswU) _mswU.style.display = '';
         grid.className = 'products-grid';
         grid.closest('section#menu').querySelector('.section-title').style.display = '';
-        grid.innerHTML = Array.from({length:8}, () => `
-          <div class="skeleton" aria-hidden="true">
-            <div class="skeleton-img"></div>
-            <div class="skeleton-body">
-              <div class="skeleton-line"></div>
-              <div class="skeleton-line short"></div>
-              <div class="skeleton-line xshort"></div>
-            </div>
-          </div>`).join('');
-
-        setTimeout(() => {
-          const savedCat = ModuloApp.getFiltroSesion();
-          window.VistaMenu?.renderFiltros(cat => {
-            window.VistaMenu?.actualizarTitulo(cat === 'Destacados' ? 'Platos Destacados' : cat === 'Todos' ? 'Nuestro Menú' : cat);
-            window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
-          });
-          window.VistaMenu?.setFiltroActivo(savedCat);
-          window.VistaMenu?.actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
-          window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(savedCat));
-          renderCarrito();
-        }, 600);
+        const savedCat = ModuloApp.getFiltroSesion();
+        window.VistaMenu?.renderFiltros(cat => {
+          window.VistaMenu?.actualizarTitulo(cat === 'Destacados' ? 'Platos Destacados' : cat === 'Todos' ? 'Nuestro Menú' : cat);
+          window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
+        });
+        window.VistaMenu?.setFiltroActivo(savedCat);
+        window.VistaMenu?.actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
+        window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(savedCat));
+        renderCarrito();
       }
     }
     /* Recalcular alturas sticky tras cualquier cambio de sesión */
