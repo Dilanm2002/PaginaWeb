@@ -173,6 +173,8 @@ window.VistaAdmin = (function () {
     const overlay = document.getElementById('adm-overlay');
     if (overlay) { overlay.classList.remove('visible'); document.body.style.overflow = ''; }
 
+    localStorage.setItem('sc_admin_mod', nombre);
+
     if      (nombre === 'productos') _renderProductosGrid();
     else if (nombre === 'pedidos')   renderAdminPedidos();
     else if (nombre === 'stock')     window.VistaCajero?.renderStock();
@@ -321,8 +323,7 @@ window.VistaAdmin = (function () {
     if (!adminView || !adminView.classList.contains('visible')) return;
 
     _initAdminUserInfo();
-    _renderDashboardStats();
-    _cambiarModulo('dashboard');
+    _cambiarModulo(localStorage.getItem('sc_admin_mod') || 'dashboard');
 
     // KPI cards clickeables
     adminView.querySelectorAll('.adm-kpi--link[data-goto]').forEach(card => {
@@ -952,7 +953,7 @@ window.VistaAdmin = (function () {
 
     tablaEl.innerHTML = `
       <table class="adm-tabla">
-        <thead><tr><th>Fecha / Hora</th><th>Mesa</th><th>Cliente</th><th>Ítems</th><th>Total</th></tr></thead>
+        <thead><tr><th>Fecha / Hora</th><th>Mesa</th><th>Cliente</th><th style="text-align:center">Ítems</th><th style="text-align:right">Total</th></tr></thead>
         <tbody>
           ${data.map(p => {
             const items     = (p.detalle_pedidos ?? []).reduce((s, d) => s + (d.detped_cantidad || 0), 0);
@@ -964,7 +965,7 @@ window.VistaAdmin = (function () {
               <td>${SC?.escapeHtml(_mesa(p)) ?? _mesa(p)}</td>
               <td>${SC?.escapeHtml(_cliente(p)) ?? _cliente(p)}</td>
               <td style="text-align:center">${items}</td>
-              <td style="font-weight:700;color:var(--cinnamon)">$${(parseFloat(p.ped_total)||0).toFixed(2)}</td>
+              <td style="text-align:right;font-weight:700;color:var(--cinnamon)">$${(parseFloat(p.ped_total)||0).toFixed(2)}</td>
             </tr>`;
           }).join('')}
         </tbody>

@@ -169,5 +169,73 @@ window.ModuloAutenticacion = (function () {
     }
   };
 
-  return { cargarUsuarios, leerUsuarios, getSession, setSession, clearSession, login, registrar };
+  /* ── Login con Google (OAuth) ────────────────────────────────
+     Inicia el flujo OAuth de Google vía Supabase Auth.
+     El navegador redirige a Google y vuelve a esta misma página.
+     Tras el redirect, handleGoogleCallback() procesa la sesión.
+  ──────────────────────────────────────────────────────────── */
+  const loginConGoogle = async () => {
+    const { error } = await window.db.auth.signInWithOAuth({
+      provider: 'google',
+      options: {
+        redirectTo: window.location.origin + window.location.pathname,
+        scopes: 'email profile'
+      }
+    });
+    if (error) return { ok: false, msg: 'No se pudo conectar con Google. Intenta de nuevo.' };
+    return { ok: true }; // el navegador redirige; no llega hasta aquí en flujo normal
+  };
+
+  /* ── Procesar callback de Google ─────────────────────────────
+     Llamar al inicio de la app. Si Supabase detectó un token de
+     Google en la URL, extrae el email, busca/crea el usuario en
+     la tabla 'usuarios' y devuelve sus datos.
+     Retorna null si no hay sesión OAuth activa.
+  ──────────────────────────────────────────────────────────── */
+  const handleGoogleCallback = async () => {
+    try {
+      const { data: { session }, error } = await window.db.auth.getSession();
+      if (error || !session) return null;
+
+      const email  = session.user.email;
+      const nombre = session.user.user_metadata?.full_name
+                  || session.user.user_metadata?.name
+                  || session.user.email;
+
+      // Limpiar sesión de Supabase Auth — solo la necesitamos para verificar identidad
+      await window.db.auth.signOut();
+
+      const { data, error: rpcErr } = await window.db.rpc('login_con_google', {
+        p_email: email,
+        p_nombre: nombre
+      });
+
+      if (rpcErr || !data || data.length === 0) {
+        return { ok: false, msg: 'Error al verificar la cuenta de Google.' };
+      }
+
+      const u = data[0];
+      if (!u.usu_activo) {
+        return { ok: false, msg: 'Tu cuenta está desactivada. Contacta al administrador.' };
+      }
+
+      _rlReset();
+      return {
+        ok: true,
+        user: {
+          id:       u.usu_id,
+          nombre:   u.usu_nombre,
+          apellido: u.usu_apellido ?? '',
+          email:    u.usu_email,
+          usuario:  u.usu_usuario,
+          rol:      u.rol_nombre ?? 'usuario'
+        }
+      };
+    } catch (e) {
+      console.error('handleGoogleCallback:', e);
+      return null;
+    }
+  };
+
+  return { cargarUsuarios, leerUsuarios, getSession, setSession, clearSession, login, registrar, loginConGoogle, handleGoogleCallback };
 })();

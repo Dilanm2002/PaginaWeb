@@ -9,3 +9,9 @@ ALTER PUBLICATION supabase_realtime ADD TABLE pedidos;
 ALTER PUBLICATION supabase_realtime ADD TABLE productos;
 ALTER PUBLICATION supabase_realtime ADD TABLE gastos;
 ALTER PUBLICATION supabase_realtime ADD TABLE mensajes;
+
+-- REPLICA IDENTITY FULL: necesario para que los eventos UPDATE en productos
+-- disparen correctamente el canal realtime-stock (sin esto Supabase puede
+-- omitir eventos UPDATE si la tabla no tiene PK o tiene configuración default).
+ALTER TABLE productos REPLICA IDENTITY FULL;
+ALTER TABLE pedidos   REPLICA IDENTITY FULL;
