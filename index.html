@@ -1233,6 +1233,15 @@
     }
   }
 
+  async function recargarStock() {
+    try {
+      const { data } = await db.from('productos').select('plat_id, prod_stock, prod_disponible');
+      if (data) data.forEach(r => { _stock[r.plat_id] = { stock: r.prod_stock, disponible: r.prod_disponible }; });
+    } catch(e) {
+      console.warn('recargarStock:', e);
+    }
+  }
+
   /* Devuelve la lista de productos activos desde Supabase (fuente única de verdad) */
   function getProductosMergeados() {
     return _menuItems
@@ -3273,7 +3282,7 @@
 
     db.channel('realtime-stock')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, async () => {
-        await recargarCaja();
+        await Promise.all([recargarCaja(), recargarStock()]);
         const _listaEl = document.getElementById('stock-lista');
         const _catsAbiertas = _listaEl
           ? [..._listaEl.querySelectorAll('.mesero-cat-title:not(.collapsed)')].map(t => t.dataset.cat)
