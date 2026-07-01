@@ -1055,6 +1055,31 @@
     const SUPABASE_URL = 'https://aagcxtggeqkzfngzfqne.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2N4dGdnZXFremZuZ3pmcW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzIyMDYsImV4cCI6MjA5Mzk0ODIwNn0.Byyo-cRfRvZ4ww7dBNF1dPK51rYAFjjpw-JnEzg7-G8';
     window.db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // Maneja el redirect de Google OAuth — onAuthStateChange se dispara DESPUÉS
+    // de que Supabase intercambia el ?code= por una sesión real (getSession() no sirve aquí).
+    let _googleHandled = false;
+    window.db.auth.onAuthStateChange(async (event, session) => {
+      if (event !== 'SIGNED_IN' || _googleHandled || !session?.user?.email) return;
+      _googleHandled = true;
+      const email  = session.user.email;
+      const nombre = session.user.user_metadata?.full_name || session.user.user_metadata?.name || email;
+      await window.db.auth.signOut();
+      const { data } = await window.db.rpc('login_con_google', { p_email: email, p_nombre: nombre });
+      const u = data?.[0];
+      if (!u) {
+        const errEl = document.getElementById('login-error');
+        if (errEl) { errEl.textContent = 'Error al verificar la cuenta de Google.'; errEl.classList.add('visible'); }
+        return;
+      }
+      if (!u.usu_activo) {
+        const errEl = document.getElementById('login-error');
+        if (errEl) { errEl.textContent = 'Tu cuenta está desactivada. Contacta al administrador.'; errEl.classList.add('visible'); }
+        return;
+      }
+      ModuloAutenticacion.setSession({ id: u.usu_id, nombre: u.usu_nombre, usuario: u.usu_usuario, rol: u.rol_nombre ?? 'usuario' });
+      if (typeof aplicarSesion === 'function') aplicarSesion();
+    });
   </script>
 
   <!-- ══ MÓDULOS JS EXTERNOS ══ -->
@@ -1198,21 +1223,6 @@
   }
 
   async function inicializarDB() {
-    // Procesar redirect de Google OAuth si viene de ese flujo
-    const googleResult = await ModuloAutenticacion.handleGoogleCallback();
-    if (googleResult?.ok) {
-      ModuloAutenticacion.setSession({
-        id:      googleResult.user.id,
-        nombre:  googleResult.user.nombre,
-        usuario: googleResult.user.usuario,
-        rol:     googleResult.user.rol
-      });
-    } else if (googleResult && !googleResult.ok) {
-      // Cuenta desactivada u otro error de Google
-      const errEl = document.getElementById('login-error');
-      if (errEl) { errEl.textContent = googleResult.msg; errEl.classList.add('visible'); }
-    }
-
     try {
       await ModuloAutenticacion.cargarUsuarios();
       const [rCaja, rHist, rGastos, rPlatos] = await Promise.all([
