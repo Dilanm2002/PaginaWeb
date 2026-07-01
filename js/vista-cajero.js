@@ -378,7 +378,7 @@ window.VistaCajero = (function () {
             <div class="cajero-order-mesa">${p.paraLlevar || p.mesa === 'Para llevar' ? '🛍 Para llevar' : `🪑 Mesa ${p.mesa}`}</div>
             <div class="cajero-order-quien">
               <span class="rol-pill ${p.rol}">${ROL_LABEL[p.rol] ?? p.rol}</span>
-              <span>${SC.escapeHtml(p.nombreUsuario)}${p.idUsuario ? ` <small style="opacity:.6;font-size:.72rem">@${SC.escapeHtml(p.idUsuario)}</small>` : ''}</span>
+              <span>${SC.escapeHtml(p.nombreUsuario)}</span>
             </div>
           </div>
           <div class="cajero-order-time">🕐 ${p.hora}</div>
