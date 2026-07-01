@@ -38,8 +38,10 @@ describe('getSession / setSession / clearSession', () => {
 // ── login ──────────────────────────────────────────────────────
 describe('login', () => {
   it('retorna error de conexión si el RPC lanza excepción', async () => {
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {})
     window.db.rpc = vi.fn().mockRejectedValue(new Error('timeout'))
     const res = await window.ModuloAutenticacion.login('admin', '1234')
+    spy.mockRestore()
     expect(res.ok).toBe(false)
     expect(res.msg).toMatch(/conexión|error/i)
   })
