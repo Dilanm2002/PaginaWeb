@@ -3266,11 +3266,18 @@
   function _iniciarRealtime() {
     const refrescar = async () => {
       if (_skipNextRealtime) { _skipNextRealtime = false; return; }
-      await recargarCaja();
+      await Promise.all([recargarCaja(), recargarStock()]);
       window.VistaCajero?.renderCajeroView();
       window.VistaMenu?.renderMesasActivas();
       window.VistaAdmin?.renderAdminView();
       if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
+      // Re-renderizar grilla de productos para reflejar stock actualizado (badge Agotado)
+      const _rolR = ModuloAutenticacion.getSession()?.rol;
+      if (_rolR === 'mesero') {
+        window.VistaMenu?.renderProductosMesero?.();
+      } else {
+        window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(ModuloApp.getFiltroSesion()));
+      }
     };
 
     db.channel('realtime-pedidos')
