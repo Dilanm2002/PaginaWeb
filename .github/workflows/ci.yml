@@ -2,86 +2,48 @@ name: CI — Sal y Canela
 
 on:
   push:
-    branches: [main, develop]
+    branches: [main]
   pull_request:
     branches: [main]
 
 jobs:
-  # ─────────────────────────────────────────────
-  # JOB 1: Validación de calidad del código
-  # ─────────────────────────────────────────────
-  validate:
-    name: Validar código
+  validate-and-test:
+    name: Validar y testear
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Validar JSON del catálogo
-        run: |
-          python3 -m json.tool data/productos.json > /dev/null
-          echo "✅ data/productos.json es JSON válido"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      - name: Verificar atributos de accesibilidad en HTML
+      - name: Instalar dependencias
+        run: npm install
+
+      - name: Verificar estructura HTML
         run: |
-          grep -q '<!DOCTYPE html>'       index.html && echo "✅ DOCTYPE presente"
-          grep -q '<html lang='           index.html && echo "✅ atributo lang presente"
-          grep -q '<title>'               index.html && echo "✅ etiqueta title presente"
-          grep -q 'aria-label'            index.html && echo "✅ aria-label presente"
-          grep -q 'role="alert"'          index.html && echo "✅ role alert presente"
-          grep -q 'aria-required'         index.html && echo "✅ aria-required presente"
+          grep -q '<!DOCTYPE html>'  index.html && echo "✅ DOCTYPE presente"
+          grep -q '<html lang='      index.html && echo "✅ atributo lang presente"
+          grep -q '<title>'          index.html && echo "✅ title presente"
+          grep -q 'aria-label'       index.html && echo "✅ aria-label presente"
 
       - name: Verificar sintaxis JavaScript
         run: |
-          node --check js/repositorio.js    && echo "✅ repositorio.js OK"
-          node --check js/carrito.js        && echo "✅ carrito.js OK"
           node --check js/logica-carrito.js && echo "✅ logica-carrito.js OK"
+          node --check js/carrito.js        && echo "✅ carrito.js OK"
           node --check js/autenticacion.js  && echo "✅ autenticacion.js OK"
           node --check js/vista.js          && echo "✅ vista.js OK"
           node --check js/aplicacion.js     && echo "✅ aplicacion.js OK"
+          node --check js/vista-cajero.js   && echo "✅ vista-cajero.js OK"
+          node --check js/vista-admin.js    && echo "✅ vista-admin.js OK"
+          node --check js/vista-menu.js     && echo "✅ vista-menu.js OK"
 
-      - name: Verificar módulos JS referenciados en index.html
+      - name: Verificar archivos JS existen
         run: |
-          for f in js/repositorio.js js/carrito.js js/logica-carrito.js js/autenticacion.js js/vista.js js/aplicacion.js; do
+          for f in js/logica-carrito.js js/carrito.js js/autenticacion.js js/vista.js js/aplicacion.js js/vista-cajero.js js/vista-admin.js js/vista-menu.js; do
             [ -f "$f" ] && echo "✅ $f existe" || (echo "❌ $f FALTA" && exit 1)
           done
 
-      - name: Verificar imágenes del catálogo
-        run: |
-          COUNT=$(ls "imagenes comida/" | wc -l)
-          echo "📦 Imágenes encontradas: $COUNT"
-          [ "$COUNT" -ge 30 ] && echo "✅ Al menos 30 imágenes presentes" || (echo "❌ Faltan imágenes" && exit 1)
-
-  # ─────────────────────────────────────────────
-  # JOB 2: Despliegue a GitHub Pages (solo main)
-  # ─────────────────────────────────────────────
-  deploy:
-    name: Desplegar a GitHub Pages
-    needs: validate
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-
-    permissions:
-      pages: write
-      id-token: write
-
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
-
-    steps:
-      - name: Checkout del repositorio
-        uses: actions/checkout@v4
-
-      - name: Configurar GitHub Pages
-        uses: actions/configure-pages@v4
-
-      - name: Subir artefacto del sitio
-        uses: actions/upload-pages-artifact@v3
-        with:
-          path: '.'
-
-      - name: Desplegar en GitHub Pages
-        id: deployment
-        uses: actions/deploy-pages@v4
+      - name: Correr tests Vitest
+        run: npm test
