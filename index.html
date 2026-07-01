@@ -1622,6 +1622,11 @@
   _btnTipoLlevar?.addEventListener('click', () => _setTipo(true));
 
   mesaInput.addEventListener('input', () => {
+    // Forzar entero: eliminar decimales en tiempo real
+    const raw = mesaInput.value;
+    if (raw.includes('.') || raw.includes(',')) {
+      mesaInput.value = String(Math.floor(Math.abs(Number(raw))) || '');
+    }
     mesaInput.style.borderColor = '';
     const err = document.getElementById('mesa-input-error');
     if (!err) return;
