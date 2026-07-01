@@ -2799,7 +2799,7 @@
     requestAnimationFrame(actualizarAlturasStickyMovil);
   }
 
-  function irAlPerfil() {
+  async function irAlPerfil() {
     document.getElementById('menu-view').style.display = 'none';
     document.getElementById('usuario-view').style.display = 'block';
     const hs = document.getElementById('header-search-wrap');
@@ -2808,10 +2808,23 @@
     if (ct) ct.style.display = 'none';
     requestAnimationFrame(actualizarAlturasStickyMovil);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    recargarCaja().finally(() => renderUsuarioView());
+    const session = ModuloAutenticacion.getSession();
+    if (session?.id) {
+      try {
+        const [rHist, rPend] = await Promise.all([
+          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }),
+          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true })
+        ]);
+        renderUsuarioView((rHist.data || []).map(_rowAPedido), (rPend.data || []).map(_rowAPedido));
+      } catch (_e) {
+        recargarCaja().finally(() => renderUsuarioView());
+      }
+    } else {
+      recargarCaja().finally(() => renderUsuarioView());
+    }
   }
 
-  function renderUsuarioView() {
+  function renderUsuarioView(pagadosOverride, pendientesOverride) {
     const session = ModuloAutenticacion.getSession();
 
     let nombreCompleto = session.nombre;
@@ -2830,10 +2843,8 @@
     if (usernameEl) usernameEl.textContent = '@' + session.usuario;
     if (rolBadge)   rolBadge.textContent   = ROL_LABEL[session.rol] ?? session.rol;
 
-    const historial    = leerHistorial();
-    // FIX: comparar por session.id (UUID), no session.usuario (string)
-    const pagados      = historial.filter(h => h.idUsuario === session.id);
-    const pendientes   = leerCaja().filter(p => p.idUsuario === session.id);
+    const pagados    = pagadosOverride   ?? leerHistorial().filter(h => h.idUsuario === session.id);
+    const pendientes = pendientesOverride ?? leerCaja().filter(p => p.idUsuario === session.id);
     const totalGastado = pagados.reduce((s, p) => s + (p.total || 0), 0);
 
     const totalPedidosEl = document.getElementById('perfil-total-pedidos');
