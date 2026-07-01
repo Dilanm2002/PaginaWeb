@@ -951,6 +951,11 @@
           <input type="text" id="invitado-nombre" placeholder="Ej: María López" autocomplete="name" />
           <span id="nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Por favor ingresa tu nombre para continuar.</span>
         </div>
+        <div class="mesa-field" id="campo-nombre-llevar" style="display:none">
+          <label for="llevar-nombre">Nombre del cliente <span style="color:#dc2626">*</span></label>
+          <input type="text" id="llevar-nombre" placeholder="Ej: Carlos Pérez" autocomplete="name" />
+          <span id="llevar-nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Ingresa el nombre del cliente para el pedido para llevar.</span>
+        </div>
         <div class="mesa-field" id="campo-mesa">
           <label for="mesa-input">Número de Mesa</label>
           <input type="number" id="mesa-input" min="1" max="16" step="1" placeholder="Ej: 5" autocomplete="off" />
@@ -1106,10 +1111,12 @@
   }
 
   function _rowAPedido(r) {
-    const esParaLlevar = r.ped_nombre_invitado === 'Para llevar';
-    const nombreUsuario = r.usu_id
-      ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
-      : (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado'));
+    const esParaLlevar = r.ped_nombre_invitado === 'Para llevar' || r.ped_nombre_invitado?.startsWith('PL:');
+    const llevarNombreDB = r.ped_nombre_invitado?.startsWith('PL:') ? r.ped_nombre_invitado.slice(3) : null;
+    const nombreUsuario = llevarNombreDB
+      ?? (r.usu_id
+        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
+        : (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado')));
     return {
       id:            r.ped_id,
       mesa:          esParaLlevar ? 'Para llevar' : (r.mesas?.mes_numero ?? null),
@@ -1389,7 +1396,7 @@
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
       mes_id:              mesaData?.mes_id ?? null,
       usu_id:              idUsuario || null,
-      ped_nombre_invitado: paraLlevar ? 'Para llevar' : (idUsuario ? null : nombreUsuario),
+      ped_nombre_invitado: paraLlevar ? `PL:${nombreUsuario}` : (idUsuario ? null : nombreUsuario),
       ped_estado:          'pendiente',
       ped_hora:            hora,
       ped_fecha:           fecha,
@@ -1617,6 +1624,12 @@
     const errEl = document.getElementById('mesa-input-error');
     if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
     if (mesaInput) mesaInput.style.borderColor = '';
+    const campoNombreLlevar = document.getElementById('campo-nombre-llevar');
+    const llevarNombreErr   = document.getElementById('llevar-nombre-error');
+    if (campoNombreLlevar) campoNombreLlevar.style.display = llevar ? '' : 'none';
+    if (llevarNombreErr)   { llevarNombreErr.style.display = 'none'; }
+    const llevarInput = document.getElementById('llevar-nombre');
+    if (llevarInput)  { llevarInput.style.borderColor = ''; }
   }
   _btnTipoMesa  ?.addEventListener('click', () => _setTipo(false));
   _btnTipoLlevar?.addEventListener('click', () => _setTipo(true));
@@ -2035,6 +2048,19 @@
         }
       };
     }
+    // Pre-llenar campo nombre para llevar con nombre de sesión si existe
+    const llevarInput = document.getElementById('llevar-nombre');
+    if (llevarInput) {
+      llevarInput.value = session?.nombre ?? '';
+      llevarInput.style.borderColor = '';
+      llevarInput.oninput = () => {
+        if (llevarInput.value.trim()) {
+          llevarInput.style.borderColor = '';
+          const e = document.getElementById('llevar-nombre-error');
+          if (e) e.style.display = 'none';
+        }
+      };
+    }
 
     mesaPreviewEl.innerHTML = `
       ${items.map(i => `
@@ -2196,9 +2222,18 @@
 
     // Para llevar: saltar verificación de mesa y enviar directo
     if (_esParaLlevar) {
+      const llevarInput = document.getElementById('llevar-nombre');
+      const llevarNombre = llevarInput?.value.trim() ?? '';
+      if (!llevarNombre) {
+        if (llevarInput) llevarInput.style.borderColor = '#dc2626';
+        const e = document.getElementById('llevar-nombre-error');
+        if (e) e.style.display = 'block';
+        llevarInput?.focus();
+        return;
+      }
       _skipNextRealtime = true;
       btnConfirmarMesa.disabled = true;
-      const res = await enviarACaja({ mesa: 'Para llevar', nombreUsuario, idUsuario, rol, items, paraLlevar: true });
+      const res = await enviarACaja({ mesa: 'Para llevar', nombreUsuario: llevarNombre, idUsuario, rol, items, paraLlevar: true });
       btnConfirmarMesa.disabled = false;
       if (!res) return; // error ya mostrado dentro de enviarACaja
       LogicaCarrito.vaciarCarrito();
