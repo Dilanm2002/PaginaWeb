@@ -116,7 +116,7 @@ window.VistaMenu = (function () {
     grid.innerHTML = lista.map((p,idx) => {
       const s       = SC.getStock(p.id);
       const agotado = !s.disponible || s.stock <= 0;
-      const esNuevo = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000;
+      const esNuevo = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000;
       const stockBadge = agotado
         ? `<span class="stock-badge stock-badge--agotado">Agotado</span>`
         : (verStock && s.stock <= 5)
@@ -467,7 +467,7 @@ window.VistaMenu = (function () {
                 const _stockTxt = _s.stock <= 0 ? 'Agotado' : `${_s.stock} en stock`;
                 return `
               <div class="mesero-row${_agotado ? ' mesero-row--agotado' : ''}" data-id="${p.id}">
-                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_agotado ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>' : ''}</span>
+                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_agotado ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>' : ''}</span>
                 <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
                 <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
                   i

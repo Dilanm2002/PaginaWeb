@@ -3007,7 +3007,27 @@
     flex-shrink: 0;
     box-shadow: 0 2px 8px rgba(200,86,26,.4);
   }
-  .adm-sidebar__user-info { display: flex; flex-direction: column; line-height: 1.3; overflow: hidden; }
+  .adm-sidebar__user-info { display: flex; flex-direction: column; line-height: 1.3; overflow: hidden; flex: 1; min-width: 0; }
+  .adm-cambiar-pass-btn {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    border: 1px solid rgba(255,255,255,.12);
+    background: rgba(255,255,255,.06);
+    color: rgba(253,246,238,.55);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all .18s;
+    margin-left: auto;
+  }
+  .adm-cambiar-pass-btn:hover {
+    background: rgba(200,86,26,.25);
+    border-color: rgba(200,86,26,.5);
+    color: var(--cinnamon);
+  }
   .adm-sidebar__user-name {
     font-size: .83rem;
     font-weight: 600;

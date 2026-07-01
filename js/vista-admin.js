@@ -15,7 +15,7 @@ window.VistaAdmin = (function () {
     const SC = window.SC;
     const s = SC.getStock(p.id);
     const agotado = !s.disponible || s.stock <= 0;
-    const esNuevo = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 7 * 86400000;
+    const esNuevo = p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000;
     const oculto  = p.activo === false;
     return `
     <div class="admin-card-wrap${agotado ? ' admin-card-inactive' : ''}${oculto ? ' admin-card--oculto' : ''}" data-id="${p.id}">
@@ -1396,28 +1396,27 @@ window.VistaAdmin = (function () {
     if (!el) return;
     el.innerHTML = '<p class="usu-cargando">Cargando clientes…</p>';
 
-    const SEL_CON_DIR = 'usu_id, usu_usuario, usu_email, usu_nombre, usu_apellido, usu_telefono, usu_direccion, usu_activo, usuario_rol(roles(rol_nombre))';
-    const SEL_SIN_DIR = 'usu_id, usu_usuario, usu_email, usu_nombre, usu_apellido, usu_telefono, usu_activo, usuario_rol(roles(rol_nombre))';
+    // Usar RPC (SECURITY DEFINER) porque RLS bloquea query directa a usuarios con rol anon
+    const { data: rpcData, error: qError } = await window.db.rpc('listar_usuarios');
 
-    let rawData, qError;
-    ({ data: rawData, error: qError } = await window.db
-      .from('usuarios').select(SEL_CON_DIR).order('usu_nombre'));
-
-    if (qError) {
-      ({ data: rawData, error: qError } = await window.db
-        .from('usuarios').select(SEL_SIN_DIR).order('usu_nombre'));
-    }
-
-    if (qError || !rawData) {
+    if (qError || !rpcData) {
       el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar clientes.</p>';
       return;
     }
 
     const ROLES_EMPLEADO = new Set(['administrador', 'cajero', 'mesero']);
-    const data = rawData.filter(u => {
-      const rol = (u.usuario_rol?.[0]?.roles?.rol_nombre ?? 'usuario').toLowerCase();
-      return !ROLES_EMPLEADO.has(rol);
-    });
+    const data = rpcData
+      .filter(u => !ROLES_EMPLEADO.has((u.rol ?? 'usuario').toLowerCase()))
+      .map(u => ({
+        usu_id:       u.usu_id,
+        usu_usuario:  u.usu_usuario,
+        usu_email:    u.usu_email,
+        usu_nombre:   u.usu_nombre,
+        usu_apellido: u.usu_apellido ?? '',
+        usu_telefono: u.usu_telefono ?? '',
+        usu_direccion: u.usu_direccion ?? '',
+        usu_activo:   u.usu_activo ?? true
+      }));
 
     if (!data.length) {
       el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay clientes registrados.</p>';

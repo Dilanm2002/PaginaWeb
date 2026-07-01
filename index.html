@@ -406,6 +406,9 @@
               <span class="adm-sidebar__user-name" id="adm-user-name">Administrador</span>
               <span class="adm-sidebar__user-rol">Administrador</span>
             </div>
+            <button class="adm-cambiar-pass-btn" id="btn-admin-cambiar-pass" title="Cambiar contraseña" aria-label="Cambiar contraseña">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            </button>
           </div>
           <button class="adm-logout-btn" id="btn-admin-cerrar-sesion">
             <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
@@ -886,6 +889,38 @@
     </div>
   </div>
 
+  <!-- ══ MODAL CAMBIAR CONTRASEÑA (ADMIN) ══ -->
+  <div id="cambiar-pass-admin-backdrop" class="auth-backdrop" role="dialog" aria-modal="true" aria-labelledby="cambiar-pass-admin-title">
+    <div class="auth-box">
+      <div class="auth-header">
+        <button id="btn-cerrar-cambiar-pass-admin" aria-label="Cerrar" style="position:absolute;top:.6rem;right:.6rem;background:rgba(255,255,255,.15);border:none;color:var(--cream);width:28px;height:28px;border-radius:50%;font-size:1rem;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1;">&#x2715;</button>
+        <div class="auth-logo">Cambiar <span>Contraseña</span></div>
+        <div class="auth-subtitle" id="cambiar-pass-admin-title">Actualiza tu contraseña de acceso</div>
+      </div>
+      <div class="auth-body">
+        <form id="form-cambiar-pass-admin" novalidate>
+          <div class="auth-field">
+            <label for="cpa-actual">Contraseña actual <span style="color:var(--cinnamon)">*</span></label>
+            <input id="cpa-actual" type="password" autocomplete="current-password" maxlength="60" placeholder="Tu contraseña actual">
+            <span class="auth-error" id="cpa-actual-err" role="alert"></span>
+          </div>
+          <div class="auth-field">
+            <label for="cpa-nueva">Nueva contraseña <span style="color:var(--cinnamon)">*</span></label>
+            <input id="cpa-nueva" type="password" autocomplete="new-password" maxlength="60" placeholder="Mín. 6 caracteres">
+            <span class="auth-error" id="cpa-nueva-err" role="alert"></span>
+          </div>
+          <div class="auth-field">
+            <label for="cpa-confirmar">Confirmar nueva contraseña <span style="color:var(--cinnamon)">*</span></label>
+            <input id="cpa-confirmar" type="password" autocomplete="new-password" maxlength="60" placeholder="Repite la nueva clave">
+            <span class="auth-error" id="cpa-confirmar-err" role="alert"></span>
+          </div>
+          <span class="auth-error" id="cpa-general-err" role="alert" style="display:block;margin-bottom:.5rem"></span>
+          <button type="submit" class="btn-auth" id="btn-cpa-submit" style="margin-top:.25rem">Guardar nueva contraseña</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ MODAL INGREDIENTES ══ -->
   <div id="product-modal-backdrop" class="modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true">
     <div class="modal-box" id="product-modal-box"></div>
@@ -1302,6 +1337,9 @@
     // Limpiar pedido pendiente previo para esta mesa (evita fantasmas)
     if (mesaData?.mes_id) {
       await db.from('pedidos').delete().eq('mes_id', mesaData.mes_id).eq('ped_estado', 'pendiente');
+    } else if (idUsuario) {
+      // Sin mesa asignada: limpiar pedidos previos del mismo usuario sin mesa (evita 409 por intentos fallidos)
+      await db.from('pedidos').delete().eq('usu_id', idUsuario).eq('ped_estado', 'pendiente').is('mes_id', null);
     }
 
     const hora  = new Date().toTimeString().slice(0, 8);
@@ -2131,9 +2169,11 @@
     let cajaNow;
     try {
       btnConfirmarMesa.disabled = true;
-      const { data: pedidosDB } = await db.from('pedidos').select('ped_id, ped_mesa, ped_id_usuario, ped_rol').eq('ped_estado', 'pendiente').not('ped_items', 'is', null);
+      const { data: pedidosDB } = await db.from('pedidos')
+        .select('ped_id, mes_id, usu_id, mesas(mes_numero)')
+        .eq('ped_estado', 'pendiente');
       cajaNow = [
-        ...( pedidosDB || [] ).map(r => ({ id: r.ped_id, mesa: r.ped_mesa, idUsuario: r.ped_id_usuario, rol: r.ped_rol })),
+        ...( pedidosDB || [] ).map(r => ({ id: r.ped_id, mesa: r.mesas?.mes_numero ?? null, idUsuario: r.usu_id, rol: null })),
         ...leerCaja()
       ].filter((p, i, arr) => arr.findIndex(x => String(x.id) === String(p.id)) === i);
     } catch(_) {
@@ -2256,6 +2296,7 @@
   var trapProdForm      = crearFocusTrap(document.getElementById('prod-form-backdrop'));
   window._trapProdForm  = trapProdForm;
   var trapEditarPerfil  = crearFocusTrap(document.getElementById('editar-perfil-backdrop'));
+  var trapCambiarPass   = crearFocusTrap(document.getElementById('cambiar-pass-admin-backdrop'));
 
   /* ══════════════════════════════════════════════════
      PANEL CARRITO
@@ -3061,6 +3102,77 @@
     cerrarEditarPerfil();
     renderUsuarioView();
     toast('Perfil actualizado ✓', 'success');
+  });
+
+  // ── Modal Cambiar Contraseña (Admin) ──
+  const cambiarPassBackdrop = document.getElementById('cambiar-pass-admin-backdrop');
+
+  function abrirCambiarPassAdmin() {
+    const form = document.getElementById('form-cambiar-pass-admin');
+    form.reset();
+    ['cpa-actual-err','cpa-nueva-err','cpa-confirmar-err','cpa-general-err'].forEach(id => {
+      document.getElementById(id).textContent = '';
+    });
+    cambiarPassBackdrop.classList.add('open');
+    document.documentElement.style.overflow = 'hidden';
+    setTimeout(function() { trapCambiarPass.activar(); document.getElementById('cpa-actual').focus(); }, 0);
+  }
+
+  function cerrarCambiarPassAdmin() {
+    trapCambiarPass.desactivar();
+    cambiarPassBackdrop.classList.remove('open');
+    document.documentElement.style.overflow = '';
+  }
+
+  document.getElementById('btn-admin-cambiar-pass').addEventListener('click', abrirCambiarPassAdmin);
+  document.getElementById('btn-cerrar-cambiar-pass-admin').addEventListener('click', cerrarCambiarPassAdmin);
+
+  document.getElementById('form-cambiar-pass-admin').addEventListener('submit', async function(e) {
+    e.preventDefault();
+    const actual     = document.getElementById('cpa-actual').value;
+    const nueva      = document.getElementById('cpa-nueva').value;
+    const confirmar  = document.getElementById('cpa-confirmar').value;
+    const actualErr  = document.getElementById('cpa-actual-err');
+    const nuevaErr   = document.getElementById('cpa-nueva-err');
+    const confirErr  = document.getElementById('cpa-confirmar-err');
+    const generalErr = document.getElementById('cpa-general-err');
+    const btnSubmit  = document.getElementById('btn-cpa-submit');
+    let ok = true;
+
+    actualErr.textContent = nuevaErr.textContent = confirErr.textContent = generalErr.textContent = '';
+
+    if (!actual) { actualErr.textContent = 'Ingresa tu contraseña actual.'; ok = false; }
+    if (!nueva || nueva.length < 6) { nuevaErr.textContent = 'La nueva contraseña debe tener al menos 6 caracteres.'; ok = false; }
+    if (nueva && nueva !== confirmar) { confirErr.textContent = 'Las contraseñas no coinciden.'; ok = false; }
+    if (!ok) return;
+
+    const session = ModuloAutenticacion.getSession();
+    if (!session) { generalErr.textContent = 'Sesión no encontrada. Inicia sesión nuevamente.'; return; }
+
+    btnSubmit.disabled = true;
+    btnSubmit.textContent = 'Guardando…';
+
+    try {
+      const { data, error } = await window.db.rpc('cambiar_password', {
+        p_id:         session.id,
+        p_pass_actual: actual,
+        p_pass_nueva:  nueva
+      });
+
+      if (error || !data?.ok) {
+        generalErr.textContent = data?.msg || 'Error al cambiar la contraseña. Verifica tu contraseña actual.';
+        return;
+      }
+
+      cerrarCambiarPassAdmin();
+      toast('Contraseña actualizada correctamente ✓', 'success');
+    } catch (err) {
+      generalErr.textContent = 'Error de conexión. Intenta de nuevo.';
+      console.error('cambiar_password error:', err);
+    } finally {
+      btnSubmit.disabled = false;
+      btnSubmit.textContent = 'Guardar nueva contraseña';
+    }
   });
 
   // Botón "Iniciar Sesión" en header → abre modal
