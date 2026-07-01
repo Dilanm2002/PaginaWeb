@@ -1107,15 +1107,18 @@
   }
 
   function _rowAPedido(r) {
+    const esParaLlevar = r.ped_nombre_invitado === 'Para llevar';
+    const nombreUsuario = r.usu_id
+      ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
+      : (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado'));
     return {
       id:            r.ped_id,
-      mesa:          r.mesas?.mes_numero ?? null,
+      mesa:          esParaLlevar ? 'Para llevar' : (r.mesas?.mes_numero ?? null),
+      paraLlevar:    esParaLlevar,
       mesId:         r.mes_id,
       estado:        r.ped_estado,
       idUsuario:     r.usu_id ?? null,
-      nombreUsuario: r.usu_id
-        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
-        : (r.ped_nombre_invitado ?? 'Invitado'),
+      nombreUsuario,
       rol:           r.usu_id
         ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.rol ?? 'usuario')
         : 'invitado',
@@ -1358,20 +1361,19 @@
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
       mes_id:              mesaData?.mes_id ?? null,
       usu_id:              idUsuario || null,
-      ped_nombre_invitado: idUsuario ? null : nombreUsuario,
+      ped_nombre_invitado: paraLlevar ? 'Para llevar' : (idUsuario ? null : nombreUsuario),
       ped_estado:          'pendiente',
       ped_hora:            hora,
       ped_fecha:           fecha,
       ped_subtotal:        totales.subtotal,
       ped_iva:             totales.iva,
-      ped_total:           totales.total,
-      ped_para_llevar:     paraLlevar
+      ped_total:           totales.total
     }).select('ped_id').single();
 
     if (pedError || !pedData) {
       console.error('Supabase insert pedido:', pedError);
       toast('Error al enviar pedido. Intenta de nuevo.', 'error');
-      return _caja;
+      return null;
     }
 
     // Insertar detalle_pedidos
@@ -2163,7 +2165,10 @@
     // Para llevar: saltar verificación de mesa y enviar directo
     if (_esParaLlevar) {
       _skipNextRealtime = true;
-      enviarACaja({ mesa: 'Para llevar', nombreUsuario, idUsuario, rol, items, paraLlevar: true });
+      btnConfirmarMesa.disabled = true;
+      const res = await enviarACaja({ mesa: 'Para llevar', nombreUsuario, idUsuario, rol, items, paraLlevar: true });
+      btnConfirmarMesa.disabled = false;
+      if (!res) return; // error ya mostrado dentro de enviarACaja
       LogicaCarrito.vaciarCarrito();
       renderCarrito();
       window.VistaCajero?.renderCajeroView();
@@ -2240,7 +2245,10 @@
     }
 
     _skipNextRealtime = true;
-    enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items });
+    btnConfirmarMesa.disabled = true;
+    const resEnvio = await enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items });
+    btnConfirmarMesa.disabled = false;
+    if (!resEnvio) return; // error ya mostrado dentro de enviarACaja
     LogicaCarrito.vaciarCarrito();
     renderCarrito();
     window.VistaCajero?.renderCajeroView();
