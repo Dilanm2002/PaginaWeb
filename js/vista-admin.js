@@ -19,7 +19,7 @@ window.VistaAdmin = (function () {
     const oculto  = p.activo === false;
     return `
     <div class="admin-card-wrap${agotado ? ' admin-card-inactive' : ''}${oculto ? ' admin-card--oculto' : ''}" data-id="${p.id}">
-      <article class="product-card" role="listitem" aria-label="${p.nombre}">
+      <div class="product-card" role="listitem" aria-label="${p.nombre}">
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           ${p.destacado ? '<span class="admin-badge-dest">★</span>' : ''}
@@ -30,7 +30,7 @@ window.VistaAdmin = (function () {
           <h3 class="product-card__name">${p.nombre}</h3>
           <p class="product-card__price">$${Number(p.precio).toFixed(2)} <small>USD</small></p>
         </div>
-      </article>
+      </div>
       <div class="admin-card-overlay">
         <button class="btn-admin-card btn-admin-card--edit" data-action="editar"   data-id="${p.id}">✏️ Editar</button>
         <button class="btn-admin-card btn-admin-card--del"  data-action="eliminar" data-id="${p.id}">🗑 Eliminar</button>
@@ -739,6 +739,17 @@ window.VistaAdmin = (function () {
     if (!periodo) {
       const activeTab = document.querySelector('.rep-tab.active');
       periodo = activeTab?.dataset.period ?? 'hoy';
+    }
+
+    // Carga Plotly dinámicamente la primera vez que se abre Reportes
+    if (!window.Plotly) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.min.js';
+        s.onload = resolve;
+        s.onerror = reject;
+        document.head.appendChild(s);
+      });
     }
 
     document.querySelectorAll('.rep-tab').forEach(t => {

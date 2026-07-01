@@ -123,7 +123,7 @@ window.VistaMenu = (function () {
           ? `<span class="stock-badge stock-badge--bajo">Quedan ${s.stock}</span>`
           : '';
       return `
-      <article class="product-card${agotado ? ' product-card--agotado' : ''}" role="listitem" aria-label="${p.nombre}" style="animation-delay:${idx*0.05}s" data-id="${p.id}">
+      <div class="product-card${agotado ? ' product-card--agotado' : ''}" role="listitem" aria-label="${p.nombre}" style="animation-delay:${idx*0.05}s" data-id="${p.id}">
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450">
           <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
@@ -144,7 +144,7 @@ window.VistaMenu = (function () {
             ${agotado ? 'Agotado' : 'Ordenar'}
           </button>
         </div>
-      </article>`;
+      </div>`;
     }).join('');
 
     grid.onclick = e => {
