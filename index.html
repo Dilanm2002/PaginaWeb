@@ -14,30 +14,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <!-- CSS crítico inline: loader + variables (evita render-blocking del CSS de 163 KB) -->
-  <style>
-    @keyframes spin   { to { transform: rotate(360deg); } }
-    @keyframes fadeUp { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
-    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-    :root {
-      --brown-dark:  #3B1A08; --brown-mid:   #6B3015; --cinnamon:    #C8561A;
-      --cinnamon-lt: #E07B3A; --cream:        #FDF6EE; --cream-dk:    #F4E8D6;
-      --text:        #2C1505; --text-muted:   #7A5640; --border:      #E0C9B0;
-      --white:       #FFFFFF; --shadow: 0 4px 24px rgba(59,26,8,.12);
-      --radius: 14px; --radius-sm: 8px;
-      --cat-desayunos:#C4890A; --cat-entradas:#B8720A; --cat-almuerzos:#7A2215;
-      --cat-postres:#9B4520; --cat-bocaditos:#A0751A; --cat-bcalientes:#6B3A1F;
-      --cat-bfrias:#2E7A5B; --cat-fuertes:#C4890A;
-    }
-    html { scroll-behavior:smooth; overflow-x:hidden; background:var(--brown-dark); }
-    body { font-family:'Inter',sans-serif; background:var(--cream); color:var(--text); min-height:100vh; min-height:100dvh; display:flex; flex-direction:column; }
-    main { flex:1; display:flex; flex-direction:column; }
-    #menu-view,#cajero-view,#admin-view,#usuario-view { flex:1; display:flex; flex-direction:column; }
-    .wrap { max-width:1200px; margin:0 auto; padding:0 1.5rem; }
-  </style>
-  <!-- CSS completo no bloqueante (el app-loader cubre la página hasta que la app esté lista) -->
-  <link rel="preload" as="style" href="assets/styles.css" onload="this.rel='stylesheet'">
-  <noscript><link rel="stylesheet" href="assets/styles.css"></noscript>
+  <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
 
