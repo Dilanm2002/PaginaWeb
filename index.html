@@ -3104,7 +3104,7 @@
           window.VistaMenu?.actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
           window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(savedCat));
         };
-        if (getProductosMergeados().length === 0 && !document.getElementById('app-loader')) {
+        if (getProductosMergeados().length === 0) {
           inicializarDB().finally(_doRenderMenu);
         } else {
           _doRenderMenu();
@@ -3370,6 +3370,16 @@
     if (loader) {
       loader.style.opacity = '0';
       setTimeout(() => loader.remove(), 380);
+    }
+    // Reintento silencioso si Supabase tuvo un error transitorio al cargar
+    if (getProductosMergeados().length === 0) {
+      const _reintentarRender = () => {
+        aplicarSesion();
+        window.VistaCajero?.renderCajeroView();
+        window.VistaAdmin?.renderAdminView();
+        renderCarrito();
+      };
+      setTimeout(() => inicializarDB().finally(_reintentarRender), 2000);
     }
   });
 
