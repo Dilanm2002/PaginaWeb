@@ -2808,7 +2808,7 @@
     if (ct) ct.style.display = 'none';
     requestAnimationFrame(actualizarAlturasStickyMovil);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-    renderUsuarioView();
+    recargarCaja().finally(() => renderUsuarioView());
   }
 
   function renderUsuarioView() {
@@ -3095,13 +3095,20 @@
         grid.className = 'products-grid';
         grid.closest('section#menu').querySelector('.section-title').style.display = '';
         const savedCat = ModuloApp.getFiltroSesion();
-        window.VistaMenu?.renderFiltros(cat => {
-          window.VistaMenu?.actualizarTitulo(cat === 'Destacados' ? 'Platos Destacados' : cat === 'Todos' ? 'Nuestro Menú' : cat);
-          window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
-        });
-        window.VistaMenu?.setFiltroActivo(savedCat);
-        window.VistaMenu?.actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
-        window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(savedCat));
+        const _doRenderMenu = () => {
+          window.VistaMenu?.renderFiltros(cat => {
+            window.VistaMenu?.actualizarTitulo(cat === 'Destacados' ? 'Platos Destacados' : cat === 'Todos' ? 'Nuestro Menú' : cat);
+            window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
+          });
+          window.VistaMenu?.setFiltroActivo(savedCat);
+          window.VistaMenu?.actualizarTitulo(savedCat === 'Destacados' ? 'Platos Destacados' : savedCat === 'Todos' ? 'Nuestro Menú' : savedCat);
+          window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(savedCat));
+        };
+        if (getProductosMergeados().length === 0 && !document.getElementById('app-loader')) {
+          inicializarDB().finally(_doRenderMenu);
+        } else {
+          _doRenderMenu();
+        }
         renderCarrito();
       }
     }

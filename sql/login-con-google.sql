@@ -41,7 +41,7 @@ BEGIN
 
     -- Asegurar unicidad del username
     v_usuario := v_base;
-    WHILE EXISTS(SELECT 1 FROM usuarios WHERE usu_usuario = v_usuario) LOOP
+    WHILE EXISTS(SELECT 1 FROM usuarios ux WHERE ux.usu_usuario = v_usuario) LOOP
       v_usuario := v_base || v_sufijo::text;
       v_sufijo  := v_sufijo + 1;
     END LOOP;
