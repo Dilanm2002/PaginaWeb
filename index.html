@@ -1355,6 +1355,26 @@
       await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('usu_id', idUsuario).is('mes_id', null));
     }
 
+    // Verificar stock real en BD (la memoria local puede estar desactualizada entre sesiones)
+    const { data: stockDB } = await db.from('productos')
+      .select('plat_id, prod_stock, prod_disponible')
+      .in('plat_id', items.map(i => i.id));
+    if (stockDB?.length) {
+      stockDB.forEach(s => { _stock[s.plat_id] = { stock: s.prod_stock, disponible: s.prod_disponible }; });
+      const sinStockDB = items.filter(item => {
+        const s = stockDB.find(x => x.plat_id === item.id);
+        return s && (!s.prod_disponible || item.cantidad > s.prod_stock);
+      });
+      if (sinStockDB.length) {
+        sinStockDB.forEach(item => {
+          const s = stockDB.find(x => x.plat_id === item.id);
+          const msg = !s || s.prod_stock <= 0 ? 'agotado' : `solo hay ${s.prod_stock} disponibles`;
+          toast(`"${item.nombre}" no se puede pedir: ${msg}`, 'error');
+        });
+        return null;
+      }
+    }
+
     const hora  = new Date().toTimeString().slice(0, 8);
     const fecha = new Date().toISOString().split('T')[0];
 
@@ -1604,8 +1624,8 @@
       if (pedOcupado) {
         const esMesero = session?.rol === 'mesero';
         const esMio = !esMesero && (
-          (session?.usuario && session.usuario === pedOcupado.idUsuario) ||
-          (!session?.usuario && pedOcupado.rol === 'invitado')
+          (session?.id && session.id === pedOcupado.idUsuario) ||
+          (!session?.id && pedOcupado.rol === 'invitado')
         );
         if (!esMio) {
           err.textContent = `Mesa ${num} ya está ocupada`;
@@ -1946,8 +1966,8 @@
 
     // ¿El usuario ya tiene un pedido pendiente en esta sesión?
     // El mesero siempre ingresa la mesa manualmente — no se auto-asigna
-    const pedidoPrevio = (session && session.rol !== 'invitado' && session.rol !== 'mesero' && session.usuario)
-      ? leerCaja().find(p => p.idUsuario === session.usuario)
+    const pedidoPrevio = (session && session.rol !== 'invitado' && session.rol !== 'mesero' && session.id)
+      ? leerCaja().find(p => p.idUsuario === session.id)
       : null;
 
     if (meseroMesaTarget) {
@@ -2095,7 +2115,7 @@
     let nombreUsuario, idUsuario, rol;
     if (session && session.rol !== 'invitado') {
       nombreUsuario = session.nombre;
-      idUsuario     = session.usuario;
+      idUsuario     = session.id;
       rol           = session.rol;
     } else {
       nombreUsuario = invitadoNombre.value.trim();
