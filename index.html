@@ -1334,12 +1334,22 @@
       mesaData = data;
     }
 
-    // Limpiar pedido pendiente previo para esta mesa (evita fantasmas)
+    // Limpiar pedido pendiente previo en orden (FK: exclusiones → detalles → pedido)
+    async function _limpiarPeds(query) {
+      const { data: peds } = await query;
+      if (!peds?.length) return;
+      const pIds = peds.map(p => p.ped_id);
+      const { data: dets } = await db.from('detalle_pedidos').select('detped_id').in('ped_id', pIds);
+      if (dets?.length) {
+        await db.from('det_exclusiones').delete().in('detped_id', dets.map(d => d.detped_id));
+        await db.from('detalle_pedidos').delete().in('ped_id', pIds);
+      }
+      await db.from('pedidos').delete().in('ped_id', pIds);
+    }
     if (mesaData?.mes_id) {
-      await db.from('pedidos').delete().eq('mes_id', mesaData.mes_id).eq('ped_estado', 'pendiente');
+      await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('mes_id', mesaData.mes_id));
     } else if (idUsuario) {
-      // Sin mesa asignada: limpiar pedidos previos del mismo usuario sin mesa (evita 409 por intentos fallidos)
-      await db.from('pedidos').delete().eq('usu_id', idUsuario).eq('ped_estado', 'pendiente').is('mes_id', null);
+      await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('usu_id', idUsuario).is('mes_id', null));
     }
 
     const hora  = new Date().toTimeString().slice(0, 8);
