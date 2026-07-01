@@ -3287,6 +3287,9 @@
   #adm-kpi-agotados::after   { background: #b45309; }
   #adm-kpi-mensajes::before  { background: linear-gradient(90deg, #1d4ed8, #60a5fa); }
   #adm-kpi-mensajes::after   { background: #1d4ed8; }
+  .adm-kpi--link { cursor: pointer; }
+  .adm-kpi--link:hover { box-shadow: 0 2px 6px rgba(59,26,8,.06), 0 14px 40px rgba(59,26,8,.17); transform: translateY(-5px); }
+  .adm-kpi--link:focus-visible { outline: 2px solid var(--cinnamon); outline-offset: 3px; }
   .adm-kpi__icon {
     width: 56px;
     height: 56px;

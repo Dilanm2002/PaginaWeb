@@ -322,8 +322,13 @@ window.VistaAdmin = (function () {
 
     _initAdminUserInfo();
     _renderDashboardStats();
-    // Mostrar dashboard por defecto al entrar
     _cambiarModulo('dashboard');
+
+    // KPI cards clickeables
+    adminView.querySelectorAll('.adm-kpi--link[data-goto]').forEach(card => {
+      card.addEventListener('click', () => _cambiarModulo(card.dataset.goto));
+      card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); _cambiarModulo(card.dataset.goto); } });
+    });
   }
 
   async function renderMensajes() {
@@ -1170,8 +1175,7 @@ window.VistaAdmin = (function () {
     const apellido = document.getElementById('ef-apellido').value.trim();
     const rolEl    = document.getElementById('ef-rol');
     const rolId    = rolEl.value;
-    // Cargo se auto-deriva del rol: "Cajero — vista de caja" → "Cajero"
-    const cargo    = rolEl.options[rolEl.selectedIndex].text.split('—')[0].trim();
+    const cargo    = rolEl.options[rolEl.selectedIndex].text.trim();
     const fecha    = document.getElementById('ef-fecha-ingreso').value;
     const telefono = document.getElementById('ef-telefono').value.trim();
     const email    = document.getElementById('ef-email').value.trim();
