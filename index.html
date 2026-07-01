@@ -11,8 +11,8 @@
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preconnect" href="https://aagcxtggeqkzfngzfqne.supabase.co" crossorigin>
   <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
-  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" onload="this.rel='stylesheet'">
-  <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+  <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
+  <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
   <link rel="stylesheet" href="assets/styles.css">
 </head>
 <body>
@@ -47,15 +47,17 @@
         <!-- TAB LOGIN -->
         <div id="tab-login" class="auth-form-panel active">
           <div id="login-error" class="auth-error">Usuario o contraseña incorrectos.</div>
-          <div class="auth-field">
-            <label for="login-usuario">Usuario</label>
-            <input type="text" id="login-usuario" placeholder="Ej: juan123" autocomplete="username" />
-          </div>
-          <div class="auth-field">
-            <label for="login-password">Contraseña</label>
-            <input type="password" id="login-password" placeholder="••••••" autocomplete="current-password" />
-          </div>
-          <button class="btn-auth" id="btn-login">Ingresar</button>
+          <form id="form-login" autocomplete="on" onsubmit="return false;">
+            <div class="auth-field">
+              <label for="login-usuario">Usuario</label>
+              <input type="text" id="login-usuario" name="username" placeholder="Ej: juan123" autocomplete="username" />
+            </div>
+            <div class="auth-field">
+              <label for="login-password">Contraseña</label>
+              <input type="password" id="login-password" name="password" placeholder="••••••" autocomplete="current-password" />
+            </div>
+            <button type="submit" class="btn-auth" id="btn-login">Ingresar</button>
+          </form>
         </div>
 
         <!-- TAB REGISTRO -->
@@ -86,6 +88,13 @@
             <input type="tel" id="reg-telefono" placeholder="Ej: 0991234567" autocomplete="tel"
                    maxlength="10" inputmode="numeric" aria-describedby="err-telefono" aria-required="true" />
             <span class="field-error" id="err-telefono" role="alert" aria-live="polite"></span>
+          </div>
+          <div class="auth-field">
+            <label for="reg-direccion">Dirección <span style="color:#dc2626">*</span></label>
+            <input type="text" id="reg-direccion" placeholder="Ej: Av. Amazonas N23-45, Quito"
+                   autocomplete="street-address" maxlength="120"
+                   aria-describedby="err-direccion" aria-required="true" />
+            <span class="field-error" id="err-direccion" role="alert" aria-live="polite"></span>
           </div>
           <div class="auth-field">
             <label for="reg-usuario">Usuario <span style="color:#dc2626">*</span></label>
@@ -316,142 +325,377 @@
           <!-- pedidos generados por JS -->
         </div>
 
-        <!-- Resumen del día -->
-        <div class="resumen-dia" id="resumen-dia">
-          <div class="resumen-dia__head">
-            <div class="resumen-dia__title">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
-              </svg>
-              Ventas del Día
-            </div>
-            <div class="resumen-fecha-nav">
-              <button class="btn-fecha-nav" id="btn-dia-ant" aria-label="Día anterior">‹</button>
-              <span id="resumen-fecha-label">Hoy</span>
-              <button class="btn-fecha-nav" id="btn-dia-sig" aria-label="Día siguiente" disabled>›</button>
-            </div>
-          </div>
-          <div class="resumen-kpis" id="resumen-kpis"></div>
-          <div id="resumen-tabla-wrap"></div>
-        </div>
-
-        <!-- Control de Gastos -->
-        <div class="gastos-section">
-          <div class="gastos-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2z"/>
-              <path d="M12 6v6l4 2"/>
-            </svg>
-            Control de Gastos
-          </div>
-
-          <!-- Formulario para agregar gasto -->
-          <div class="gastos-form">
-            <div class="gastos-form-field">
-              <label for="gasto-desc">Descripción del gasto</label>
-              <input type="text" id="gasto-desc" placeholder="Ej: Ingredientes, gas, mantenimiento..." maxlength="80" />
-            </div>
-            <div class="gastos-form-field gastos-form-monto">
-              <label for="gasto-monto">Monto ($)</label>
-              <input type="number" id="gasto-monto" placeholder="0.00" min="0.01" max="5000" step="0.01" />
-            </div>
-            <button class="btn-add-gasto" id="btn-add-gasto">+ Registrar gasto</button>
-          </div>
-
-          <!-- Lista de gastos del día -->
-          <div id="gastos-lista"></div>
-
-          <!-- Resumen financiero del día -->
-          <p class="gastos-resumen-title">Resumen del día</p>
-          <div class="gastos-resumen" id="gastos-resumen"></div>
-        </div>
-
       </div>
     </div>
 
-    <!-- Vista Administrador (solo admin) -->
-    <div id="admin-view">
-      <div class="wrap">
-        <div class="admin-header">
-          <div class="admin-title">
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-            </svg>
-            Panel de Administración
-          </div>
-          <div class="admin-stats">
-            <div class="admin-stat">
-              <div class="admin-stat__val" id="admin-stat-total">0</div>
-              <div class="admin-stat__lbl">Productos</div>
-            </div>
-            <div class="admin-stat">
-              <div class="admin-stat__val" id="admin-stat-agotados">0</div>
-              <div class="admin-stat__lbl">Agotados</div>
-            </div>
-            <div class="admin-stat">
-              <div class="admin-stat__val" id="admin-stat-mensajes">0</div>
-              <div class="admin-stat__lbl">Sin leer</div>
-            </div>
+    <!-- ══ VISTA ADMINISTRADOR ══ -->
+    <div id="admin-view" class="adm-layout">
+
+      <!-- ── Sidebar ── -->
+      <aside class="adm-sidebar" id="adm-sidebar" aria-label="Navegación del panel">
+        <div class="adm-sidebar__brand">
+          <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="#E07B3A" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M3 2v7c0 1.1.9 2 2 2h4a2 2 0 0 0 2-2V2"/>
+            <path d="M7 2v20"/>
+            <path d="M21 15V2a5 5 0 0 0-5 5v6c0 1.1.9 2 2 2h3z"/>
+            <path d="M21 15v7"/>
+          </svg>
+          <div class="adm-sidebar__brand-text">
+            <span class="adm-sidebar__brand-name">Sal y Canela</span>
+            <span class="adm-sidebar__brand-sub">Panel Admin</span>
           </div>
         </div>
 
-        <!-- Catálogo de productos -->
-        <div class="admin-section-title">
-          <span>Catálogo de Productos</span>
-          <button class="btn-agregar-producto" id="btn-agregar-producto">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
-            Agregar producto
+        <nav class="adm-nav" role="navigation">
+          <div class="adm-nav__group">
+            <span class="adm-nav__label">GENERAL</span>
+            <button class="adm-nav__item active" data-mod="dashboard">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="3" width="7" height="7"/><rect x="14" y="3" width="7" height="7"/><rect x="3" y="14" width="7" height="7"/><rect x="14" y="14" width="7" height="7"/></svg>
+              Dashboard
+            </button>
+          </div>
+          <div class="adm-nav__group">
+            <span class="adm-nav__label">NEGOCIO</span>
+            <button class="adm-nav__item" data-mod="productos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4M7 13L5.4 5M7 13l-2.293 2.293c-.63.63-.184 1.707.707 1.707H17m0 0a2 2 0 100 4 2 2 0 000-4zm-8 2a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+              Productos
+            </button>
+            <button class="adm-nav__item" data-mod="pedidos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+              Pedidos
+              <span class="adm-nav__badge adm-ped-badge" id="adm-ped-badge" style="display:none">0</span>
+            </button>
+            <button class="adm-nav__item" data-mod="stock">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
+              Stock
+            </button>
+          </div>
+          <div class="adm-nav__group">
+            <span class="adm-nav__label">PERSONAS</span>
+            <button class="adm-nav__item" data-mod="empleados">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+              Empleados
+            </button>
+            <button class="adm-nav__item" data-mod="clientes">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              Clientes
+            </button>
+          </div>
+          <div class="adm-nav__group">
+            <span class="adm-nav__label">ANÁLISIS</span>
+            <button class="adm-nav__item" data-mod="reportes">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              Reportes
+            </button>
+            <button class="adm-nav__item" data-mod="gastos">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+              Gastos
+            </button>
+            <button class="adm-nav__item" data-mod="mensajes">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              Mensajes
+              <span class="adm-nav__badge" id="admin-mensajes-badge" style="display:none">0</span>
+            </button>
+          </div>
+        </nav>
+
+        <div class="adm-sidebar__footer">
+          <div class="adm-sidebar__user" id="adm-sidebar-user">
+            <span class="adm-sidebar__user-avatar" id="adm-user-avatar">A</span>
+            <div class="adm-sidebar__user-info">
+              <span class="adm-sidebar__user-name" id="adm-user-name">Administrador</span>
+              <span class="adm-sidebar__user-rol">Administrador</span>
+            </div>
+          </div>
+          <button class="adm-logout-btn" id="btn-admin-cerrar-sesion">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+            Cerrar sesión
           </button>
         </div>
-        <div id="admin-productos-grid" class="products-grid"></div>
+      </aside>
 
-        <!-- Gestión de Stock -->
-        <div class="gastos-section" id="stock-section">
-          <div class="gastos-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/>
-              <path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/>
-            </svg>
-            Gestión de Stock
-          </div>
-          <div id="stock-lista" class="stock-lista"></div>
-        </div>
+      <!-- Overlay móvil para cerrar sidebar -->
+      <div class="adm-overlay" id="adm-overlay" aria-hidden="true"></div>
 
-        <!-- Mensajes de contacto -->
-        <div class="gastos-section" id="admin-mensajes-section">
-          <div class="gastos-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/>
-            </svg>
-            Mensajes de contacto
-            <span id="admin-mensajes-badge" style="display:none;margin-left:.5rem;background:var(--cinnamon);color:#fff;border-radius:999px;padding:.1rem .55rem;font-size:.72rem;font-weight:700;"></span>
+      <!-- ── Área principal ── -->
+      <div class="adm-main">
+        <!-- Top bar -->
+        <header class="adm-topbar">
+          <button class="adm-menu-toggle" id="adm-menu-toggle" aria-label="Abrir menú" aria-expanded="false" aria-controls="adm-sidebar">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+          </button>
+          <h1 class="adm-topbar__title" id="adm-topbar-title">Dashboard</h1>
+          <div class="adm-topbar__right">
+            <span class="adm-topbar__user-name" id="adm-topbar-user">Administrador</span>
           </div>
-          <div id="admin-mensajes-lista"></div>
-        </div>
+        </header>
 
-        <!-- Reportes de Ventas -->
-        <div class="gastos-section" id="admin-reportes-section">
-          <div class="gastos-title">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-              <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>
-            </svg>
-            Reportes de Ventas
-          </div>
-          <div id="admin-reportes-content">
-            <div class="reportes-kpis" id="reportes-kpis"></div>
-            <div class="reportes-charts">
-              <div class="reportes-chart-wrap">
-                <p class="reportes-chart-title">Ventas últimos 7 días</p>
-                <canvas id="chart-ventas-dia" height="220"></canvas>
+        <!-- Módulos -->
+        <main class="adm-content">
+
+          <!-- MÓDULO: Dashboard -->
+          <section class="adm-module active" id="mod-dashboard" aria-label="Dashboard">
+            <div class="adm-dash-welcome">
+              <div class="adm-dash-welcome__text">
+                <h2 class="adm-dash-welcome__title" id="adm-welcome-title">Bienvenido</h2>
+                <p class="adm-dash-welcome__sub">Aquí tienes el resumen de tu negocio hoy</p>
               </div>
-              <div class="reportes-chart-wrap">
-                <p class="reportes-chart-title">Top 5 productos más vendidos</p>
-                <canvas id="chart-top-productos" height="220"></canvas>
+              <div class="adm-dash-welcome__badge">Panel de Administración</div>
+            </div>
+            <div class="adm-kpi-grid">
+              <div class="adm-kpi" id="adm-kpi-productos">
+                <div class="adm-kpi__icon adm-kpi__icon--brand">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4"/><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+                </div>
+                <div class="adm-kpi__body">
+                  <div class="adm-kpi__val" id="admin-stat-total">0</div>
+                  <div class="adm-kpi__lbl">Productos activos</div>
+                </div>
+              </div>
+              <div class="adm-kpi" id="adm-kpi-agotados">
+                <div class="adm-kpi__icon adm-kpi__icon--warn">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+                </div>
+                <div class="adm-kpi__body">
+                  <div class="adm-kpi__val" id="admin-stat-agotados">0</div>
+                  <div class="adm-kpi__lbl">Agotados / inactivos</div>
+                </div>
+              </div>
+              <div class="adm-kpi" id="adm-kpi-mensajes">
+                <div class="adm-kpi__icon adm-kpi__icon--info">
+                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                </div>
+                <div class="adm-kpi__body">
+                  <div class="adm-kpi__val" id="admin-stat-mensajes">0</div>
+                  <div class="adm-kpi__lbl">Mensajes sin leer</div>
+                </div>
               </div>
             </div>
-          </div>
-        </div>
 
+            <!-- Accesos rápidos -->
+            <div class="adm-quick-section">
+              <h2 class="adm-section-title">Accesos rápidos</h2>
+              <div class="adm-quick-grid">
+                <button class="adm-quick-card" data-mod="productos">
+                  <div class="adm-quick-card__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 3h2l.4 2M7 13h10l4-8H5.4"/><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/></svg>
+                  </div>
+                  <span class="adm-quick-card__label">Productos</span>
+                  <span class="adm-quick-card__sub">Gestionar catálogo</span>
+                </button>
+                <button class="adm-quick-card" data-mod="pedidos">
+                  <div class="adm-quick-card__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"/></svg>
+                  </div>
+                  <span class="adm-quick-card__label">Pedidos</span>
+                  <span class="adm-quick-card__sub">Ver pedidos activos</span>
+                </button>
+                <button class="adm-quick-card" data-mod="empleados">
+                  <div class="adm-quick-card__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+                  </div>
+                  <span class="adm-quick-card__label">Empleados</span>
+                  <span class="adm-quick-card__sub">Gestionar personal</span>
+                </button>
+                <button class="adm-quick-card" data-mod="reportes">
+                  <div class="adm-quick-card__icon">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  </div>
+                  <span class="adm-quick-card__label">Reportes</span>
+                  <span class="adm-quick-card__sub">Ventas y estadísticas</span>
+                </button>
+              </div>
+            </div>
+          </section>
+
+          <!-- MÓDULO: Productos -->
+          <section class="adm-module" id="mod-productos" aria-label="Catálogo de productos">
+            <div class="adm-module-header">
+              <div>
+                <h2 class="adm-section-title">Catálogo de Productos</h2>
+              </div>
+              <button class="adm-btn-primary" id="btn-agregar-producto">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Agregar producto
+              </button>
+            </div>
+            <div id="admin-productos-grid" class="products-grid"></div>
+          </section>
+
+          <!-- MÓDULO: Pedidos -->
+          <section class="adm-module" id="mod-pedidos" aria-label="Pedidos activos">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Pedidos activos</h2>
+              <button class="adm-btn-outline" id="btn-refrescar-pedidos">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
+                Refrescar
+              </button>
+            </div>
+            <div id="admin-pedidos-lista"></div>
+          </section>
+
+          <!-- MÓDULO: Stock -->
+          <section class="adm-module" id="mod-stock" aria-label="Gestión de stock">
+            <div id="stock-section">
+              <div id="stock-lista" class="stock-lista"></div>
+            </div>
+          </section>
+
+          <!-- MÓDULO: Empleados -->
+          <section class="adm-module" id="mod-empleados" aria-label="Gestión de empleados">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Empleados</h2>
+              <button class="adm-btn-primary" id="btn-nuevo-empleado">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Nuevo empleado
+              </button>
+            </div>
+            <div id="admin-empleados-lista"></div>
+          </section>
+
+          <!-- MÓDULO: Clientes -->
+          <section class="adm-module" id="mod-clientes" aria-label="Clientes registrados">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Clientes registrados</h2>
+            </div>
+            <div id="admin-clientes-lista"></div>
+          </section>
+
+          <!-- MÓDULO: Reportes -->
+          <section class="adm-module" id="mod-reportes" aria-label="Reportes de ventas">
+            <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
+              <h2 class="adm-section-title">Reportes de Ventas</h2>
+              <div class="rep-tabs" role="tablist" aria-label="Período de reporte">
+                <button class="rep-tab active" data-period="hoy" role="tab" aria-selected="true">Hoy</button>
+                <button class="rep-tab" data-period="semana" role="tab" aria-selected="false">7 días</button>
+                <button class="rep-tab" data-period="mes" role="tab" aria-selected="false">30 días</button>
+              </div>
+            </div>
+            <div id="admin-reportes-content">
+              <div class="reportes-kpis" id="reportes-kpis"></div>
+              <div class="reportes-charts">
+                <div class="reportes-chart-wrap">
+                  <p class="reportes-chart-title" id="rep-chart-ventas-title">Ventas por hora</p>
+                  <div id="chart-ventas-dia" style="width:100%;height:260px"></div>
+                </div>
+                <div class="reportes-chart-wrap">
+                  <p class="reportes-chart-title">Top 5 productos más vendidos</p>
+                  <div id="chart-top-productos" style="width:100%;height:260px"></div>
+                </div>
+              </div>
+              <div class="resumen-dia" id="resumen-dia">
+                <div class="resumen-dia__head">
+                  <div class="resumen-dia__title">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                      <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+                    </svg>
+                    <span id="rep-tabla-titulo">Pedidos cobrados hoy</span>
+                  </div>
+                </div>
+                <div class="resumen-kpis" id="resumen-kpis"></div>
+                <div id="resumen-tabla-wrap"></div>
+              </div>
+              <!-- Control de Caja -->
+              <div id="rep-cuadre-wrap" style="margin-top:1.5rem"></div>
+            </div>
+          </section>
+
+          <!-- MÓDULO: Gastos -->
+          <section class="adm-module" id="mod-gastos" aria-label="Control de Gastos">
+            <!-- Formulario nuevo gasto -->
+            <div class="gastos-nueva-fila">
+              <input type="text" id="gasto-desc" class="gastos-input-desc" placeholder="Descripción del gasto (ej: Ingredientes, gas, mantenimiento...)" maxlength="80" />
+              <div class="gastos-monto-wrap">
+                <span class="gastos-dolar">$</span>
+                <input type="number" id="gasto-monto" class="gastos-input-monto" placeholder="0.00" min="0.01" max="5000" step="0.01" />
+              </div>
+              <button class="btn-add-gasto" id="btn-add-gasto">+ Registrar</button>
+            </div>
+
+            <!-- Resumen KPIs -->
+            <div class="gastos-kpis" id="gastos-resumen"></div>
+
+            <!-- Tabla de gastos -->
+            <div class="gastos-tabla-wrap">
+              <div id="gastos-lista"></div>
+            </div>
+          </section>
+
+          <!-- MÓDULO: Mensajes -->
+          <section class="adm-module" id="mod-mensajes" aria-label="Mensajes de contacto">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Mensajes de contacto</h2>
+            </div>
+            <div id="admin-mensajes-lista"></div>
+          </section>
+
+        </main>
+      </div><!-- /adm-main -->
+    </div><!-- /admin-view -->
+
+    <!-- Modal formulario de empleado (admin) -->
+    <div id="emp-form-backdrop" class="emp-form-backdrop" role="dialog" aria-modal="true" aria-labelledby="emp-form-title" aria-hidden="true">
+      <div class="emp-form-box">
+        <div class="emp-form-header">
+          <h3 id="emp-form-title">Nuevo Empleado</h3>
+          <button id="btn-cerrar-emp-form" aria-label="Cerrar">×</button>
+        </div>
+        <div class="emp-form-body">
+          <div class="emp-form-grid">
+            <div class="emp-form-group">
+              <label for="ef-nombre">Nombre <span class="ef-req">*</span></label>
+              <input type="text" id="ef-nombre" placeholder="Juan" maxlength="60" autocomplete="off">
+              <span class="ef-field-err" id="ef-err-nombre"></span>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-apellido">Apellido</label>
+              <input type="text" id="ef-apellido" placeholder="Pérez" maxlength="60" autocomplete="off">
+              <span class="ef-field-err" id="ef-err-apellido"></span>
+            </div>
+            <div class="emp-form-group emp-form-full">
+              <label for="ef-rol">Rol y acceso <span class="ef-req">*</span></label>
+              <select id="ef-rol">
+                <option value="rol002">Cajero — vista de caja</option>
+                <option value="rol003">Mesero — vista de mesas</option>
+                <option value="rol001">Administrador — panel completo</option>
+              </select>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-fecha-ingreso">Fecha de ingreso <span class="ef-req">*</span></label>
+              <input type="date" id="ef-fecha-ingreso">
+              <span class="ef-field-err" id="ef-err-fecha"></span>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-telefono">Teléfono</label>
+              <input type="tel" id="ef-telefono" placeholder="0987654321" maxlength="10" inputmode="numeric" autocomplete="off">
+              <span class="ef-field-err" id="ef-err-telefono"></span>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-email">Correo</label>
+              <input type="email" id="ef-email" placeholder="juan@ejemplo.com" maxlength="120" autocomplete="off">
+              <span class="ef-field-err" id="ef-err-email"></span>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-usuario">Usuario de login <span class="ef-req">*</span></label>
+              <input type="text" id="ef-usuario" placeholder="juan.perez" maxlength="40" autocomplete="off">
+              <span class="ef-field-err" id="ef-err-usuario"></span>
+            </div>
+            <div class="emp-form-group" id="ef-password-group">
+              <label for="ef-password">Contraseña <span class="ef-req">*</span></label>
+              <input type="password" id="ef-password" placeholder="Mínimo 4 caracteres" maxlength="60" autocomplete="new-password">
+              <span class="ef-field-err" id="ef-err-password"></span>
+            </div>
+            <div class="emp-form-group emp-form-full">
+              <label for="ef-observaciones">Observaciones</label>
+              <textarea id="ef-observaciones" rows="2" placeholder="Notas internas sobre el empleado..." maxlength="300"></textarea>
+            </div>
+          </div>
+          <p id="ef-error" class="ef-error" style="display:none"></p>
+        </div>
+        <div class="emp-form-footer">
+          <button class="btn-emp-cancel" id="btn-emp-cancel">Cancelar</button>
+          <button class="btn-emp-save" id="btn-emp-save">Guardar empleado</button>
+        </div>
       </div>
     </div>
 
@@ -483,15 +727,18 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-precio">Precio (USD, IVA incluido)</label>
-              <input type="number" id="pf-precio" placeholder="0.00" min="0.01" max="99.99" step="0.01" aria-required="true">
+              <input type="number" id="pf-precio" placeholder="0.00" min="0.01" max="99.99" step="0.01" aria-required="true" aria-describedby="pf-precio-error">
+              <span id="pf-precio-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-descripcion">Descripción</label>
-              <textarea id="pf-descripcion" placeholder="Breve descripción del plato..." maxlength="200"></textarea>
+              <textarea id="pf-descripcion" placeholder="Breve descripción del plato..." maxlength="200" aria-describedby="pf-descripcion-error"></textarea>
+              <span id="pf-descripcion-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-ingredientes">Ingredientes (separados por coma)</label>
-              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo">
+              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error">
+              <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
               <label for="pf-tag">Etiqueta</label>
@@ -532,8 +779,20 @@
             </div>
             <div class="prod-form-group prod-form-full">
               <label class="prod-form-check">
+                <input type="checkbox" id="pf-visible" checked>
+                Visible en el menú y para meseros
+              </label>
+            </div>
+            <div class="prod-form-group prod-form-full">
+              <label class="prod-form-check">
                 <input type="checkbox" id="pf-destacado">
                 Mostrar en "Destacados"
+              </label>
+            </div>
+            <div class="prod-form-group prod-form-full">
+              <label class="prod-form-check">
+                <input type="checkbox" id="pf-permite-excluir">
+                Permitir que el cliente excluya ingredientes al ordenar
               </label>
             </div>
           </div>
@@ -643,6 +902,16 @@
       </div>
       <div class="mesa-modal-body">
         <div id="mesa-quien-info" class="mesa-quien"></div>
+        <div class="mesa-tipo-toggle" id="mesa-tipo-toggle">
+          <button type="button" class="mesa-tipo-btn active" id="btn-tipo-mesa">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            Mesa
+          </button>
+          <button type="button" class="mesa-tipo-btn" id="btn-tipo-llevar">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 01-8 0"/></svg>
+            Para llevar
+          </button>
+        </div>
         <div class="mesa-field" id="campo-nombre-invitado" style="display:none">
           <label for="invitado-nombre">Tu nombre <span style="color:#dc2626">*</span></label>
           <input type="text" id="invitado-nombre" placeholder="Ej: María López" autocomplete="name" />
@@ -730,8 +999,8 @@
 
   <!-- ══ SUPABASE CLIENT ══ -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-  <!-- Chart.js para reportes -->
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js" defer></script>
+  <!-- Plotly.js para reportes -->
+  <script src="https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.min.js" defer></script>
   <script>
     const SUPABASE_URL = 'https://aagcxtggeqkzfngzfqne.supabase.co';
     const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2N4dGdnZXFremZuZ3pmcW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzIyMDYsImV4cCI6MjA5Mzk0ODIwNn0.Byyo-cRfRvZ4ww7dBNF1dPK51rYAFjjpw-JnEzg7-G8';
@@ -810,10 +1079,10 @@
       estado:        r.ped_estado,
       idUsuario:     r.usu_id ?? null,
       nombreUsuario: r.usu_id
-        ? (r.usuarios?.usu_nombre ?? 'Usuario')
+        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
         : (r.ped_nombre_invitado ?? 'Invitado'),
       rol:           r.usu_id
-        ? (r.usuarios?.usuario_rol?.[0]?.roles?.rol_nombre ?? 'usuario')
+        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.rol ?? 'usuario')
         : 'invitado',
       hora:          r.ped_hora ? r.ped_hora.slice(0, 5) : '',
       fecha:         _isoFechaALocale(r.ped_fecha),
@@ -838,8 +1107,7 @@
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
     usu_id, mes_id,
     mesas(mes_numero),
-    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre))),
-    usuarios(usu_nombre, usu_usuario, usuario_rol(roles(rol_nombre)))
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre)))
   `;
 
   function _mapGasto(r) {
@@ -863,9 +1131,10 @@
       imagen:       r.plat_imagen ?? '',
       tag:          r.plat_tag ?? '',
       codigo:       r.plat_codigo ?? '',
-      destacado:    r.plat_destacado === true,
-      activo:       r.plat_activo !== false,
-      createdAt:    r.plat_created_at ?? null,
+      destacado:       r.plat_destacado === true,
+      permiteExcluir:  r.plat_permite_excluir === true,
+      activo:          r.plat_activo !== false,
+      createdAt:       r.plat_created_at ?? null,
       ingredientes: (r.plato_ingredientes || []).map(pi => ({
         id:     pi.ingredientes?.ing_id,
         nombre: pi.ingredientes?.ing_nombre
@@ -875,17 +1144,18 @@
 
   async function inicializarDB() {
     try {
+      await ModuloAutenticacion.cargarUsuarios();
       const [rCaja, rHist, rGastos, rPlatos] = await Promise.all([
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
         db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true }),
         db.from('platos').select(`
           plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen,
-          plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at,
+          plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
           plato_ingredientes(ingredientes(ing_id, ing_nombre))
-        `).eq('plat_activo', true)
+        `)
       ]);
 
       _caja      = (rCaja.data   || []).map(_rowAPedido);
@@ -906,7 +1176,6 @@
       console.warn('Supabase no disponible, usando localStorage como fallback', e);
       try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
     }
-    await ModuloAutenticacion.cargarUsuarios();
   }
 
   async function recargarCaja() {
@@ -931,6 +1200,22 @@
     return _menuItems
       .filter(m => m.activo !== false)
       .map(m => ({ ...m, ingredientes: Array.isArray(m.ingredientes) ? m.ingredientes : (m.ingredientes || []) }));
+  }
+
+  /* Devuelve TODOS los productos (activos e inactivos) — solo para panel admin */
+  function getAllProductosMergeados() {
+    return _menuItems
+      .map(m => ({ ...m, ingredientes: Array.isArray(m.ingredientes) ? m.ingredientes : (m.ingredientes || []) }));
+  }
+
+  /* Cambia la visibilidad de un producto en Supabase y en memoria */
+  async function toggleActivoProductoDB(id, activo) {
+    const { error } = await db.from('platos').update({ plat_activo: activo }).eq('plat_id', id);
+    if (!error) {
+      const item = _menuItems.find(m => m.id === id);
+      if (item) item.activo = activo;
+    }
+    return !error;
   }
 
   function getStock(productoId) {
@@ -1004,11 +1289,15 @@
     if (error) console.error('Supabase eliminarGasto:', error);
   }
 
-  async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items }) {
+  async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false }) {
     const totales = LogicaCarrito.calcularTotales(items);
 
-    // Buscar mes_id desde el número de mesa
-    const { data: mesaData } = await db.from('mesas').select('mes_id').eq('mes_numero', mesa).single();
+    // Buscar mes_id desde el número de mesa (solo si no es para llevar)
+    let mesaData = null;
+    if (!paraLlevar && mesa) {
+      const { data } = await db.from('mesas').select('mes_id').eq('mes_numero', mesa).single();
+      mesaData = data;
+    }
 
     // Limpiar pedido pendiente previo para esta mesa (evita fantasmas)
     if (mesaData?.mes_id) {
@@ -1019,15 +1308,16 @@
     const fecha = new Date().toISOString().split('T')[0];
 
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
-      mes_id:             mesaData?.mes_id ?? null,
-      usu_id:             idUsuario || null,
+      mes_id:              mesaData?.mes_id ?? null,
+      usu_id:              idUsuario || null,
       ped_nombre_invitado: idUsuario ? null : nombreUsuario,
-      ped_estado:         'pendiente',
-      ped_hora:           hora,
-      ped_fecha:          fecha,
-      ped_subtotal:       totales.subtotal,
-      ped_iva:            totales.iva,
-      ped_total:          totales.total
+      ped_estado:          'pendiente',
+      ped_hora:            hora,
+      ped_fecha:           fecha,
+      ped_subtotal:        totales.subtotal,
+      ped_iva:             totales.iva,
+      ped_total:           totales.total,
+      ped_para_llevar:     paraLlevar
     }).select('ped_id').single();
 
     if (pedError || !pedData) {
@@ -1066,6 +1356,7 @@
     const pedido = {
       id:            pedData.ped_id,
       mesa,
+      paraLlevar:    paraLlevar,
       mesId:         mesaData?.mes_id ?? null,
       nombreUsuario: idUsuario ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === idUsuario)?.nombre ?? nombreUsuario) : nombreUsuario,
       idUsuario:     idUsuario || null,
@@ -1144,12 +1435,13 @@
     if (factData?.fact_id && metodoPagoId) {
       const montoFinal = (typeof montoPagado === 'number' && montoPagado > 0) ? montoPagado : cobrado.total;
       const cambioFinal = (typeof cambio === 'number' && cambio >= 0) ? cambio : 0;
-      await db.from('pagos').insert({
+      const { error: _pagErr } = await db.from('pagos').insert({
         fact_id:     factData.fact_id,
         metodo_id:   metodoPagoId,
         pago_monto:  montoFinal,
         pago_cambio: cambioFinal
-      }).catch(e => console.warn('pagos insert:', e));
+      });
+      if (_pagErr) console.warn('pagos insert:', _pagErr);
     }
 
     // Actualizar caché local
@@ -1233,6 +1525,24 @@
   const invitadoNombre  = document.getElementById('invitado-nombre');
   const btnConfirmarMesa= document.getElementById('btn-confirmar-mesa');
   const btnCloseMesa    = document.getElementById('btn-close-mesa');
+
+  // ── Para llevar toggle ──
+  let _esParaLlevar = false;
+  const _btnTipoMesa   = document.getElementById('btn-tipo-mesa');
+  const _btnTipoLlevar = document.getElementById('btn-tipo-llevar');
+  function _setTipo(llevar) {
+    _esParaLlevar = llevar;
+    _btnTipoMesa  ?.classList.toggle('active', !llevar);
+    _btnTipoLlevar?.classList.toggle('active',  llevar);
+    const campoMesa = document.getElementById('campo-mesa');
+    if (campoMesa) campoMesa.style.display = llevar ? 'none' : '';
+    const errEl = document.getElementById('mesa-input-error');
+    if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+    if (mesaInput) mesaInput.style.borderColor = '';
+  }
+  _btnTipoMesa  ?.addEventListener('click', () => _setTipo(false));
+  _btnTipoLlevar?.addEventListener('click', () => _setTipo(true));
+
   mesaInput.addEventListener('input', () => {
     mesaInput.style.borderColor = '';
     const err = document.getElementById('mesa-input-error');
@@ -1456,10 +1766,11 @@
       plat_descripcion: item.descripcion ?? '',
       plat_precio:      item.precio,
       plat_imagen:      item.imagen ?? '',
-      plat_tag:         item.tag ?? '',
-      plat_destacado:   item.destacado ?? false,
-      plat_activo:      item.activo ?? true,
-      plat_created_at:  createdAt
+      plat_tag:              item.tag ?? '',
+      plat_destacado:        item.destacado ?? false,
+      plat_permite_excluir:  item.permiteExcluir ?? false,
+      plat_activo:           item.activo ?? true,
+      plat_created_at:       createdAt
     };
 
     let platId = item.id;
@@ -1537,7 +1848,7 @@
   window.SC = {
     leerCaja, leerHistorial, leerGastos, guardarGastos,
     insertarGasto, eliminarGasto,
-    getStock, getProductosMergeados,
+    getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
     cobrarPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
     comprimirImagen, toast, escapeHtml,
@@ -1574,6 +1885,10 @@
     const campoMesa       = document.getElementById('campo-mesa');
     const mesaAsignadaDiv = document.getElementById('mesa-asignada-info');
     const mesaAsignadaNum = document.getElementById('mesa-asignada-num');
+    const tipoToggle      = document.getElementById('mesa-tipo-toggle');
+
+    // Resetear toggle a "Mesa"
+    _setTipo(false);
 
     // Cambiar título y botón según modo
     const modalHead = document.querySelector('#mesa-modal-backdrop .mesa-modal-head h2');
@@ -1587,26 +1902,31 @@
       : null;
 
     if (meseroMesaTarget) {
-      // Mesero con mesa activa seleccionada desde mesas activas
+      // Mesero con mesa activa seleccionada → no necesita toggle
+      if (tipoToggle) tipoToggle.style.display = 'none';
       mesaInput.value    = meseroMesaTarget.mesa;
       mesaInput.readOnly = true;
       campoMesa.style.display       = '';
       mesaAsignadaDiv.style.display = 'none';
     } else if (editando) {
-      // Modo edición: mesa fija, no se puede cambiar
+      // Modo edición: mesa fija
+      if (tipoToggle) tipoToggle.style.display = 'none';
       mesaInput.value    = editando.mesa;
       mesaInput.readOnly = true;
       campoMesa.style.display       = 'none';
       mesaAsignadaDiv.style.display = '';
       mesaAsignadaNum.textContent   = editando.mesa;
     } else if (pedidoPrevio) {
-      // Usuario con pedido ya activo → mesa autoasignada, no se pide de nuevo
+      // Usuario con pedido ya activo → mesa autoasignada
+      if (tipoToggle) tipoToggle.style.display = 'none';
       mesaInput.value    = pedidoPrevio.mesa;
       mesaInput.readOnly = true;
       campoMesa.style.display       = 'none';
       mesaAsignadaDiv.style.display = '';
       mesaAsignadaNum.textContent   = pedidoPrevio.mesa;
     } else {
+      // Pedido nuevo libre → mostrar toggle
+      if (tipoToggle) tipoToggle.style.display = '';
       mesaInput.value    = '';
       mesaInput.readOnly = false;
       campoMesa.style.display       = '';
@@ -1655,7 +1975,7 @@
     mesaBackdrop.setAttribute('aria-hidden','true');
   }
   btnCloseMesa.addEventListener('click', cerrarModalMesa);
-  mesaBackdrop.addEventListener('click', e => { if (e.target === mesaBackdrop) cerrarModalMesa(); });
+  // mesaBackdrop: solo cerrar con botón X
 
   btnConfirmarMesa.addEventListener('click', async () => {
     const session = ModuloAutenticacion.getSession();
@@ -1707,16 +2027,21 @@
       return;
     }
 
-    const mesa = Number(mesaInput.value.trim());
-    if (!mesa || mesa < 1 || mesa > 16 || !Number.isInteger(mesa)) {
-      mesaInput.style.borderColor = '#dc2626';
-      const mesaErrRango = document.getElementById('mesa-input-error');
-      if (mesaErrRango) {
-        mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 16.';
-        mesaErrRango.style.display = 'block';
+    let mesa;
+    if (_esParaLlevar) {
+      mesa = 'Para llevar';
+    } else {
+      mesa = Number(mesaInput.value.trim());
+      if (!mesa || mesa < 1 || mesa > 16 || !Number.isInteger(mesa)) {
+        mesaInput.style.borderColor = '#dc2626';
+        const mesaErrRango = document.getElementById('mesa-input-error');
+        if (mesaErrRango) {
+          mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 16.';
+          mesaErrRango.style.display = 'block';
+        }
+        mesaInput.focus();
+        return;
       }
-      mesaInput.focus();
-      return;
     }
     let nombreUsuario, idUsuario, rol;
     if (session && session.rol !== 'invitado') {
@@ -1785,6 +2110,21 @@
         toast(`Ítems agregados a Mesa ${mesaNum} ✓`, 'success');
         return;
       }
+    }
+
+    // Para llevar: saltar verificación de mesa y enviar directo
+    if (_esParaLlevar) {
+      _skipNextRealtime = true;
+      enviarACaja({ mesa: 'Para llevar', nombreUsuario, idUsuario, rol, items, paraLlevar: true });
+      LogicaCarrito.vaciarCarrito();
+      renderCarrito();
+      window.VistaCajero?.renderCajeroView();
+      window.VistaMenu?.renderMesasActivas();
+      if (rol === 'mesero') window.VistaMenu?.renderProductosMesero();
+      cerrarModalMesa();
+      cerrarCarrito();
+      toast('Pedido para llevar enviado a Caja ✓', 'success');
+      return;
     }
 
     // Verificar ocupación de mesa: combinar Supabase (otros dispositivos) + memoria local (mismo dispositivo)
@@ -2013,7 +2353,7 @@
     });
   });
 
-  document.getElementById('btn-login').addEventListener('click', async () => {
+  document.getElementById('form-login').addEventListener('submit', async () => {
     const usuario  = document.getElementById('login-usuario').value.trim();
     const password = document.getElementById('login-password').value;
     const errEl    = document.getElementById('login-error');
@@ -2114,6 +2454,14 @@
       setState('reg-telefono', 'err-telefono', !dup, 'Ya existe una cuenta con ese número de teléfono.');
     });
 
+    /* ── Dirección ── */
+    const inDir = document.getElementById('reg-direccion');
+    inDir.addEventListener('input', () => {
+      const v = inDir.value.trim();
+      if (!v) return clearState('reg-direccion', 'err-direccion');
+      setState('reg-direccion', 'err-direccion', v.length >= 5, 'Ingresa tu dirección (mínimo 5 caracteres).');
+    });
+
     /* ── Usuario (sin espacios, alfanumérico + _ -) ── */
     const inUsuario = document.getElementById('reg-usuario');
     inUsuario.addEventListener('keydown', e => {
@@ -2152,6 +2500,7 @@
     const apellido  = document.getElementById('reg-apellido').value.trim();
     const email     = document.getElementById('reg-email').value.trim();
     const telefono  = document.getElementById('reg-telefono').value.trim();
+    const direccion = document.getElementById('reg-direccion').value.trim();
     const usuario   = document.getElementById('reg-usuario').value.trim();
     const password  = document.getElementById('reg-password').value;
     const password2 = document.getElementById('reg-password2').value;
@@ -2159,11 +2508,12 @@
     const errEl     = document.getElementById('register-error');
 
     const RX = {
-      nombre:   /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
-      apellido: /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
-      email:    /^[^\s@]+@(gmail|yahoo|outlook|hotmail)\.(com|es|ec|co|net|org)$/i,
-      telefono: /^(09\d{8}|0[2-7]\d{7})$/,
-      usuario:  /^[a-zA-Z0-9_\-]{3,20}$/,
+      nombre:    /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      apellido:  /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'\-]{2,60}$/,
+      email:     /^[^\s@]+@(gmail|yahoo|outlook|hotmail)\.(com|es|ec|co|net|org)$/i,
+      telefono:  /^(09\d{8}|0[2-7]\d{7})$/,
+      direccion: /^.{5,120}$/,
+      usuario:   /^[a-zA-Z0-9_\-]{3,20}$/,
     };
 
     const setState = (inputId, errId, valid, msg) => {
@@ -2186,11 +2536,12 @@
     };
 
     let ok = [
-      check('reg-nombre',   'err-nombre',   nombre,   RX.nombre,   'Solo letras y espacios, mínimo 2 caracteres.'),
-      check('reg-apellido', 'err-apellido', apellido, RX.apellido, 'Solo letras y espacios, mínimo 2 caracteres.'),
-      check('reg-email',    'err-email',    email,    RX.email,    'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.'),
-      check('reg-telefono', 'err-telefono', telefono, RX.telefono, 'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).'),
-      check('reg-usuario',  'err-usuario',  usuario,  RX.usuario,  'Letras, números, _ o - (3–20 caracteres, sin espacios).'),
+      check('reg-nombre',    'err-nombre',    nombre,    RX.nombre,    'Solo letras y espacios, mínimo 2 caracteres.'),
+      check('reg-apellido',  'err-apellido',  apellido,  RX.apellido,  'Solo letras y espacios, mínimo 2 caracteres.'),
+      check('reg-email',     'err-email',     email,     RX.email,     'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.'),
+      check('reg-telefono',  'err-telefono',  telefono,  RX.telefono,  'Formato Ecuador: 09XXXXXXXX (celular) o 0X-XXXXXXX (fijo).'),
+      check('reg-direccion', 'err-direccion', direccion, RX.direccion, 'Ingresa tu dirección (mínimo 5 caracteres).'),
+      check('reg-usuario',   'err-usuario',   usuario,   RX.usuario,   'Letras, números, _ o - (3–20 caracteres, sin espacios).'),
     ].every(Boolean);
 
     if (password.length < 6) {
@@ -2234,7 +2585,7 @@
     const btnReg = document.getElementById('btn-register');
     btnReg.disabled = true;
     btnReg.textContent = 'Registrando...';
-    const res = await ModuloAutenticacion.registrar(nombre, apellido, email, telefono, usuario, password, rol);
+    const res = await ModuloAutenticacion.registrar(nombre, apellido, email, telefono, direccion, usuario, password, rol);
     btnReg.disabled = false;
     btnReg.textContent = 'Crear cuenta';
     if (!res.ok) { show(res.msg); return; }
@@ -2478,14 +2829,14 @@
     if (session.rol === 'administrador') {
       menuView.style.display  = 'none';
       cajeroView.classList.remove('visible');
-      if (adminView) adminView.classList.add('visible');
+      if (adminView) { adminView.style.display = ''; adminView.classList.add('visible'); }
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none';
       document.querySelector('.hero').style.display = 'none';
       window.VistaAdmin?.renderAdminView();
     } else if (session.rol === 'cajero') {
       // Solo cajero: muestra vista de caja, oculta menú y botón Mi Orden
-      if (adminView) adminView.classList.remove('visible');
+      if (adminView) { adminView.classList.remove('visible'); adminView.style.display = 'none'; }
       menuView.style.display  = 'none';
       cajeroView.classList.add('visible');
       btnOpen.style.display   = 'none';
@@ -2499,7 +2850,7 @@
       window.VistaCajero?.renderCajeroView();
     } else {
       // Mesero / usuario / invitado
-      if (adminView) adminView.classList.remove('visible');
+      if (adminView) { adminView.classList.remove('visible'); adminView.style.display = 'none'; }
       cajeroView.classList.remove('visible');
       btnOpen.style.display   = '';
       btnCaja.style.display   = 'none';
@@ -2650,7 +3001,7 @@
 
   document.getElementById('btn-editar-perfil').addEventListener('click', abrirEditarPerfil);
   document.getElementById('btn-cerrar-editar-perfil').addEventListener('click', cerrarEditarPerfil);
-  editarPerfilBackdrop.addEventListener('click', e => { if (e.target === editarPerfilBackdrop) cerrarEditarPerfil(); });
+  // editarPerfilBackdrop: solo cerrar con botón X
 
   document.getElementById('form-editar-perfil').addEventListener('submit', e => {
     e.preventDefault();
@@ -2720,10 +3071,7 @@
     setTimeout(function() { trapAuth.activar(); }, 0);
   });
 
-  // Cerrar modal al hacer click en el backdrop (fuera del cuadro)
-  authBackdrop.addEventListener('click', (e) => {
-    if (e.target === authBackdrop) { trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open'); document.documentElement.style.overflow = ''; }
-  });
+  // authBackdrop: solo cerrar con botón X
 
   document.getElementById('btn-cerrar-auth').addEventListener('click', () => {
     trapAuth.desactivar(); limpiarFormAuth(); authBackdrop.classList.remove('open'); document.documentElement.style.overflow = '';
@@ -2797,6 +3145,41 @@
         }
       })
       .subscribe();
+
+    // Detectar inhabilitación en tiempo real — cierra la sesión si el usuario activo es desactivado
+    db.channel('realtime-usuarios-estado')
+      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios' }, payload => {
+        const sesion = ModuloAutenticacion.getSession();
+        if (!sesion?.id) return;
+        if (payload.new?.usu_id === sesion.id && payload.new?.usu_activo === false) {
+          _cerrarSesionForzado();
+        }
+      })
+      .subscribe();
+
+    // BroadcastChannel: cierre de sesión instantáneo entre pestañas del mismo navegador
+    const _scBroadcast = new BroadcastChannel('sc-sesion');
+    _scBroadcast.onmessage = e => {
+      if (e.data?.tipo !== 'inhabilitar') return;
+      const sesion = ModuloAutenticacion.getSession();
+      if (sesion?.id && sesion.id === e.data.usu_id) _cerrarSesionForzado();
+    };
+    window._scBroadcast = _scBroadcast;
+
+    // Fallback: verificar estado cada 15 segundos por si Realtime no está habilitado en la tabla
+    setInterval(async () => {
+      const sesion = ModuloAutenticacion.getSession();
+      if (!sesion?.id || sesion.rol === 'invitado') return;
+      try {
+        const { data } = await db.rpc('verificar_estado_usuario', { p_usuario: sesion.usuario });
+        if (data && data.activo === false) _cerrarSesionForzado();
+      } catch (_) {}
+    }, 15000);
+  }
+
+  function _cerrarSesionForzado() {
+    window.SC?.toast('Cuenta desactivada. Cerrando sesión…', 'error');
+    setTimeout(() => document.getElementById('btn-logout')?.click(), 2000);
   }
 
   </script>

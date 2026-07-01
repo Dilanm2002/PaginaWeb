@@ -69,7 +69,7 @@ window.VistaCajero = (function () {
         <tbody>
           ${!filas.length ? `<tr><td colspan="6" class="resumen-empty" style="text-align:center;padding:.9rem 0">No hay pedidos cobrados este día.</td></tr>` : filas.map(h => `
             <tr>
-              <td><strong>Mesa ${h.mesa}</strong></td>
+              <td><strong>${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</strong></td>
               <td>${SC.escapeHtml(h.nombreUsuario)}</td>
               <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${SC.escapeHtml(i.nombre)}`).join('<br>') : '—'}</td>
               <td class="td-hora">${h.fecha}</td>
@@ -82,7 +82,7 @@ window.VistaCajero = (function () {
         ${filas.map(h => `
           <div class="resumen-card">
             <div class="resumen-card__head">
-              <span class="resumen-card__mesa">Mesa ${h.mesa}</span>
+              <span class="resumen-card__mesa">${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</span>
               <span class="resumen-card__total">$${h.total.toFixed(2)}</span>
             </div>
             <div class="resumen-card__body">
@@ -343,9 +343,6 @@ window.VistaCajero = (function () {
 
     if (statPedidos) statPedidos.textContent = pedidos.length;
     if (statTotal)   statTotal.textContent   = `$${totalPorCobrar.toFixed(2)}`;
-    renderResumenDia();
-    renderGastos();
-    renderStock();
 
     if (cajaBadge) {
       cajaBadge.textContent = pedidos.length;
@@ -378,7 +375,7 @@ window.VistaCajero = (function () {
       <div class="cajero-order-card" role="listitem" data-pid="${p.id}">
         <div class="cajero-order-card__head">
           <div class="cajero-order-meta">
-            <div class="cajero-order-mesa">🪑 Mesa ${p.mesa}</div>
+            <div class="cajero-order-mesa">${p.paraLlevar || p.mesa === 'Para llevar' ? '🛍 Para llevar' : `🪑 Mesa ${p.mesa}`}</div>
             <div class="cajero-order-quien">
               <span class="rol-pill ${p.rol}">${ROL_LABEL[p.rol] ?? p.rol}</span>
               <span>${SC.escapeHtml(p.nombreUsuario)}${p.idUsuario ? ` <small style="opacity:.6;font-size:.72rem">@${SC.escapeHtml(p.idUsuario)}</small>` : ''}</span>
@@ -658,47 +655,6 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
   }
 
   function init() {
-    document.getElementById('btn-dia-ant')?.addEventListener('click', () => {
-      _diaOffset--;
-      renderResumenDia();
-      renderGastos();
-    });
-    document.getElementById('btn-dia-sig')?.addEventListener('click', () => {
-      if (_diaOffset < 0) { _diaOffset++; renderResumenDia(); renderGastos(); }
-    });
-
-    const addGastoBtn = document.getElementById('btn-add-gasto');
-    if (addGastoBtn) {
-      addGastoBtn.addEventListener('click', async () => {
-        const SC    = window.SC;
-        const descEl  = document.getElementById('gasto-desc');
-        const montoEl = document.getElementById('gasto-monto');
-        const desc  = descEl.value.trim();
-        const monto = parseFloat(montoEl.value);
-        const soloLetras = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s]+$/;
-        if (!desc) { descEl.style.borderColor = '#dc2626'; descEl.focus(); setTimeout(() => descEl.style.borderColor = '', 1500); return; }
-        if (!soloLetras.test(desc)) { SC.toast('La descripción solo puede contener letras.', 'error'); descEl.style.borderColor = '#dc2626'; descEl.focus(); setTimeout(() => descEl.style.borderColor = '', 1500); return; }
-        if (!monto || monto <= 0) { montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
-        if (monto > 5000) { SC.toast('El monto no puede superar $5,000 por gasto.', 'error'); montoEl.style.borderColor = '#dc2626'; montoEl.focus(); setTimeout(() => montoEl.style.borderColor = '', 1500); return; }
-        addGastoBtn.disabled = true;
-        const resultado = await SC.insertarGasto({ descripcion: desc, monto });
-        if (resultado) {
-          descEl.value  = '';
-          montoEl.value = '';
-          descEl.focus();
-          renderGastos();
-          SC.toast(`Gasto "${desc}" registrado`, 'success');
-        }
-        addGastoBtn.disabled = false;
-      });
-    }
-    const montoEl = document.getElementById('gasto-monto');
-    if (montoEl) {
-      montoEl.addEventListener('keydown', e => {
-        if (e.key === 'Enter') document.getElementById('btn-add-gasto')?.click();
-      });
-    }
-
     /* ── Modal de pago ── */
     const pagoBackdrop   = document.getElementById('pago-modal-backdrop');
     const btnCerrarPago  = document.getElementById('btn-cerrar-pago-modal');
@@ -710,7 +666,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 
     if (btnCerrarPago)  btnCerrarPago.addEventListener('click',  cerrarModalPago);
     if (btnCancelarPago) btnCancelarPago.addEventListener('click', cerrarModalPago);
-    if (pagoBackdrop)   pagoBackdrop.addEventListener('click', e => { if (e.target === pagoBackdrop) cerrarModalPago(); });
+    // pagoBackdrop: solo cerrar con botón X o Cancelar
 
     document.querySelectorAll('input[name="metodo-pago"]').forEach(radio => {
       radio.addEventListener('change', () => {
@@ -804,7 +760,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     const postBackdrop   = document.getElementById('postcobro-backdrop');
     if (btnCerrarPost)  btnCerrarPost.addEventListener('click',  cerrarPostCobro);
     if (btnCerrarPost2) btnCerrarPost2.addEventListener('click', cerrarPostCobro);
-    if (postBackdrop)   postBackdrop.addEventListener('click', e => { if (e.target === postBackdrop) cerrarPostCobro(); });
+    // postBackdrop: solo cerrar con botón X
 
     document.getElementById('btn-imprimir-recibo')?.addEventListener('click', () => {
       if (_ultimoCobro) {

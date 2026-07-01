@@ -95,6 +95,12 @@ window.ModuloAutenticacion = (function () {
     if (check.locked) return { ok: false, msg: check.msg };
 
     try {
+      // Verificar estado antes de intentar login (evita consumir intentos si está inactivo)
+      const { data: estado } = await window.db.rpc('verificar_estado_usuario', { p_usuario: usuario });
+      if (estado && estado.activo === false) {
+        return { ok: false, msg: 'Tu cuenta está desactivada. Contacta al administrador.' };
+      }
+
       const { data, error } = await window.db.rpc('verificar_login', {
         p_usuario:  usuario,
         p_password: password
@@ -129,7 +135,7 @@ window.ModuloAutenticacion = (function () {
      Llama al RPC registrar_usuario() que hashea la contraseña
      server-side con bcrypt antes de guardarla.
   ──────────────────────────────────────────────────────────── */
-  const registrar = async (nombre, apellido, email, telefono, usuario, password, rol) => {
+  const registrar = async (nombre, apellido, email, telefono, direccion, usuario, password, rol) => {
     if (password.length < 4)
       return { ok: false, msg: 'La contraseña debe tener al menos 4 caracteres.' };
 
@@ -137,13 +143,14 @@ window.ModuloAutenticacion = (function () {
 
     try {
       const { data, error } = await window.db.rpc('registrar_usuario', {
-        p_usuario:  usuario,
-        p_email:    email,
-        p_nombre:   nombre,
-        p_apellido: apellido ?? '',
-        p_telefono: telefono ?? '',
-        p_password: password,
-        p_rol_id:   ROL_IDS[rol] ?? 'rol004'
+        p_usuario:   usuario,
+        p_email:     email,
+        p_nombre:    nombre,
+        p_apellido:  apellido  ?? '',
+        p_telefono:  telefono  ?? '',
+        p_password:  password,
+        p_rol_id:    ROL_IDS[rol] ?? 'rol004',
+        p_direccion: direccion ?? ''
       });
 
       if (error) {
@@ -152,7 +159,7 @@ window.ModuloAutenticacion = (function () {
       }
       if (!data?.ok) return { ok: false, msg: data?.msg || 'Error al registrar.' };
 
-      const nuevo = { id: data.usu_id, nombre, apellido, email, telefono, usuario, rol };
+      const nuevo = { id: data.usu_id, nombre, apellido, email, telefono, direccion, usuario, rol };
       _users.push(nuevo);
       localStorage.setItem(cfg.LS_USERS, JSON.stringify(_users));
       return { ok: true, user: nuevo };

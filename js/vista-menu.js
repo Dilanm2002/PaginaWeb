@@ -180,12 +180,18 @@ window.VistaMenu = (function () {
 
     const ingsConId = Array.isArray(p.ingredientes) ? p.ingredientes.filter(i => i && i.id) : [];
     const tieneIngredientes = ingsConId.length > 0;
-    const ingChips = tieneIngredientes
-      ? ingsConId.map(ing => `
-          <label class="ing-chip">
-            <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
-            <span class="ing-chip__label">${ing.nombre}</span>
-          </label>`).join('')
+    const puedeExcluir = tieneIngredientes && p.permiteExcluir === true;
+    const ingChips = puedeExcluir
+      ? ingsConId.map(ing =>
+          `<label class="ing-chip">
+              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
+              <span class="ing-chip__label">${ing.nombre}</span>
+            </label>`
+        ).join('')
+      : '';
+
+    const ingTexto = !puedeExcluir && tieneIngredientes
+      ? ingsConId.map(i => i.nombre).join(' · ')
       : '';
 
     modalBox.innerHTML = `
@@ -201,8 +207,15 @@ window.VistaMenu = (function () {
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
         ${tieneIngredientes ? `
-          <p class="modal-ingredients-title">Ingredientes <small style="font-weight:400;font-size:.72rem;text-transform:none;letter-spacing:0;color:var(--text-muted)">(desmarca para excluir)</small></p>
-          <div class="modal-ingredients-chips">${ingChips}</div>
+          <p class="modal-ingredients-title">Ingredientes
+            <small style="font-weight:400;font-size:.72rem;text-transform:none;letter-spacing:0;color:var(--text-muted)">
+              ${puedeExcluir ? '(desmarca para excluir)' : ''}
+            </small>
+          </p>
+          ${puedeExcluir
+            ? `<div class="modal-ingredients-chips">${ingChips}</div>`
+            : `<p class="modal-ing-texto">${ingTexto}</p>`
+          }
         ` : ''}
         <div class="modal-footer">
           <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
@@ -294,8 +307,8 @@ window.VistaMenu = (function () {
              data-pedido-id="${p.id}" data-mesa="${p.mesa}"
              role="button" tabindex="0"
              aria-pressed="${seleccionada ? 'true' : 'false'}"
-             aria-label="Mesa ${p.mesa}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
-          <span class="mesero-mesa-card__num">🍽️ Mesa ${p.mesa}</span>
+             aria-label="${p.paraLlevar || p.mesa === 'Para llevar' ? 'Para llevar' : `Mesa ${p.mesa}`}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
+          <span class="mesero-mesa-card__num">${p.paraLlevar || p.mesa === 'Para llevar' ? '🛍 Para llevar' : `🍽️ Mesa ${p.mesa}`}</span>
           <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
           <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
@@ -309,7 +322,7 @@ window.VistaMenu = (function () {
         <div class="mesero-mesa-detalle">
           <div class="mesero-mesa-detalle__head">
             <div class="mesero-mesa-detalle__head-left">
-              <span class="mesero-mesa-detalle__title">Mesa ${pedidoSeleccionado.mesa}</span>
+              <span class="mesero-mesa-detalle__title">${pedidoSeleccionado.paraLlevar || pedidoSeleccionado.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${pedidoSeleccionado.mesa}`}</span>
               <span class="mesero-mesa-detalle__cliente">👤 ${pedidoSeleccionado.nombreUsuario}</span>
             </div>
             <span class="mesero-mesa-detalle__total">$${pedidoSeleccionado.total.toFixed(2)}</span>
@@ -650,9 +663,7 @@ window.VistaMenu = (function () {
   function init() {
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     if (modalBackdrop) {
-      modalBackdrop.addEventListener('click', e => {
-        if (e.target === modalBackdrop) cerrarModalProducto();
-      });
+      // solo cerrar con botón X
     }
   }
 
