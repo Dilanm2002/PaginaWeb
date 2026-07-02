@@ -3446,8 +3446,17 @@
       }, 700);
     };
 
+    // Varios cambios en `pedidos` pueden llegar casi juntos (p.ej. borrar el
+    // pendiente viejo + insertar el nuevo al enviar un pedido) — agrupamos
+    // esos eventos en un solo refrescar() para no encolar refrescos pesados.
+    let _refrescarTimer = null;
+    const refrescarDebounced = () => {
+      clearTimeout(_refrescarTimer);
+      _refrescarTimer = setTimeout(refrescar, 400);
+    };
+
     db.channel('realtime-pedidos')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, refrescar)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'pedidos' }, refrescarDebounced)
       .subscribe();
 
     db.channel('realtime-gastos')
