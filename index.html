@@ -817,7 +817,8 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-stock">Stock inicial</label>
-              <input type="number" id="pf-stock" placeholder="20" min="0" max="999" step="1">
+              <input type="number" id="pf-stock" placeholder="20" min="0" max="999" step="1" aria-describedby="pf-stock-error">
+              <span id="pf-stock-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="btn-elegir-imagen">Imagen del plato <small>(opcional)</small></label>
@@ -1959,8 +1960,14 @@
     // Stock
     const stockInicial = item.stock_inicial ?? 20;
     if (!_stock[platId]) {
-      _stock[platId] = { stock: stockInicial, disponible: stockInicial > 0 };
-      await db.from('productos').insert({ plat_id: platId, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
+      const { error: stockError } = await db.from('productos')
+        .insert({ plat_id: platId, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
+      if (stockError) {
+        console.error('Supabase insert stock:', stockError);
+        toast('El plato se guardó pero el stock no se pudo registrar. Edítalo para corregirlo.', 'error');
+      } else {
+        _stock[platId] = { stock: stockInicial, disponible: stockInicial > 0 };
+      }
     } else {
       const diff = stockInicial - _stock[platId].stock;
       if (diff > 0)      await reponerStock(platId, diff);

@@ -693,6 +693,7 @@ window.VistaAdmin = (function () {
     _mostrarErrorPrecio('');
     _mostrarErrorDescripcion('');
     _mostrarErrorIngredientes('');
+    _mostrarErrorStock('');
     _mostrarErrorImagen('');
     window._trapProdForm?.desactivar();
   }
@@ -757,6 +758,14 @@ window.VistaAdmin = (function () {
     return '';
   }
 
+  function _validarStock(valor) {
+    if (valor === '' || valor === null) return ''; // vacío = usa el default (20), no es error
+    const v = Number(valor);
+    if (!Number.isInteger(v) || v < 0) return 'El stock debe ser un número entero mayor o igual a 0.';
+    if (v > 999) return 'El stock no puede superar 999 unidades.';
+    return '';
+  }
+
   function _validarEmail(valor) {
     const v = valor.trim().toLowerCase();
     if (!_EF_EMAIL_RE.test(v)) return 'Formato de correo inválido.';
@@ -792,6 +801,7 @@ window.VistaAdmin = (function () {
   const _mostrarErrorPrecio      = msg => _mostrarError('pf-precio',      'pf-precio-error',      msg);
   const _mostrarErrorDescripcion = msg => _mostrarError('pf-descripcion', 'pf-descripcion-error', msg);
   const _mostrarErrorIngredientes= msg => _mostrarError('pf-ingredientes','pf-ingredientes-error', msg);
+  const _mostrarErrorStock       = msg => _mostrarError('pf-stock',       'pf-stock-error',       msg);
 
   function _mostrarErrorImagen(msg) {
     const preview = document.getElementById('pf-img-preview');
@@ -819,6 +829,10 @@ window.VistaAdmin = (function () {
     pfPrecio.addEventListener('input', () => { if (pfPrecio.value) _mostrarErrorPrecio(_validarPrecio(pfPrecio.value)); });
     pfPrecio.addEventListener('blur',  () => _mostrarErrorPrecio(_validarPrecio(pfPrecio.value)));
 
+    const pfStock = document.getElementById('pf-stock');
+    pfStock.addEventListener('input', () => _mostrarErrorStock(_validarStock(pfStock.value)));
+    pfStock.addEventListener('blur',  () => _mostrarErrorStock(_validarStock(pfStock.value)));
+
     const pfDesc = document.getElementById('pf-descripcion');
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
 
@@ -842,20 +856,24 @@ window.VistaAdmin = (function () {
       const precio        = Math.round(parseFloat(precioRaw) * 100) / 100;
       const descripcion   = document.getElementById('pf-descripcion').value.trim();
       const ingredientesRaw = document.getElementById('pf-ingredientes').value.trim();
+      const stockRaw      = document.getElementById('pf-stock').value;
 
       const errNombre = _validarNombre(nombre);
       const errPrecio = _validarPrecio(precioRaw);
       const errIng    = _validarIngredientes(ingredientesRaw);
+      const errStock  = _validarStock(stockRaw);
 
       _mostrarErrorNombre(errNombre);
       _mostrarErrorPrecio(errPrecio);
       _mostrarErrorDescripcion(!descripcion ? 'La descripción es obligatoria.' : '');
       _mostrarErrorIngredientes(errIng);
+      _mostrarErrorStock(errStock);
 
       if (errNombre)   { document.getElementById('pf-nombre').focus(); return; }
       if (errPrecio)   { document.getElementById('pf-precio').focus(); return; }
       if (!descripcion){ document.getElementById('pf-descripcion').focus(); return; }
       if (errIng)      { document.getElementById('pf-ingredientes').focus(); return; }
+      if (errStock)    { document.getElementById('pf-stock').focus(); return; }
 
       /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
