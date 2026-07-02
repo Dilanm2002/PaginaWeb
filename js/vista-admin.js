@@ -296,8 +296,9 @@ window.VistaAdmin = (function () {
     const _fechaHora = p => p.ped_cobrado_en
       ? new Date(p.ped_cobrado_en).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
       : '—';
+    const _factura = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
     const _metodoNombre = p => {
-      const factura = Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
+      const factura = _factura(p);
       const pago    = Array.isArray(factura?.pagos) ? factura.pagos[0] : factura?.pagos;
       return pago?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
     };
@@ -331,12 +332,35 @@ window.VistaAdmin = (function () {
           </div>
           <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
           ${_pedSubtotalsHtml(p)}
-          <div class="cajero-order-card__foot" style="justify-content:space-between">
+          <div class="cajero-order-card__foot" style="justify-content:space-between;flex-wrap:wrap;gap:.5rem">
             <span class="adm-ped-estado adm-ped-estado--cobrado">✓ Cobrado</span>
             <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon)">💳 ${SC.escapeHtml(_metodoNombre(p))}</span>
+            <button class="btn-print-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">🖨️ Nota de Venta</button>
           </div>
         </div>`;
     }).join('')}</div>`;
+
+    el.querySelectorAll('.btn-print-nota').forEach(btn => {
+      btn.onclick = () => {
+        const p = pedidos.find(x => String(x.ped_id) === String(btn.dataset.pid));
+        if (!p) return;
+        const factura = _factura(p);
+        const factNumero = factura?.fact_numero ?? 'FACT-000000';
+        const pedidoShaped = {
+          // sin prefijo "Mesa " — imprimirNotaVenta ya lo antepone
+          mesa: p.mesas?.mes_numero ?? 'Para llevar',
+          nombreUsuario: _pedNombre(users, p),
+          total: parseFloat(p.ped_total) || 0,
+          items: (p.detalle_pedidos ?? []).map(d => ({
+            nombre: d.platos?.plat_nombre ?? '?',
+            cantidad: d.detped_cantidad,
+            precio: parseFloat(d.detped_precio_unit) || 0,
+            exclusiones: (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean)
+          }))
+        };
+        window.VistaCajero?.imprimirNotaVenta(pedidoShaped, factNumero, _metodoNombre(p), p.ped_cobrado_en);
+      };
+    });
   }
 
   function _cambiarModulo(nombre) {

@@ -547,10 +547,12 @@ ${metodoPagoNombre==='Efectivo'?`<div class="mt">Recibido: $${montoPagado.toFixe
   const DIRECCION_NEGOCIO  = 'Villalengua y Jorge Drom, Quito';
   const TELEFONO_NEGOCIO   = '0984 870 280';
 
-  function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre) {
+  function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre, fechaCobro) {
     const SC = window.SC;
     const items  = pedido.items || [];
-    const ahora  = new Date();
+    // fechaCobro: al reimprimir desde el historial del admin, mostrar la
+    // fecha real del cobro, no la fecha en que se reimprime.
+    const ahora  = fechaCobro ? new Date(fechaCobro) : new Date();
     const numNota = 'NV-' + factNumero.replace('FACT-', '').padStart(6, '0');
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) { SC.toast('Bloquea ventanas emergentes — autorízalas para imprimir', 'error'); return; }
@@ -756,5 +758,5 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     });
   }
 
-  return { renderCajeroView, renderResumenDia, renderGastos, renderStock, init };
+  return { renderCajeroView, renderResumenDia, renderGastos, renderStock, init, imprimirNotaVenta };
 })();
