@@ -400,7 +400,7 @@ window.VistaCajero = (function () {
         </div>
         <div class="cajero-order-subtotals">
           <div><span>Subtotal</span><span id="card-sub-${p.id}">$${subtotal.toFixed(2)}</span></div>
-          <div class="iva-line"><span>IVA 15 %</span><span id="card-iva-${p.id}">$${iva.toFixed(2)}</span></div>
+          <div class="iva-line"><span>IVA 0 %</span><span id="card-iva-${p.id}">$${iva.toFixed(2)}</span></div>
           <div class="total-line"><span>Total</span><span id="card-total-${p.id}">$${total.toFixed(2)}</span></div>
         </div>
         <div class="cajero-order-card__foot">
@@ -556,12 +556,11 @@ ${metodoPagoNombre==='Efectivo'?`<div class="mt">Recibido: $${montoPagado.toFixe
 
   /* ─────────────────────────────────────────────────────
      IMPRESIÓN: NOTA DE VENTA (RIMPE — Negocio Popular)
-     No es una factura electrónica autorizada por el SRI: ese trámite
-     requiere RUC registrado y autorización del SRI, que el negocio
-     todavía no tiene. En cuanto se registre el RUC, actualizar
-     RUC_NEGOCIO abajo — el resto del formato ya queda listo.
+     Régimen RIMPE Negocio Popular: tarifa 0% de IVA (ver SC_CONFIG.IVA
+     en index.html) y nota de venta simple, no factura electrónica
+     autorizada por el SRI (esa requiere otro trámite de autorización).
   ───────────────────────────────────────────────────── */
-  const RUC_NEGOCIO = null; // ej: '1790000000001' — null mientras no esté registrado
+  const RUC_NEGOCIO = '0601335128001';
 
   function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre) {
     const SC = window.SC;
@@ -642,7 +641,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </div>
 <div class="tots"><table>
   <tr><td>Subtotal:</td><td class="tr">$${pedido.subtotal.toFixed(2)}</td></tr>
-  <tr><td>IVA 15%:</td><td class="tr">$${pedido.iva.toFixed(2)}</td></tr>
+  <tr><td>IVA (tarifa 0%):</td><td class="tr">$${pedido.iva.toFixed(2)}</td></tr>
   <tr class="bold"><td>VALOR TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr>
 </table></div>
 <div class="pago-row"><strong>Forma de pago:</strong> ${metodoPagoNombre} · <strong>Total pagado:</strong> $${pedido.total.toFixed(2)}</div>

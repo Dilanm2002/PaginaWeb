@@ -175,4 +175,18 @@ describe('calcularTotales', () => {
     const r = window.LogicaCarrito.calcularTotales(items)
     expect(r.nItems).toBe(10)
   })
+
+  // Configuración real del negocio (RIMPE — Negocio Popular, tarifa 0%)
+  it('con IVA 0% (RIMPE), subtotal == total y iva == 0', () => {
+    const ivaOriginal = window.SC_CONFIG.IVA
+    window.SC_CONFIG.IVA = 0
+    try {
+      const r = window.LogicaCarrito.calcularTotales([{ precio: 12.34, cantidad: 3 }])
+      expect(r.total).toBeCloseTo(37.02, 5)
+      expect(r.iva).toBe(0)
+      expect(r.subtotal).toBeCloseTo(r.total, 10)
+    } finally {
+      window.SC_CONFIG.IVA = ivaOriginal
+    }
+  })
 })

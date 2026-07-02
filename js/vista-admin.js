@@ -131,7 +131,7 @@ window.VistaAdmin = (function () {
     return `
       <div class="cajero-order-subtotals">
         <div><span>Subtotal</span><span>$${(parseFloat(p.ped_subtotal)||0).toFixed(2)}</span></div>
-        <div class="iva-line"><span>IVA 15 %</span><span>$${(parseFloat(p.ped_iva)||0).toFixed(2)}</span></div>
+        <div class="iva-line"><span>IVA 0 %</span><span>$${(parseFloat(p.ped_iva)||0).toFixed(2)}</span></div>
         <div class="total-line"><span>Total</span><span>$${(parseFloat(p.ped_total)||0).toFixed(2)}</span></div>
       </div>`;
   }
@@ -1038,7 +1038,7 @@ window.VistaAdmin = (function () {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
         </div>
         <div class="reportes-kpi__val">$${totalIva.toFixed(2)}</div>
-        <div class="reportes-kpi__lbl">IVA recaudado (15 %)</div>
+        <div class="reportes-kpi__lbl">IVA recaudado (0 %)</div>
       </div>`;
 
     if (!window.Plotly) return;

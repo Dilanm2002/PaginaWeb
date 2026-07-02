@@ -780,7 +780,7 @@
               </select>
             </div>
             <div class="prod-form-group">
-              <label for="pf-precio">Precio (USD, IVA incluido)</label>
+              <label for="pf-precio">Precio (USD, tarifa 0% IVA)</label>
               <input type="number" id="pf-precio" placeholder="0.00" min="0.01" max="99.99" step="0.01" aria-required="true" aria-describedby="pf-precio-error">
               <span id="pf-precio-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
@@ -888,7 +888,7 @@
     <div class="cart-panel__foot">
       <div class="cart-summary">
         <div class="cart-row"><span>Subtotal</span><span id="cart-subtotal">$0.00</span></div>
-        <div class="cart-row"><span>IVA incluido (15&nbsp;%)</span><span id="cart-iva">$0.00</span></div>
+        <div class="cart-row"><span>IVA (tarifa 0&nbsp;%)</span><span id="cart-iva">$0.00</span></div>
         <div class="cart-row total"><span>Total</span><span id="cart-total">$0.00</span></div>
       </div>
       <button id="btn-checkout" class="btn-checkout" disabled>🍽️ Enviar a Caja</button>
@@ -1133,7 +1133,7 @@
     LS_CAJA     : 'salycanela_caja',
     LS_HISTORIAL: 'salycanela_historial',
     LS_GASTOS   : 'salycanela_gastos',
-    IVA         : 0.15
+    IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
   <script src="js/autenticacion.js"></script>
@@ -1158,7 +1158,7 @@
   const LS_CAJA      = 'salycanela_caja';
   const LS_HISTORIAL = 'salycanela_historial';
   const LS_GASTOS    = 'salycanela_gastos';
-  const IVA          = 0.15;
+  const IVA          = 0; // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
 
   /* ══════════════════════════════════════════════════
      AUTH — usuarios
@@ -2942,7 +2942,7 @@
       const tot = (p.total   || 0).toFixed(2);
       return `<div class="ped-breakdown">
         <div class="ped-brow"><span>Subtotal</span><span>$${sub}</span></div>
-        <div class="ped-brow"><span>IVA (15%)</span><span>$${iva}</span></div>
+        <div class="ped-brow"><span>IVA (0%)</span><span>$${iva}</span></div>
         <div class="ped-brow ped-brow--total"><span>Total</span><span>$${tot}</span></div>
       </div>`;
     }
