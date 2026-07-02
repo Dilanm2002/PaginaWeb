@@ -555,18 +555,23 @@ ${metodoPagoNombre==='Efectivo'?`<div class="mt">Recibido: $${montoPagado.toFixe
   }
 
   /* ─────────────────────────────────────────────────────
-     IMPRESIÓN: FACTURA SRI
+     IMPRESIÓN: NOTA DE VENTA (RIMPE — Negocio Popular)
+     No es una factura electrónica autorizada por el SRI: ese trámite
+     requiere RUC registrado y autorización del SRI, que el negocio
+     todavía no tiene. En cuanto se registre el RUC, actualizar
+     RUC_NEGOCIO abajo — el resto del formato ya queda listo.
   ───────────────────────────────────────────────────── */
-  function imprimirFacturaSRI(pedido, factNumero, metodoPagoNombre) {
+  const RUC_NEGOCIO = null; // ej: '1790000000001' — null mientras no esté registrado
+
+  function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre) {
     const SC = window.SC;
     const items  = pedido.items || [];
     const ahora  = new Date();
-    const sriNum = '001-001-' + factNumero.replace('FACT-', '').padStart(9, '0');
-    const precioSinIva = precio => precio / (1 + SC.IVA);
+    const numNota = 'NV-' + factNumero.replace('FACT-', '').padStart(6, '0');
     const win = window.open('', '_blank', 'width=900,height=700');
     if (!win) { SC.toast('Bloquea ventanas emergentes — autorízalas para imprimir', 'error'); return; }
     win.document.write(`<!doctype html><html lang="es"><head>
-<meta charset="utf-8"><title>Factura ${sriNum}</title>
+<meta charset="utf-8"><title>Nota de Venta ${numNota}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
@@ -603,24 +608,20 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
   <div style="font-size:10px;margin-top:3px">Av. Principal 123, Quito</div>
 </div>
 <div class="ruc-sec">
-  <p><strong>RUC:</strong> 1790000000001</p>
-  <p><strong>Razón Social:</strong> Sal y Canela S.A.</p>
+  <p><strong>RUC:</strong> ${RUC_NEGOCIO ?? 'Pendiente de registro'}</p>
+  <p><strong>Régimen:</strong> RIMPE — Negocio Popular</p>
   <p><strong>Dirección:</strong> Av. Principal 123, Quito</p>
   <p><strong>Teléfono:</strong> 02-000-0000</p>
-  <div class="info-box">
-    <p><strong>Ambiente:</strong> PRODUCCIÓN</p>
-    <p><strong>Emisión:</strong> NORMAL</p>
-  </div>
 </div>
 <div class="num-sec">
-  <p><strong>FACTURA</strong></p>
-  <p class="num-big">${sriNum}</p>
+  <p><strong>NOTA DE VENTA</strong></p>
+  <p class="num-big">${numNota}</p>
   <p style="margin-top:5px"><strong>Fecha:</strong> ${ahora.toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric'})}</p>
   <p><strong>Hora:</strong> ${ahora.toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'})}</p>
 </div>
 </div>
 <div class="cli">
-  <div><label>Razón Social/Nombre: </label>${pedido.nombreUsuario||'Consumidor Final'}</div>
+  <div><label>Cliente: </label>${pedido.nombreUsuario||'Consumidor Final'}</div>
   <div><label>Identificación: </label>9999999999999</div>
   <div><label>Dirección: </label>—</div>
   <div><label>Mesa: </label>Mesa ${pedido.mesa}</div>
@@ -628,26 +629,24 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 <div class="items">
 <table><thead><tr>
   <th class="tc">#</th><th>Descripción</th><th class="tc">Cant.</th>
-  <th class="tr">P. Unit s/IVA</th><th class="tr">Descuento</th><th class="tr">Total s/IVA</th>
+  <th class="tr">P. Unitario</th><th class="tr">Total</th>
 </tr></thead>
 <tbody>${items.map((i,idx)=>`<tr>
   <td class="tc">${idx+1}</td>
   <td>${i.nombre}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.join(', ')})</em>`:''}</td>
   <td class="tc">${i.cantidad}</td>
-  <td class="tr">$${precioSinIva(i.precio).toFixed(2)}</td>
-  <td class="tr">$0.00</td>
-  <td class="tr">$${(precioSinIva(i.precio)*i.cantidad).toFixed(2)}</td>
+  <td class="tr">$${i.precio.toFixed(2)}</td>
+  <td class="tr">$${(i.precio*i.cantidad).toFixed(2)}</td>
 </tr>`).join('')}</tbody>
 </table>
 </div>
 <div class="tots"><table>
-  <tr><td>Subtotal sin IVA:</td><td class="tr">$${pedido.subtotal.toFixed(2)}</td></tr>
-  <tr><td>Descuento total:</td><td class="tr">$0.00</td></tr>
+  <tr><td>Subtotal:</td><td class="tr">$${pedido.subtotal.toFixed(2)}</td></tr>
   <tr><td>IVA 15%:</td><td class="tr">$${pedido.iva.toFixed(2)}</td></tr>
   <tr class="bold"><td>VALOR TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr>
 </table></div>
 <div class="pago-row"><strong>Forma de pago:</strong> ${metodoPagoNombre} · <strong>Total pagado:</strong> $${pedido.total.toFixed(2)}</div>
-<div class="foot">Documento generado por sistema POS · Sal y Canela · ${ahora.toLocaleDateString('es-EC')}</div>
+<div class="foot">Nota de venta interna · Sal y Canela · ${ahora.toLocaleDateString('es-EC')}</div>
 </div></body></html>`);
     win.document.close();
     win.focus();
@@ -770,7 +769,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 
     document.getElementById('btn-imprimir-sri')?.addEventListener('click', () => {
       if (_ultimoCobro) {
-        imprimirFacturaSRI(_ultimoCobro.pedido, _ultimoCobro.factNumero, _ultimoCobro.metodoPagoNombre);
+        imprimirNotaVenta(_ultimoCobro.pedido, _ultimoCobro.factNumero, _ultimoCobro.metodoPagoNombre);
       }
     });
   }
