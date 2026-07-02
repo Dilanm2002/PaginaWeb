@@ -1225,29 +1225,23 @@
     };
   }
 
+  /* Solo platos — es lo único que bloquea el loader inicial y el render del menú.
+     usuarios/pedidos/gastos (solo relevantes para roles de staff) se cargan aparte
+     en cargarDatosOperativos() para no retrasar la primera pintura del menú. */
   async function inicializarDB() {
     try {
-      const [, rCaja, rHist, rGastos, rPlatos] = await Promise.all([
-        ModuloAutenticacion.cargarUsuarios(),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
-        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true }),
-        db.from('platos').select(`
+      const { data } = await db.from('platos').select(`
           plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen,
           plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
           plato_ingredientes(ingredientes(ing_id, ing_nombre))
-        `)
-      ]);
+        `);
 
-      _caja      = (rCaja.data   || []).map(_rowAPedido);
-      _historial = (rHist.data   || []).map(_rowAPedido);
-      _gastos    = (rGastos.data || []).map(_mapGasto);
-      _menuItems = (rPlatos.data || []).map(_mapPlato);
+      _menuItems = (data || []).map(_mapPlato);
 
       _stock = {};
-      (rPlatos.data || []).forEach(r => {
+      (data || []).forEach(r => {
         _stock[r.plat_id] = {
           stock:      r.productos?.prod_stock      ?? 0,
           disponible: r.productos?.prod_disponible ?? false
@@ -1258,6 +1252,24 @@
     } catch(e) {
       console.warn('Supabase no disponible, usando localStorage como fallback', e);
       try { _menuItems = JSON.parse(localStorage.getItem('salycanela_menu_items')) ?? []; } catch { _menuItems = []; }
+    }
+  }
+
+  /* usuarios + pedidos + gastos — datos operativos que usan las vistas de caja/admin.
+     No bloquea el loader inicial; se refresca aplicarSesion(true) cuando termina. */
+  async function cargarDatosOperativos() {
+    try {
+      const [, rCaja, rHist, rGastos] = await Promise.all([
+        ModuloAutenticacion.cargarUsuarios(),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
+        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true })
+      ]);
+      _caja      = (rCaja.data   || []).map(_rowAPedido);
+      _historial = (rHist.data   || []).map(_rowAPedido);
+      _gastos    = (rGastos.data || []).map(_mapGasto);
+    } catch(e) {
+      console.warn('cargarDatosOperativos:', e);
     }
   }
 
@@ -3376,11 +3388,9 @@
   aplicarSesion();
   renderCarrito();
 
-  // 3. Cargar datos de Supabase en segundo plano y refrescar
+  // 3. Cargar el menú primero (es lo único que bloquea el loader) y refrescar
   inicializarDB().finally(() => {
     aplicarSesion(true);
-    window.VistaCajero?.renderCajeroView();
-    window.VistaAdmin?.renderAdminView();
     renderCarrito();
     _iniciarRealtime();
     const loader = document.getElementById('app-loader');
@@ -3388,16 +3398,19 @@
       loader.style.opacity = '0';
       setTimeout(() => loader.remove(), 380);
     }
-    // Reintento silencioso si Supabase tuvo un error transitorio al cargar
+    // Reintento silencioso si Supabase tuvo un error transitorio al cargar el menú
     if (getProductosMergeados().length === 0) {
-      const _reintentarRender = () => {
-        aplicarSesion(true);
-        window.VistaCajero?.renderCajeroView();
-        window.VistaAdmin?.renderAdminView();
-        renderCarrito();
-      };
-      setTimeout(() => inicializarDB().finally(_reintentarRender), 2000);
+      const _reintentarRenderMenu = () => aplicarSesion(true);
+      setTimeout(() => inicializarDB().finally(_reintentarRenderMenu), 2000);
     }
+  });
+
+  // 4. Datos operativos (usuarios/pedidos/gastos) en paralelo — no bloquean el menú
+  cargarDatosOperativos().finally(() => {
+    aplicarSesion(true);
+    window.VistaCajero?.renderCajeroView();
+    window.VistaAdmin?.renderAdminView();
+    renderCarrito();
   });
 
   let _skipNextRealtime = false;
