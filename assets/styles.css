@@ -2537,6 +2537,16 @@
     margin-top: .5rem; font-size: 1.05rem; font-weight: 700; min-height: 1.5rem;
     text-align: center;
   }
+  .pago-checkbox-label {
+    display: flex; align-items: center; gap: .5rem; font-size: .9rem;
+    font-weight: 500; cursor: pointer;
+  }
+  .pago-checkbox-label input { accent-color: var(--cinnamon); width: 16px; height: 16px; }
+  .pago-correo-registrado {
+    margin-top: .4rem; font-size: .85rem; color: var(--text-muted);
+    background: #fdf6ef; border: 1px solid #e8d5bd; border-radius: .5rem;
+    padding: .5rem .7rem;
+  }
   .pago-modal-foot { display: flex; gap: .75rem; margin-top: .5rem; }
   .btn-pago-cancel {
     flex: 1; padding: .7rem; border-radius: .6rem; border: 1.5px solid var(--border);

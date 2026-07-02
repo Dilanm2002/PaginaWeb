@@ -465,6 +465,31 @@ window.VistaCajero = (function () {
     if (radioEfectivo) radioEfectivo.checked = true;
     if (efectivoSec) efectivoSec.style.display = '';
 
+    // Correo para la Nota de Venta: si el pedido es de un usuario registrado,
+    // se usa su correo automáticamente (sin preguntar); si es invitado, se
+    // ofrece un checkbox opcional para pedirlo.
+    const correoCheckbox   = document.getElementById('pago-enviar-correo');
+    const correoCheckboxLb = correoCheckbox?.closest('label');
+    const correoInput      = document.getElementById('pago-correo-input');
+    const correoRegistrado = document.getElementById('pago-correo-registrado');
+    const usuarioReg = pedido.idUsuario
+      ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario)
+      : null;
+
+    if (correoCheckbox) correoCheckbox.checked = false;
+    if (correoInput)    { correoInput.value = ''; correoInput.style.display = 'none'; }
+
+    if (usuarioReg?.email) {
+      if (correoCheckboxLb) correoCheckboxLb.style.display = 'none';
+      if (correoRegistrado) {
+        correoRegistrado.style.display = '';
+        correoRegistrado.textContent = `📧 Se enviará la nota de venta a ${usuarioReg.email}`;
+      }
+    } else {
+      if (correoCheckboxLb) correoCheckboxLb.style.display = '';
+      if (correoRegistrado) correoRegistrado.style.display = 'none';
+    }
+
     const backdrop = document.getElementById('pago-modal-backdrop');
     if (backdrop) {
       backdrop.classList.add('open');
@@ -547,16 +572,17 @@ ${metodoPagoNombre==='Efectivo'?`<div class="mt">Recibido: $${montoPagado.toFixe
   const DIRECCION_NEGOCIO  = 'Villalengua y Jorge Drom, Quito';
   const TELEFONO_NEGOCIO   = '0984 870 280';
 
-  function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre, fechaCobro) {
-    const SC = window.SC;
-    const items  = pedido.items || [];
-    // fechaCobro: al reimprimir desde el historial del admin, mostrar la
-    // fecha real del cobro, no la fecha en que se reimprime.
-    const ahora  = fechaCobro ? new Date(fechaCobro) : new Date();
+  // Arma el HTML de la Nota de Venta — lo usan tanto imprimirNotaVenta()
+  // (ventana de impresión) como enviarNotaVentaPorCorreo() (cuerpo del correo).
+  function _construirNotaVentaHtml(pedido, factNumero, metodoPagoNombre, fechaCobro) {
+    const items = pedido.items || [];
+    // fechaCobro: al reimprimir/reenviar desde el historial del admin, usar
+    // la fecha real del cobro, no la fecha en que se reimprime/reenvía.
+    const ahora = fechaCobro ? new Date(fechaCobro) : new Date();
     const numNota = 'NV-' + factNumero.replace('FACT-', '').padStart(6, '0');
-    const win = window.open('', '_blank', 'width=900,height=700');
-    if (!win) { SC.toast('Bloquea ventanas emergentes — autorízalas para imprimir', 'error'); return; }
-    win.document.write(`<!doctype html><html lang="es"><head>
+    return {
+      numNota,
+      html: `<!doctype html><html lang="es"><head>
 <meta charset="utf-8"><title>Nota de Venta ${numNota}</title>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -631,10 +657,45 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </table></div>
 <div class="pago-row"><strong>Forma de pago:</strong> ${metodoPagoNombre} · <strong>Total pagado:</strong> $${pedido.total.toFixed(2)}</div>
 <div class="foot">Nota de venta interna · Sal y Canela · ${ahora.toLocaleDateString('es-EC')}</div>
-</div></body></html>`);
+</div></body></html>`
+    };
+  }
+
+  function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre, fechaCobro) {
+    const SC = window.SC;
+    const { html, numNota } = _construirNotaVentaHtml(pedido, factNumero, metodoPagoNombre, fechaCobro);
+    const win = window.open('', '_blank', 'width=900,height=700');
+    if (!win) { SC.toast('Bloquea ventanas emergentes — autorízalas para imprimir', 'error'); return; }
+    win.document.write(html);
     win.document.close();
     win.focus();
     setTimeout(() => win.print(), 400);
+  }
+
+  // Envía la Nota de Venta por correo vía la Edge Function enviar-nota-venta
+  // (valida la sesión de staff server-side y llama a Resend con la API key,
+  // que nunca llega al navegador). Devuelve true/false.
+  async function enviarNotaVentaPorCorreo(pedido, factNumero, metodoPagoNombre, fechaCobro, email) {
+    const SC = window.SC;
+    if (!email) return false;
+    const { html, numNota } = _construirNotaVentaHtml(pedido, factNumero, metodoPagoNombre, fechaCobro);
+    const session = window.ModuloAutenticacion?.getSession?.();
+    try {
+      const { data, error } = await window.db.functions.invoke('enviar-nota-venta', {
+        body: { token: session?.token ?? null, email, html, numNota }
+      });
+      if (error || !data?.ok) {
+        console.error('enviar-nota-venta:', error || data);
+        SC.toast('No se pudo enviar la nota por correo', 'error');
+        return false;
+      }
+      SC.toast(`Nota de venta enviada a ${email} ✓`, 'success');
+      return true;
+    } catch (e) {
+      console.error('enviarNotaVentaPorCorreo exception:', e);
+      SC.toast('No se pudo enviar la nota por correo', 'error');
+      return false;
+    }
   }
 
   function init() {
@@ -657,6 +718,17 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         if (cambioDisp)  cambioDisp.textContent = '';
       });
     });
+
+    const correoCheckbox = document.getElementById('pago-enviar-correo');
+    const correoInput    = document.getElementById('pago-correo-input');
+    if (correoCheckbox) {
+      correoCheckbox.addEventListener('change', () => {
+        if (correoInput) {
+          correoInput.style.display = correoCheckbox.checked ? '' : 'none';
+          if (correoCheckbox.checked) correoInput.focus();
+        }
+      });
+    }
 
     if (montoRecibidoInp) {
       montoRecibidoInp.addEventListener('input', () => {
@@ -694,10 +766,28 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
           cambio = Math.max(0, montoPagado - pedido.total);
         }
 
+        // Correo para la nota: automático si el cliente está registrado,
+        // opcional (checkbox + input) si es invitado.
+        const usuarioReg = pedido.idUsuario
+          ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario)
+          : null;
+        const correoCheckbox = document.getElementById('pago-enviar-correo');
+        const correoInput    = document.getElementById('pago-correo-input');
+        let email = usuarioReg?.email || null;
+        if (!email && correoCheckbox?.checked) {
+          const val = correoInput?.value.trim();
+          if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) {
+            SC.toast('Ingresa un correo electrónico válido', 'error');
+            correoInput?.focus();
+            return;
+          }
+          email = val;
+        }
+
         btnConfirmarPago.disabled    = true;
         btnConfirmarPago.textContent = 'Procesando…';
 
-        const resultado = await SC.cobrarPedido(String(_pedidoParaCobrar), metodoPagoId, montoPagado, cambio);
+        const resultado = await SC.cobrarPedido(String(_pedidoParaCobrar), metodoPagoId, montoPagado, cambio, email);
 
         btnConfirmarPago.disabled    = false;
         btnConfirmarPago.textContent = '✓ Cobrar';
@@ -707,6 +797,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
           _ultimoCobro = { pedido: resultado.pedido, factNumero: resultado.factNumero, metodoPagoNombre, montoPagado, cambio };
           renderCajeroView();
           abrirPostCobro(resultado.pedido, resultado.factNumero, metodoPagoNombre, montoPagado, cambio);
+          if (email) enviarNotaVentaPorCorreo(resultado.pedido, resultado.factNumero, metodoPagoNombre, null, email);
         } else {
           SC.toast('Error al cobrar el pedido', 'error');
         }
@@ -758,5 +849,5 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     });
   }
 
-  return { renderCajeroView, renderResumenDia, renderGastos, renderStock, init, imprimirNotaVenta };
+  return { renderCajeroView, renderResumenDia, renderGastos, renderStock, init, imprimirNotaVenta, enviarNotaVentaPorCorreo };
 })();

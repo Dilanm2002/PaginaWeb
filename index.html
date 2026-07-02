@@ -1057,6 +1057,14 @@
           <input type="number" id="pago-monto-recibido" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
           <div id="pago-cambio-display" class="pago-cambio-display"></div>
         </div>
+        <div id="pago-correo-section" class="pago-efectivo-section">
+          <label class="pago-checkbox-label" for="pago-enviar-correo">
+            <input type="checkbox" id="pago-enviar-correo">
+            Enviar Nota de Venta por correo
+          </label>
+          <input type="email" id="pago-correo-input" class="pago-monto-input" placeholder="correo@ejemplo.com" style="display:none;margin-top:.4rem">
+          <div id="pago-correo-registrado" class="pago-correo-registrado" style="display:none"></div>
+        </div>
         <div class="pago-modal-foot">
           <button id="btn-cancelar-pago" class="btn-pago-cancel">Cancelar</button>
           <button id="btn-confirmar-pago" class="btn-pago-confirm">✓ Cobrar</button>
@@ -1571,7 +1579,7 @@
     return _caja;
   }
 
-  async function cobrarPedido(id, metodoPagoId, montoPagado, cambio) {
+  async function cobrarPedido(id, metodoPagoId, montoPagado, cambio, email) {
     clearTimeout(_pedidoUpdateTimers[id]);
     delete _pedidoUpdateTimers[id];
     _cobrando.add(String(id));
@@ -1594,7 +1602,8 @@
       p_ped_id:    String(id),
       p_metodo_id: metodoPagoId ?? null,
       p_monto:     montoFinal,
-      p_cambio:    cambioFinal
+      p_cambio:    cambioFinal,
+      p_email:     email || null
     });
 
     if (cobroError || !resultado) {
@@ -1703,6 +1712,13 @@
     if (llevarNombreErr)   { llevarNombreErr.style.display = 'none'; }
     const llevarInput = document.getElementById('llevar-nombre');
     if (llevarInput)  { llevarInput.style.borderColor = ''; }
+
+    // "Para llevar" ya pide el nombre en "Nombre del cliente" — no duplicar
+    // con el campo "Tu nombre" (que es solo para pedidos en mesa sin sesión).
+    const session = ModuloAutenticacion.getSession();
+    if (campoInvitado) {
+      campoInvitado.style.display = (!llevar && (!session || session.rol === 'invitado')) ? '' : 'none';
+    }
   }
   _btnTipoMesa  ?.addEventListener('click', () => _setTipo(false));
   _btnTipoLlevar?.addEventListener('click', () => _setTipo(true));
@@ -2131,10 +2147,8 @@
       mesaQuienEl.innerHTML = `
         <span class="rol-pill ${session.rol}" style="flex-shrink:0">${ROL_LABEL[session.rol]}</span>
         <span>Pedido de: <strong>${session.nombre}</strong></span>`;
-      campoInvitado.style.display = 'none';
     } else {
       mesaQuienEl.innerHTML = '';
-      campoInvitado.style.display = '';
       invitadoNombre.value = '';
       invitadoNombre.style.borderColor = '';
       const nombreError = document.getElementById('nombre-error');
@@ -2255,6 +2269,12 @@
       nombreUsuario = session.nombre;
       idUsuario     = session.id;
       rol           = session.rol;
+    } else if (_esParaLlevar) {
+      // El nombre para "Para llevar" se toma del campo "Nombre del cliente"
+      // más abajo — no se duplica pidiéndolo también aquí.
+      nombreUsuario = null;
+      idUsuario     = null;
+      rol           = 'invitado';
     } else {
       nombreUsuario = invitadoNombre.value.trim();
       const nombreError = document.getElementById('nombre-error');
