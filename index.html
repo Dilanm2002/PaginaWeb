@@ -3001,7 +3001,7 @@
     };
   }
 
-  function aplicarSesion() {
+  function aplicarSesion(soloRefrescoDatos) {
     const session = ModuloAutenticacion.getSession();
     if (!session) return;
 
@@ -3074,10 +3074,14 @@
       btnOpen.style.display   = '';
       btnCaja.style.display   = 'none';
 
-      // Reset vistas secundarias
+      // Reset vistas secundarias — un refresco silencioso en segundo plano (retry de
+      // Supabase) no debe sacar al usuario del perfil si ya está viéndolo
       const usuarioView = document.getElementById('usuario-view');
-      if (usuarioView) usuarioView.style.display = 'none';
-      menuView.style.display = '';
+      const enPerfil = soloRefrescoDatos && usuarioView && usuarioView.style.display !== 'none';
+      if (!enPerfil) {
+        if (usuarioView) usuarioView.style.display = 'none';
+        menuView.style.display = '';
+      }
 
       const prevRol = localStorage.getItem('sc_prev_rol');
 
@@ -3099,12 +3103,14 @@
         // Limpiar carrito si venía de mesero, o si se pasó a invitado desde un rol logueado
         if (prevRol === 'mesero' || (session.rol === 'invitado' && prevRol !== null && prevRol !== 'invitado')) LogicaCarrito.vaciarCarrito();
         localStorage.setItem('sc_prev_rol', session.rol ?? 'invitado');
-        document.querySelector('.filter-bar-wrap').style.display = '';
-        document.querySelector('.hero').style.display = '';
-        const _mswU = document.getElementById('mobile-search-wrap');
-        if (_mswU) _mswU.style.display = '';
-        grid.className = 'products-grid';
-        grid.closest('section#menu').querySelector('.section-title').style.display = '';
+        if (!enPerfil) {
+          document.querySelector('.filter-bar-wrap').style.display = '';
+          document.querySelector('.hero').style.display = '';
+          const _mswU = document.getElementById('mobile-search-wrap');
+          if (_mswU) _mswU.style.display = '';
+          grid.className = 'products-grid';
+          grid.closest('section#menu').querySelector('.section-title').style.display = '';
+        }
         const savedCat = ModuloApp.getFiltroSesion();
         const _doRenderMenu = () => {
           window.VistaMenu?.renderFiltros(cat => {
@@ -3117,10 +3123,10 @@
         };
         if (getProductosMergeados().length === 0) {
           inicializarDB().finally(_doRenderMenu);
-        } else {
+        } else if (!enPerfil) {
           _doRenderMenu();
         }
-        renderCarrito();
+        if (!enPerfil) renderCarrito();
       }
     }
     /* Recalcular alturas sticky tras cualquier cambio de sesión */
@@ -3372,7 +3378,7 @@
 
   // 3. Cargar datos de Supabase en segundo plano y refrescar
   inicializarDB().finally(() => {
-    aplicarSesion();
+    aplicarSesion(true);
     window.VistaCajero?.renderCajeroView();
     window.VistaAdmin?.renderAdminView();
     renderCarrito();
@@ -3385,7 +3391,7 @@
     // Reintento silencioso si Supabase tuvo un error transitorio al cargar
     if (getProductosMergeados().length === 0) {
       const _reintentarRender = () => {
-        aplicarSesion();
+        aplicarSesion(true);
         window.VistaCajero?.renderCajeroView();
         window.VistaAdmin?.renderAdminView();
         renderCarrito();
