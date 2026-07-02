@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://salycanela.lat/sitemap.xml
