@@ -1012,11 +1012,14 @@ window.VistaAdmin = (function () {
     // RLS para usuarios que no son el propio — usamos la lista ya cargada
     // vía la RPC listar_usuarios() (SECURITY DEFINER), igual que en el resto del panel.
     const usuariosCache = window.ModuloAutenticacion.leerUsuarios();
+    const ROL_LABEL_CUADRE = { cajero: 'Caja', mesero: 'Mesero', usuario: 'Cliente', administrador: 'Admin', invitado: 'Invitado' };
     const porMesero = {};
     todos.forEach(p => {
-      const key    = p.usu_id ?? '__invitado__';
-      const nombre = p.usu_id ? (usuariosCache.find(u => u.id === p.usu_id)?.nombre ?? p.usu_id) : 'Invitado / Cliente';
-      if (!porMesero[key]) porMesero[key] = { nombre, creados: 0, cobrados: 0 };
+      const key = p.usu_id ?? '__invitado__';
+      const u   = p.usu_id ? usuariosCache.find(u => u.id === p.usu_id) : null;
+      const nombre = p.usu_id ? (u?.nombre ?? p.usu_id) : 'Invitado';
+      const rol    = p.usu_id ? (u?.rol ?? 'usuario') : 'invitado';
+      if (!porMesero[key]) porMesero[key] = { nombre, rol, creados: 0, cobrados: 0 };
       porMesero[key].creados++;
       if (p.ped_estado === 'cobrado') porMesero[key].cobrados++;
     });
@@ -1024,7 +1027,7 @@ window.VistaAdmin = (function () {
     const filasMesero = Object.values(porMesero).map(m => {
       const diff = m.creados - m.cobrados;
       return `<tr>
-        <td>${SC?.escapeHtml(m.nombre) ?? m.nombre}</td>
+        <td><span class="rol-pill ${m.rol}">${ROL_LABEL_CUADRE[m.rol] ?? m.rol}</span> ${SC?.escapeHtml(m.nombre) ?? m.nombre}</td>
         <td style="text-align:center">${m.creados}</td>
         <td style="text-align:center;color:${diff === 0 ? '#16a34a' : 'var(--cinnamon)'}">${m.cobrados}</td>
         <td style="text-align:center;font-weight:700;color:${diff > 0 ? '#dc2626' : '#16a34a'}">
