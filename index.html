@@ -1902,14 +1902,14 @@
   }
 
   async function _obtenerOCrearCategoria(catNombre) {
-    const { data } = await db.from('categorias').select('cat_id').eq('cat_nombre', catNombre).single();
+    const { data } = await db.from('categorias').select('cat_id').eq('cat_nombre', catNombre).maybeSingle();
     if (data?.cat_id) return data.cat_id;
     const { data: nueva } = await db.from('categorias').insert({ cat_nombre: catNombre }).select('cat_id').single();
     return nueva?.cat_id ?? null;
   }
 
   async function _obtenerOCrearIngrediente(ingNombre) {
-    const { data } = await db.from('ingredientes').select('ing_id').ilike('ing_nombre', ingNombre).single();
+    const { data } = await db.from('ingredientes').select('ing_id').ilike('ing_nombre', ingNombre).maybeSingle();
     if (data?.ing_id) return data.ing_id;
     const { data: nuevo } = await db.from('ingredientes').insert({ ing_nombre: ingNombre }).select('ing_id').single();
     return nuevo?.ing_id ?? null;
@@ -1934,7 +1934,8 @@
       plat_activo:           item.activo ?? true
     };
 
-    let platId = item.id;
+    let platId    = item.id;
+    let createdAt = item.createdAt ?? null;
 
     if (item.id) {
       // Edición — no tocar plat_created_at para que el badge "Nuevo" no se resetee
@@ -1942,9 +1943,10 @@
       if (error) { console.error('Supabase update plato:', error); return false; }
     } else {
       // Nuevo
+      createdAt = new Date().toISOString();
       const { data: nuevo, error } = await db.from('platos').insert({
         ...platDataBase,
-        plat_created_at: new Date().toISOString(),
+        plat_created_at: createdAt,
         plat_codigo: _generarCodigo(item.categoria, Date.now())
       }).select('plat_id').single();
       if (error || !nuevo) { console.error('Supabase insert plato:', error); return false; }
