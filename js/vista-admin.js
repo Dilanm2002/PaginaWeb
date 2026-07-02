@@ -277,7 +277,7 @@ window.VistaAdmin = (function () {
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal,
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre))),
-      facturas(fact_numero, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
+      facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
     `;
 
     const { data, error } = await window.db
@@ -336,29 +336,53 @@ window.VistaAdmin = (function () {
             <span class="adm-ped-estado adm-ped-estado--cobrado">✓ Cobrado</span>
             <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon)">💳 ${SC.escapeHtml(_metodoNombre(p))}</span>
             <button class="btn-print-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">🖨️ Nota de Venta</button>
+            <button class="btn-enviar-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">✉️ Enviar por correo</button>
           </div>
         </div>`;
     }).join('')}</div>`;
+
+    const _pedidoShaped = p => ({
+      // sin prefijo "Mesa " — imprimirNotaVenta ya lo antepone
+      mesa: p.mesas?.mes_numero ?? 'Para llevar',
+      nombreUsuario: _pedNombre(users, p),
+      total: parseFloat(p.ped_total) || 0,
+      items: (p.detalle_pedidos ?? []).map(d => ({
+        nombre: d.platos?.plat_nombre ?? '?',
+        cantidad: d.detped_cantidad,
+        precio: parseFloat(d.detped_precio_unit) || 0,
+        exclusiones: (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean)
+      }))
+    });
 
     el.querySelectorAll('.btn-print-nota').forEach(btn => {
       btn.onclick = () => {
         const p = pedidos.find(x => String(x.ped_id) === String(btn.dataset.pid));
         if (!p) return;
+        const factNumero = _factura(p)?.fact_numero ?? 'FACT-000000';
+        window.VistaCajero?.imprimirNotaVenta(_pedidoShaped(p), factNumero, _metodoNombre(p), p.ped_cobrado_en);
+      };
+    });
+
+    el.querySelectorAll('.btn-enviar-nota').forEach(btn => {
+      btn.onclick = async () => {
+        const p = pedidos.find(x => String(x.ped_id) === String(btn.dataset.pid));
+        if (!p) return;
         const factura = _factura(p);
+        const emailDefault = factura?.fact_email || users.find(u => u.id === p.usu_id)?.email || '';
+        const email = window.prompt('Correo para enviar la Nota de Venta:', emailDefault);
+        if (email === null) return;
+        const emailLimpio = email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailLimpio)) {
+          SC.toast('Ingresa un correo electrónico válido', 'error');
+          return;
+        }
+        btn.disabled = true;
+        const textoOriginal = btn.textContent;
+        btn.textContent = 'Enviando…';
         const factNumero = factura?.fact_numero ?? 'FACT-000000';
-        const pedidoShaped = {
-          // sin prefijo "Mesa " — imprimirNotaVenta ya lo antepone
-          mesa: p.mesas?.mes_numero ?? 'Para llevar',
-          nombreUsuario: _pedNombre(users, p),
-          total: parseFloat(p.ped_total) || 0,
-          items: (p.detalle_pedidos ?? []).map(d => ({
-            nombre: d.platos?.plat_nombre ?? '?',
-            cantidad: d.detped_cantidad,
-            precio: parseFloat(d.detped_precio_unit) || 0,
-            exclusiones: (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean)
-          }))
-        };
-        window.VistaCajero?.imprimirNotaVenta(pedidoShaped, factNumero, _metodoNombre(p), p.ped_cobrado_en);
+        await window.VistaCajero?.enviarNotaVentaPorCorreo(_pedidoShaped(p), factNumero, _metodoNombre(p), p.ped_cobrado_en, emailLimpio);
+        btn.disabled = false;
+        btn.textContent = textoOriginal;
       };
     });
   }
