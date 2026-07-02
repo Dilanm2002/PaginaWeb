@@ -122,7 +122,8 @@ window.ModuloAutenticacion = (function () {
           email:    u.usu_email,
           telefono: u.usu_telefono ?? '',
           usuario:  u.usu_usuario,
-          rol:      u.rol_nombre ?? 'usuario'
+          rol:      u.rol_nombre ?? 'usuario',
+          token:    u.sesion_token ?? null
         }
       };
     } catch (e) {

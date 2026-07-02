@@ -1398,16 +1398,17 @@
   async function insertarGasto({ descripcion, monto, fecha, hora }) {
     const session = ModuloAutenticacion.getSession();
     try {
-      const { data, error } = await db.from('gastos').insert({
-        usu_id:           session?.id ?? null,
-        gast_descripcion: descripcion,
-        gast_monto:       monto,
-        gast_fecha:       _fechaLocalISO(),
-        gast_hora:        new Date().toTimeString().slice(0, 8)
-      }).select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').single();
+      // Requiere sesión de cajero/administrador vigente — ver sql/hardening-rls.sql.
+      const { data, error } = await db.rpc('registrar_gasto', {
+        p_token:       session?.token ?? null,
+        p_descripcion: descripcion,
+        p_monto:       monto,
+        p_fecha:       _fechaLocalISO(),
+        p_hora:        new Date().toTimeString().slice(0, 8)
+      });
 
-      if (error) {
-        console.error('Supabase insertarGasto:', error);
+      if (error || !data) {
+        console.error('Supabase registrar_gasto (RPC):', error);
         toast('Error al registrar gasto', 'error');
         return null;
       }
@@ -1423,9 +1424,10 @@
   }
 
   async function eliminarGasto(gastoId) {
+    const session = ModuloAutenticacion.getSession();
     _gastos = _gastos.filter(g => g.id !== gastoId);
-    const { error } = await db.from('gastos').delete().eq('gast_id', gastoId);
-    if (error) console.error('Supabase eliminarGasto:', error);
+    const { error } = await db.rpc('eliminar_gasto_staff', { p_token: session?.token ?? null, p_gasto_id: gastoId });
+    if (error) console.error('Supabase eliminar_gasto_staff (RPC):', error);
   }
 
   async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false }) {
@@ -1559,60 +1561,26 @@
 
     const ahora = new Date().toISOString();
     const fechaISO = _fechaLocalISO();
+    const montoFinal  = (typeof montoPagado === 'number' && montoPagado > 0) ? montoPagado : cobrado.total;
+    const cambioFinal = (typeof cambio === 'number' && cambio >= 0) ? cambio : 0;
 
-    // Actualizar estado del pedido
-    const { error: pedError } = await db.from('pedidos').update({
-      ped_estado:     'cobrado',
-      ped_fecha:      fechaISO,
-      ped_cobrado_en: ahora
-    }).eq('ped_id', id);
+    // Todo el cobro (marcar pedido, crear factura+detalle+pago) corre
+    // server-side en una sola transacción vía RPC — requiere sesión de
+    // cajero/administrador vigente. Ver sql/hardening-rls.sql.
+    const session = ModuloAutenticacion.getSession();
+    const { data: resultado, error: cobroError } = await db.rpc('cobrar_pedido', {
+      p_token:     session?.token ?? null,
+      p_ped_id:    String(id),
+      p_metodo_id: metodoPagoId ?? null,
+      p_monto:     montoFinal,
+      p_cambio:    cambioFinal
+    });
 
-    if (pedError) {
-      console.error('Supabase cobrar pedido:', pedError);
+    if (cobroError || !resultado) {
+      console.error('Supabase cobrar_pedido (RPC):', cobroError);
       toast('Error al cobrar pedido', 'error');
       _cobrando.delete(String(id));
       return null;
-    }
-
-    // Crear factura (cabecera)
-    const { count } = await db.from('facturas').select('*', { count: 'exact', head: true });
-    const factNumero = 'FACT-' + String((count ?? 0) + 1).padStart(6, '0');
-
-    const { data: factData } = await db.from('facturas').insert({
-      ped_id:        id,
-      usu_id:        cobrado.idUsuario ?? null,
-      fact_numero:   factNumero,
-      fact_subtotal: cobrado.subtotal,
-      fact_iva:      cobrado.iva,
-      fact_total:    cobrado.total,
-      fact_estado:   'emitida'
-    }).select('fact_id').single();
-
-    // Crear detalle_facturas
-    if (factData?.fact_id && cobrado.items.length > 0) {
-      await db.from('detalle_facturas').insert(
-        cobrado.items.map(i => ({
-          fact_id:             factData.fact_id,
-          plat_id:             i.id,
-          detfact_descripcion: i.nombre,
-          detfact_cantidad:    i.cantidad,
-          detfact_precio_unit: i.precio,
-          detfact_subtotal:    i.precio * i.cantidad
-        }))
-      );
-    }
-
-    // Guardar pago
-    if (factData?.fact_id && metodoPagoId) {
-      const montoFinal = (typeof montoPagado === 'number' && montoPagado > 0) ? montoPagado : cobrado.total;
-      const cambioFinal = (typeof cambio === 'number' && cambio >= 0) ? cambio : 0;
-      const { error: _pagErr } = await db.from('pagos').insert({
-        fact_id:     factData.fact_id,
-        metodo_id:   metodoPagoId,
-        pago_monto:  montoFinal,
-        pago_cambio: cambioFinal
-      });
-      if (_pagErr) console.warn('pagos insert:', _pagErr);
     }
 
     // Actualizar caché local
@@ -1621,7 +1589,7 @@
     _caja = _caja.filter(x => String(x.id) !== String(id));
 
     CarritoIDB.guardar(entrada).catch(() => {});
-    return { pedido: cobrado, factNumero, factId: factData?.fact_id };
+    return { pedido: cobrado, factNumero: resultado.fact_numero, factId: resultado.fact_id };
   }
 
   function actualizarPedido(pedidoId, nuevoItems) {
@@ -2601,7 +2569,7 @@
       return;
     }
     errEl.classList.remove('visible');
-    ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol });
+    ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol, token:result.user.token ?? null });
     aplicarSesion();
   });
 
@@ -2825,6 +2793,8 @@
 
   btnLogout.addEventListener('click', () => {
     window._modoEdicion = null;
+    const _tokenSaliente = ModuloAutenticacion.getSession()?.token;
+    if (_tokenSaliente) db.rpc('cerrar_sesion_staff', { p_token: _tokenSaliente }).catch(() => {});
     ModuloAutenticacion.clearSession();
     LogicaCarrito.vaciarCarrito();
     ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });

@@ -363,14 +363,14 @@ window.VistaAdmin = (function () {
     const statAgot  = document.getElementById('admin-stat-agotados');
     if (statTotal) statTotal.textContent = todos.length;
     if (statAgot)  statAgot.textContent  = agotados.length;
-    // Contar mensajes sin leer
+    // Contar mensajes sin leer — vía RPC (requiere sesión de administrador)
     try {
-      const { data: msgs } = await window.db.from('mensajes').select('mens_leido').eq('mens_leido', false);
-      const noLeidos = msgs?.length ?? 0;
+      const token = window.ModuloAutenticacion?.getSession?.()?.token ?? null;
+      const { data: noLeidos } = await window.db.rpc('admin_contar_mensajes_no_leidos', { p_token: token });
       const statMsg = document.getElementById('admin-stat-mensajes');
-      if (statMsg) statMsg.textContent = noLeidos;
+      if (statMsg) statMsg.textContent = noLeidos ?? 0;
       const badgeMsg = document.getElementById('admin-mensajes-badge');
-      if (badgeMsg) { badgeMsg.textContent = noLeidos; badgeMsg.style.display = noLeidos > 0 ? '' : 'none'; }
+      if (badgeMsg) { badgeMsg.textContent = noLeidos ?? 0; badgeMsg.style.display = (noLeidos ?? 0) > 0 ? '' : 'none'; }
     } catch (_) {}
     // Contar pedidos pendientes del día
     try {
@@ -515,10 +515,9 @@ window.VistaAdmin = (function () {
 
     el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:.5rem 0">Cargando mensajes…</p>';
 
-    const { data, error } = await window.db
-      .from('mensajes')
-      .select('*')
-      .order('mens_enviado_en', { ascending: false });
+    // Requiere sesión de administrador vigente — ver sql/hardening-rls.sql.
+    const token = window.ModuloAutenticacion?.getSession?.()?.token ?? null;
+    const { data, error } = await window.db.rpc('admin_listar_mensajes', { p_token: token });
 
     if (error || !data) {
       el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar mensajes.</p>';
@@ -570,7 +569,7 @@ window.VistaAdmin = (function () {
     el.querySelectorAll('.admin-msg-btn-leido').forEach(btn => {
       btn.onclick = async () => {
         const id = Number(btn.dataset.id);
-        const { error } = await window.db.from('mensajes').update({ mens_leido: true }).eq('mens_id', id);
+        const { error } = await window.db.rpc('admin_marcar_mensaje_leido', { p_token: token, p_mens_id: id });
         if (error) { window.SC?.toast('Error al marcar el mensaje', 'error'); return; }
         renderMensajes();
       };
@@ -1290,20 +1289,10 @@ window.VistaAdmin = (function () {
       if (!monto || monto <= 0) { window.SC?.toast('Ingresa un monto válido.', 'error'); return; }
       btn.disabled = true;
       const SC = window.SC;
-      const ahora = new Date();
-      const fecha = _fechaLocalISO(ahora);
-      const hora  = ahora.toTimeString().slice(0, 8);
-      const session = window.ModuloAutenticacion?.getSession?.();
-      const { error } = await window.db.from('gastos').insert({
-        gast_id:          crypto.randomUUID(),
-        usu_id:           session?.id ?? null,
-        gast_descripcion: desc,
-        gast_monto:       monto,
-        gast_fecha:       fecha,
-        gast_hora:        hora
-      });
+      // Reutiliza SC.insertarGasto (ya pasa por la RPC registrar_gasto, exige sesión de staff)
+      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto });
       btn.disabled = false;
-      if (error) { SC?.toast('Error al registrar gasto.', 'error'); return; }
+      if (!nuevoGasto) return; // el error ya se mostró dentro de insertarGasto
       document.getElementById('gasto-desc').value  = '';
       document.getElementById('gasto-monto').value = '';
       SC?.toast('Gasto registrado ✓', 'success');
