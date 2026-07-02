@@ -549,6 +549,11 @@
                   <button class="rep-tab active" data-ptab="activos" role="tab" aria-selected="true">Activos</button>
                   <button class="rep-tab" data-ptab="historial" role="tab" aria-selected="false">Historial</button>
                 </div>
+                <div class="resumen-fecha-nav" id="ped-hist-dia-nav" style="display:none">
+                  <button class="btn-fecha-nav" id="ped-hist-dia-ant" aria-label="Día anterior">‹</button>
+                  <span id="ped-hist-dia-label">Hoy</span>
+                  <button class="btn-fecha-nav" id="ped-hist-dia-sig" aria-label="Día siguiente" disabled>›</button>
+                </div>
                 <button class="adm-btn-outline" id="btn-refrescar-pedidos">
                   <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 11-2.12-9.36L23 10"/></svg>
                   Refrescar
@@ -589,10 +594,17 @@
           <section class="adm-module" id="mod-reportes" aria-label="Reportes de ventas">
             <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
               <h2 class="adm-section-title">Reportes de Ventas</h2>
-              <div class="rep-tabs" id="rep-periodo-tabs" role="tablist" aria-label="Período de reporte">
-                <button class="rep-tab active" data-period="hoy" role="tab" aria-selected="true">Hoy</button>
-                <button class="rep-tab" data-period="semana" role="tab" aria-selected="false">5 días</button>
-                <button class="rep-tab" data-period="mes" role="tab" aria-selected="false">30 días</button>
+              <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+                <div class="rep-tabs" id="rep-periodo-tabs" role="tablist" aria-label="Período de reporte">
+                  <button class="rep-tab active" data-period="hoy" role="tab" aria-selected="true">Hoy</button>
+                  <button class="rep-tab" data-period="semana" role="tab" aria-selected="false">5 días</button>
+                  <button class="rep-tab" data-period="mes" role="tab" aria-selected="false">30 días</button>
+                </div>
+                <div class="resumen-fecha-nav" id="rep-dia-nav">
+                  <button class="btn-fecha-nav" id="rep-dia-ant" aria-label="Día anterior">‹</button>
+                  <span id="rep-dia-label">Hoy</span>
+                  <button class="btn-fecha-nav" id="rep-dia-sig" aria-label="Día siguiente" disabled>›</button>
+                </div>
               </div>
             </div>
             <div id="admin-reportes-content">

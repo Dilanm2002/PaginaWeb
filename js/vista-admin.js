@@ -20,8 +20,22 @@ window.VistaAdmin = (function () {
     return lunes;
   }
 
+  // Navegación día a día (offset relativo a hoy: 0=hoy, -1=ayer, ...)
+  function _fechaConOffset(offset) {
+    const d = new Date();
+    d.setDate(d.getDate() + offset);
+    return d;
+  }
+  function _labelDiaOffset(offset) {
+    if (offset === 0)  return 'Hoy';
+    if (offset === -1) return 'Ayer';
+    return _fechaConOffset(offset).toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: 'short' });
+  }
+
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
+  let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
+  let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
 
   const _CATS_ORDER = ['Desayunos','Entradas','Almuerzos','Postres','Bocaditos','Bebidas Calientes','Bebidas Frías','Platos Fuertes'];
   const _IMG_FALLBACK = "this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
@@ -119,6 +133,7 @@ window.VistaAdmin = (function () {
       const btn = e.target.closest('.rep-tab');
       if (!btn) return;
       _pedidosTab = btn.dataset.ptab;
+      if (_pedidosTab === 'historial') _pedHistDiaOffset = 0; // volver a hoy al re-entrar al tab
       tabsWrap.querySelectorAll('.rep-tab').forEach(t => {
         const active = t === btn;
         t.classList.toggle('active', active);
@@ -126,8 +141,23 @@ window.VistaAdmin = (function () {
       });
       const titleEl = document.getElementById('ped-section-title');
       if (titleEl) titleEl.textContent = _pedidosTab === 'historial' ? 'Historial de pedidos' : 'Pedidos activos';
+      const diaNavEl = document.getElementById('ped-hist-dia-nav');
+      if (diaNavEl) diaNavEl.style.display = _pedidosTab === 'historial' ? '' : 'none';
       renderAdminPedidos();
     });
+
+    const ant = document.getElementById('ped-hist-dia-ant');
+    const sig = document.getElementById('ped-hist-dia-sig');
+    if (ant && !ant._bound) {
+      ant._bound = true;
+      ant.addEventListener('click', () => { _pedHistDiaOffset--; renderAdminPedidos(); });
+    }
+    if (sig && !sig._bound) {
+      sig._bound = true;
+      sig.addEventListener('click', () => {
+        if (_pedHistDiaOffset < 0) { _pedHistDiaOffset++; renderAdminPedidos(); }
+      });
+    }
   }
 
   async function renderAdminPedidos() {
@@ -225,6 +255,13 @@ window.VistaAdmin = (function () {
       `<div class="cajero-order-card" style="min-height:180px;opacity:.35;animation:pulse 1.2s infinite"></div>`
     ).join('')}</div>`;
 
+    const diaSelISO = _fechaLocalISO(_fechaConOffset(_pedHistDiaOffset));
+    const diaLabel  = _labelDiaOffset(_pedHistDiaOffset);
+    const diaLabelEl = document.getElementById('ped-hist-dia-label');
+    if (diaLabelEl) diaLabelEl.textContent = diaLabel;
+    const diaSigBtn = document.getElementById('ped-hist-dia-sig');
+    if (diaSigBtn) diaSigBtn.disabled = _pedHistDiaOffset >= 0;
+
     const PED_SEL = `
       ped_id, ped_estado, ped_nombre_invitado, ped_cobrado_en,
       ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
@@ -238,8 +275,8 @@ window.VistaAdmin = (function () {
       .from('pedidos')
       .select(PED_SEL)
       .eq('ped_estado', 'cobrado')
-      .order('ped_cobrado_en', { ascending: false })
-      .limit(50);
+      .eq('ped_fecha', diaSelISO)
+      .order('ped_cobrado_en', { ascending: false });
 
     if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem;padding:1rem 0">Error al cargar historial.</p>'; return; }
 
@@ -257,11 +294,12 @@ window.VistaAdmin = (function () {
     };
 
     if (!pedidos.length) {
+      const label = diaLabel === 'Hoy' ? 'hoy' : diaLabel;
       el.innerHTML = `
         <div class="cajero-empty">
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-          <p>No hay pedidos cobrados todavía</p>
-          <small>Los últimos 50 pedidos cobrados aparecerán aquí</small>
+          <p>No hay pedidos cobrados ${label}</p>
+          <small>Usa las flechas para ver otros días</small>
         </div>`;
       return;
     }
@@ -419,7 +457,15 @@ window.VistaAdmin = (function () {
     });
     // Tabs de período en reportes
     document.querySelectorAll('.rep-tab[data-period]').forEach(btn => {
-      btn.addEventListener('click', () => renderReportes(btn.dataset.period));
+      btn.addEventListener('click', () => {
+        if (btn.dataset.period === 'hoy') _repDiaOffset = 0; // volver al día actual al re-entrar al tab
+        renderReportes(btn.dataset.period);
+      });
+    });
+    // Navegación día a día dentro del tab "Hoy"
+    document.getElementById('rep-dia-ant')?.addEventListener('click', () => { _repDiaOffset--; renderReportes('hoy'); });
+    document.getElementById('rep-dia-sig')?.addEventListener('click', () => {
+      if (_repDiaOffset < 0) { _repDiaOffset++; renderReportes('hoy'); }
     });
     // Refrescar pedidos
     document.getElementById('btn-refrescar-pedidos')?.addEventListener('click', renderAdminPedidos);
@@ -889,6 +935,9 @@ window.VistaAdmin = (function () {
       t.setAttribute('aria-selected', active ? 'true' : 'false');
     });
 
+    const diaNavEl = document.getElementById('rep-dia-nav');
+    if (diaNavEl) diaNavEl.style.display = periodo === 'hoy' ? '' : 'none';
+
     const kpisEl = document.getElementById('reportes-kpis');
     if (!kpisEl) return;
     kpisEl.innerHTML = '<p class="usu-cargando" style="grid-column:1/-1">Cargando reportes…</p>';
@@ -899,10 +948,18 @@ window.VistaAdmin = (function () {
 
     let desdeStr, hastaStr, periodoLabel, chartTitleVentas, tablaTitulo;
     if (periodo === 'hoy') {
-      desdeStr = hoyISO; hastaStr = hoyISO;
-      periodoLabel     = 'hoy';
-      chartTitleVentas = 'Ventas por hora (hoy)';
-      tablaTitulo      = 'Pedidos cobrados hoy';
+      const diaSel    = _fechaConOffset(_repDiaOffset);
+      const diaSelISO = _fechaLocalISO(diaSel);
+      const label     = _labelDiaOffset(_repDiaOffset);
+      desdeStr = diaSelISO; hastaStr = diaSelISO;
+      periodoLabel     = label.toLowerCase();
+      chartTitleVentas = `Ventas por hora (${label.toLowerCase()})`;
+      tablaTitulo      = label === 'Hoy' ? 'Pedidos cobrados hoy' : `Pedidos cobrados — ${label}`;
+
+      const diaLabelEl = document.getElementById('rep-dia-label');
+      if (diaLabelEl) diaLabelEl.textContent = label;
+      const diaSigBtn = document.getElementById('rep-dia-sig');
+      if (diaSigBtn) diaSigBtn.disabled = _repDiaOffset >= 0;
     } else if (periodo === 'semana') {
       // Semana laboral lun-vie: desde el lunes de esta semana hasta hoy
       // (o hasta el viernes si hoy es sábado/domingo, ya que no se opera esos días).
@@ -1109,7 +1166,7 @@ window.VistaAdmin = (function () {
     if (!data.length) {
       tablaEl.innerHTML = '<p style="text-align:center;color:#888;font-size:.85rem;padding:2rem 0;font-style:italic">No hay pedidos cobrados en este período.</p>';
       // Igual renderizar cuadre de caja aunque no haya cobrados
-      await _renderCuadreCaja(periodo, hoyISO, SC);
+      await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC);
       return;
     }
 
@@ -1133,10 +1190,10 @@ window.VistaAdmin = (function () {
         </tbody>
       </table>`;
 
-    await _renderCuadreCaja(periodo, hoyISO, SC);
+    await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC);
   }
 
-  async function _renderCuadreCaja(periodo, hoyISO, SC) {
+  async function _renderCuadreCaja(periodo, fechaSel, labelDia, SC) {
     const cuadreEl = document.getElementById('rep-cuadre-wrap');
     if (!cuadreEl) return;
     if (periodo !== 'hoy') { cuadreEl.innerHTML = ''; return; }
@@ -1144,7 +1201,7 @@ window.VistaAdmin = (function () {
     const { data: todosHoy } = await window.db
       .from('pedidos')
       .select('ped_id, ped_estado, usu_id')
-      .eq('ped_fecha', hoyISO);
+      .eq('ped_fecha', fechaSel);
 
     const todos         = todosHoy ?? [];
     const cobrados      = todos.filter(p => p.ped_estado === 'cobrado');
@@ -1184,7 +1241,7 @@ window.VistaAdmin = (function () {
     cuadreEl.innerHTML = `
       <div class="cuadre-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
-        Control de Caja — Hoy
+        Control de Caja — ${SC?.escapeHtml(labelDia) ?? labelDia}
       </div>
       <div class="cuadre-kpis">
         <div class="cuadre-kpi">
