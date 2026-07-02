@@ -5,6 +5,12 @@
  */
 window.VistaAdmin = (function () {
 
+  // Fecha local (YYYY-MM-DD) — toISOString() usa UTC y desfasa la fecha en
+  // zonas horarias detrás de UTC (p.ej. Ecuador, UTC-5) durante la noche.
+  function _fechaLocalISO(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
 
@@ -74,7 +80,7 @@ window.VistaAdmin = (function () {
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)))
     `;
 
-    const hoy = new Date().toISOString().slice(0, 10);
+    const hoy = _fechaLocalISO();
     const { data, error } = await window.db
       .from('pedidos')
       .select(PED_SEL)
@@ -205,7 +211,7 @@ window.VistaAdmin = (function () {
     } catch (_) {}
     // Contar pedidos pendientes del día
     try {
-      const hoy = new Date().toISOString().slice(0, 10);
+      const hoy = _fechaLocalISO();
       const { data: peds } = await window.db.from('pedidos').select('ped_id')
         .gte('ped_fecha', hoy).in('ped_estado', ['pendiente', 'en_proceso']);
       const pendientes = peds?.length ?? 0;
@@ -763,7 +769,7 @@ window.VistaAdmin = (function () {
     kpisEl.innerHTML = '<p class="usu-cargando" style="grid-column:1/-1">Cargando reportes…</p>';
 
     const hoy    = new Date();
-    const hoyISO = hoy.toISOString().slice(0, 10);
+    const hoyISO = _fechaLocalISO(hoy);
 
     let desdeStr, periodoLabel, chartTitleVentas, tablaTitulo;
     if (periodo === 'hoy') {
@@ -773,13 +779,13 @@ window.VistaAdmin = (function () {
       tablaTitulo      = 'Pedidos cobrados hoy';
     } else if (periodo === 'semana') {
       const d = new Date(hoy); d.setDate(d.getDate() - 6);
-      desdeStr         = d.toISOString().slice(0, 10);
+      desdeStr         = _fechaLocalISO(d);
       periodoLabel     = '7 días';
       chartTitleVentas = 'Ventas últimos 7 días';
       tablaTitulo      = 'Pedidos — últimos 7 días';
     } else {
       const d = new Date(hoy); d.setDate(d.getDate() - 29);
-      desdeStr         = d.toISOString().slice(0, 10);
+      desdeStr         = _fechaLocalISO(d);
       periodoLabel     = '30 días';
       chartTitleVentas = 'Ventas últimos 30 días';
       tablaTitulo      = 'Pedidos — últimos 30 días';
@@ -873,7 +879,7 @@ window.VistaAdmin = (function () {
       for (let i = nDias - 1; i >= 0; i--) {
         const d = new Date(hoy);
         d.setDate(d.getDate() - i);
-        const isoFecha = d.toISOString().slice(0, 10);
+        const isoFecha = _fechaLocalISO(d);
         xLabels.push(d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' }));
         yValues.push(data.filter(p => p.ped_fecha === isoFecha).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
       }
@@ -1076,7 +1082,7 @@ window.VistaAdmin = (function () {
       btn.disabled = true;
       const SC = window.SC;
       const ahora = new Date();
-      const fecha = ahora.toISOString().slice(0, 10);
+      const fecha = _fechaLocalISO(ahora);
       const hora  = ahora.toTimeString().slice(0, 8);
       const session = window.ModuloAutenticacion?.getSession?.();
       const { error } = await window.db.from('gastos').insert({
@@ -1147,9 +1153,7 @@ window.VistaAdmin = (function () {
     document.getElementById('ef-nombre').value         = emp?.usu_nombre        ?? '';
     document.getElementById('ef-apellido').value       = emp?.usu_apellido      ?? '';
     document.getElementById('ef-rol').value            = emp?.rol_id            ?? 'rol002';
-    const _hoy = new Date();
-    const _fechaHoy = `${_hoy.getFullYear()}-${String(_hoy.getMonth()+1).padStart(2,'0')}-${String(_hoy.getDate()).padStart(2,'0')}`;
-    document.getElementById('ef-fecha-ingreso').value  = emp?.emp_fecha_ingreso ?? _fechaHoy;
+    document.getElementById('ef-fecha-ingreso').value  = emp?.emp_fecha_ingreso ?? _fechaLocalISO();
     document.getElementById('ef-telefono').value       = emp?.usu_telefono      ?? '';
     document.getElementById('ef-email').value          = emp?.usu_email         ?? '';
     document.getElementById('ef-usuario').value        = emp?.usu_usuario       ?? '';

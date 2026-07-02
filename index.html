@@ -1149,6 +1149,12 @@
     return d.toLocaleDateString('es-EC', { year: 'numeric', month: '2-digit', day: '2-digit' });
   }
 
+  // Fecha local (YYYY-MM-DD) — toISOString() usa UTC y desfasa la fecha en
+  // zonas horarias detrás de UTC (p.ej. Ecuador, UTC-5) durante la noche.
+  function _fechaLocalISO(d = new Date()) {
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   function _rowAPedido(r) {
     const esParaLlevar = r.ped_nombre_invitado === 'Para llevar' || r.ped_nombre_invitado?.startsWith('PL:');
     const llevarNombreDB = r.ped_nombre_invitado?.startsWith('PL:') ? r.ped_nombre_invitado.slice(3) : null;
@@ -1367,7 +1373,7 @@
         usu_id:           session?.id ?? null,
         gast_descripcion: descripcion,
         gast_monto:       monto,
-        gast_fecha:       new Date().toISOString().split('T')[0],
+        gast_fecha:       _fechaLocalISO(),
         gast_hora:        new Date().toTimeString().slice(0, 8)
       }).select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').single();
 
@@ -1442,7 +1448,7 @@
     }
 
     const hora  = new Date().toTimeString().slice(0, 8);
-    const fecha = new Date().toISOString().split('T')[0];
+    const fecha = _fechaLocalISO();
 
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
       mes_id:              mesaData?.mes_id ?? null,
