@@ -359,6 +359,18 @@
           <!-- pedidos generados por JS -->
         </div>
 
+        <div class="resumen-dia" id="cajero-cobrados-section">
+          <div class="resumen-dia__head">
+            <h3 class="resumen-dia__title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <rect x="3" y="3" width="18" height="18" rx="2"/><path d="M3 9h18M9 21V9"/>
+              </svg>
+              Cobrados hoy
+            </h3>
+          </div>
+          <div id="cajero-cobrados-wrap"><!-- tabla generada por JS --></div>
+        </div>
+
       </div>
     </div>
 
@@ -1209,6 +1221,8 @@
       ?? (r.usu_id
         ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
         : (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado')));
+    const factura = Array.isArray(r.facturas) ? r.facturas[0] : r.facturas;
+    const pago    = factura ? (Array.isArray(factura.pagos) ? factura.pagos[0] : factura.pagos) : null;
     return {
       id:            r.ped_id,
       mesa:          esParaLlevar ? 'Para llevar' : (r.mesas?.mes_numero ?? null),
@@ -1234,7 +1248,10 @@
       iva:       parseFloat(r.ped_iva      ?? 0),
       subtotal:  parseFloat(r.ped_subtotal ?? 0),
       cobradoEn: r.ped_cobrado_en ?? null,
-      createdAt: r.ped_created_at ?? null
+      createdAt: r.ped_created_at ?? null,
+      factNumero:       factura?.fact_numero ?? null,
+      factEmail:        factura?.fact_email  ?? null,
+      metodoPagoNombre: pago?.metodos_pago?.metodo_nombre ?? null
     };
   }
 
@@ -1243,7 +1260,8 @@
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
     usu_id, mes_id,
     mesas(mes_numero),
-    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre)))
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre))),
+    facturas(fact_numero, fact_email, pagos(metodos_pago(metodo_nombre)))
   `;
 
   function _mapGasto(r) {
@@ -1579,6 +1597,13 @@
     return _caja;
   }
 
+  const _METODO_NOMBRE = {
+    met001: 'Efectivo',
+    met002: 'Tarjeta de crédito',
+    met003: 'Tarjeta de débito',
+    met004: 'Transferencia'
+  };
+
   async function cobrarPedido(id, metodoPagoId, montoPagado, cambio, email) {
     clearTimeout(_pedidoUpdateTimers[id]);
     delete _pedidoUpdateTimers[id];
@@ -1614,7 +1639,15 @@
     }
 
     // Actualizar caché local
-    const entrada = { ...cobrado, fecha: _isoFechaALocale(fechaISO), cobradoEn: ahora, estado: 'cobrado' };
+    const entrada = {
+      ...cobrado,
+      fecha:            _isoFechaALocale(fechaISO),
+      cobradoEn:        ahora,
+      estado:           'cobrado',
+      factNumero:       resultado.fact_numero,
+      factEmail:        email || null,
+      metodoPagoNombre: _METODO_NOMBRE[metodoPagoId] || 'Efectivo'
+    };
     _historial.unshift(entrada);
     _caja = _caja.filter(x => String(x.id) !== String(id));
 

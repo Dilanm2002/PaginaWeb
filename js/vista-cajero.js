@@ -353,6 +353,7 @@ window.VistaCajero = (function () {
           <p>No hay pedidos pendientes</p>
           <small>Los pedidos enviados por los meseros y clientes aparecerán aquí</small>
         </div>`;
+      _renderCobradosHoy();
       return;
     }
 
@@ -441,6 +442,87 @@ window.VistaCajero = (function () {
         updatePedidoDisplay(pid, ped.items);
       }
     };
+
+    _renderCobradosHoy();
+  }
+
+  // "Cobrados hoy" — permite al cajero reimprimir o reenviar por correo la
+  // Nota de Venta de un pedido que ya cobró, sin necesitar el panel de admin
+  // (el rol cajero no tiene acceso a esa vista).
+  function _renderCobradosHoy() {
+    const SC = window.SC;
+    const wrap = document.getElementById('cajero-cobrados-wrap');
+    if (!wrap) return;
+
+    const hoy = _getFecha(0);
+    const cobrados = SC.leerHistorial().filter(h => h.fecha === hoy)
+      .sort((a, b) => new Date(b.cobradoEn || 0) - new Date(a.cobradoEn || 0));
+
+    if (!cobrados.length) {
+      wrap.innerHTML = `<p style="color:var(--text-muted);font-size:.88rem;padding:.5rem 0">Aún no hay pedidos cobrados hoy.</p>`;
+      return;
+    }
+
+    const _hora = h => h.cobradoEn ? new Date(h.cobradoEn).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const _acciones = h => `
+      <button class="btn-cobrado-nota" data-hid="${h.id}" title="Imprimir Nota de Venta">🖨️</button>
+      <button class="btn-cobrado-correo" data-hid="${h.id}" title="Enviar por correo">✉️</button>`;
+
+    wrap.innerHTML = `
+      <table class="resumen-tabla">
+        <thead>
+          <tr><th>Mesa</th><th>Cliente</th><th>Hora</th><th style="text-align:right">Total</th><th>Acciones</th></tr>
+        </thead>
+        <tbody>
+          ${cobrados.map(h => `
+            <tr>
+              <td><strong>${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</strong></td>
+              <td>${SC.escapeHtml(h.nombreUsuario)}</td>
+              <td class="td-hora">${_hora(h)}</td>
+              <td class="td-total">$${h.total.toFixed(2)}</td>
+              <td style="white-space:nowrap">${_acciones(h)}</td>
+            </tr>`).join('')}
+        </tbody>
+      </table>
+      <div class="resumen-cards">
+        ${cobrados.map(h => `
+          <div class="resumen-card">
+            <div class="resumen-card__head">
+              <span class="resumen-card__mesa">${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</span>
+              <span class="resumen-card__total">$${h.total.toFixed(2)}</span>
+            </div>
+            <div class="resumen-card__body">
+              <div class="resumen-card__cliente">${SC.escapeHtml(h.nombreUsuario)}</div>
+              <div class="resumen-card__hora">${_hora(h)}</div>
+              <div style="display:flex;gap:.5rem;margin-top:.5rem">${_acciones(h)}</div>
+            </div>
+          </div>`).join('')}
+      </div>`;
+
+    wrap.querySelectorAll('.btn-cobrado-nota').forEach(btn => {
+      btn.onclick = () => {
+        const h = cobrados.find(x => String(x.id) === String(btn.dataset.hid));
+        if (!h) return;
+        imprimirNotaVenta(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn);
+      };
+    });
+
+    wrap.querySelectorAll('.btn-cobrado-correo').forEach(btn => {
+      btn.onclick = async () => {
+        const h = cobrados.find(x => String(x.id) === String(btn.dataset.hid));
+        if (!h) return;
+        const email = window.prompt('Correo para enviar la Nota de Venta:', h.factEmail || '');
+        if (email === null) return;
+        const emailLimpio = email.trim();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailLimpio)) {
+          SC.toast('Ingresa un correo electrónico válido', 'error');
+          return;
+        }
+        btn.disabled = true;
+        await enviarNotaVentaPorCorreo(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn, emailLimpio);
+        btn.disabled = false;
+      };
+    });
   }
 
   /* ─────────────────────────────────────────────────────

@@ -1284,6 +1284,13 @@
     .resumen-tabla .td-total { font-weight: 700; color: var(--cinnamon); text-align: right; vertical-align: top; white-space: nowrap; }
     .resumen-tabla .td-hora  { color: var(--text-muted); font-size: .78rem; white-space: nowrap; }
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
+    .btn-cobrado-nota, .btn-cobrado-correo {
+      border: 1.5px solid var(--border); background: var(--white); border-radius: 6px;
+      width: 30px; height: 30px; font-size: .9rem; cursor: pointer; line-height: 1;
+      transition: border-color .15s, background .15s;
+    }
+    .btn-cobrado-nota:hover, .btn-cobrado-correo:hover { border-color: var(--cinnamon); background: #fef5eb; }
+    .btn-cobrado-nota:disabled, .btn-cobrado-correo:disabled { opacity: .5; cursor: not-allowed; }
     .resumen-cards { display: none; flex-direction: column; gap: .75rem; }
     .resumen-card {
       background: var(--white);
