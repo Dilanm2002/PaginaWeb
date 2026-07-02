@@ -18,12 +18,19 @@ window.ModuloVista = (function () {
     mensaje: /^[\s\S]{10,500}$/
   };
 
+  /* Detecta texto "de relleno" tipo "asdasdasd" o "aaaaaa": una secuencia
+     de 1-4 caracteres que se repite 3 o más veces seguidas. No detecta
+     palabras reales repetidas (p.ej. "gracias gracias"), esas quedan bien. */
+  const _esTextoRepetitivo = val => /(.{1,4})\1{2,}/i.test(val);
+
   /* ── Definición de campos del formulario ── */
   const CAMPOS = [
-    { id: 'cf-nombre', regex: REGEX.nombre,  required: true,  msg: 'Ingresa un nombre válido (solo letras, mín. 2 caracteres).' },
+    { id: 'cf-nombre', regex: REGEX.nombre,  required: true,  msg: 'Ingresa un nombre válido (solo letras, mín. 2 caracteres).',
+      extra: _esTextoRepetitivo, extraMsg: 'Ese nombre no parece válido, ingresa tu nombre real.' },
     { id: 'cf-email',  regex: REGEX.email,   required: true,  msg: 'Solo se aceptan correos de Gmail, Yahoo, Outlook o Hotmail.' },
     { id: 'cf-tel',    regex: REGEX.tel,     required: false, msg: 'Teléfono inválido. Usa formato ecuatoriano (ej: 0991234567).' },
-    { id: 'cf-msg',    regex: REGEX.mensaje,  required: true,  msg: 'El mensaje debe tener entre 10 y 500 caracteres.' }
+    { id: 'cf-msg',    regex: REGEX.mensaje,  required: true,  msg: 'El mensaje debe tener entre 10 y 500 caracteres.',
+      extra: _esTextoRepetitivo, extraMsg: 'Escribe un mensaje real, no texto repetido.' }
   ];
 
   /**
@@ -148,30 +155,38 @@ window.ModuloVista = (function () {
     errEl.style.display = 'none';
   };
 
+  /* Valida un campo contra sus reglas (requerido, regex, chequeo extra).
+     Devuelve null si es válido, o el mensaje de error si no lo es. */
+  const _validarCampo = ({ regex, required, msg, extra, extraMsg }, val) => {
+    if (!required && !val) return null;
+    if (required  && !val) return 'Este campo es obligatorio.';
+    if (!regex.test(val))  return msg;
+    if (extra && extra(val)) return extraMsg;
+    return null;
+  };
+
   /* ── Inicialización de la validación ── */
   const _initValidacion = form => {
     if (!form) return;
 
     /* Validación al perder el foco (blur) */
-    CAMPOS.forEach(({ id, regex, required, msg }) => {
+    CAMPOS.forEach(campo => {
+      const { id } = campo;
       const inp = form.querySelector(`#${id}`);
       const err = form.querySelector(`#${id}-err`);
       if (!inp || !err) return;
 
       inp.addEventListener('blur', () => {
         const val = (id === 'cf-msg') ? inp.value : inp.value.trim();
-        if (!required && !val) { _clearError(inp, err); return; }
-        if (required  && !val) { _setError(inp, err, 'Este campo es obligatorio.'); return; }
-        if (!regex.test(val))  { _setError(inp, err, msg); return; }
-        _clearError(inp, err);
+        const error = _validarCampo(campo, val);
+        if (error) _setError(inp, err, error); else _clearError(inp, err);
       });
 
       /* Limpia el error en tiempo real cuando el valor ya es correcto */
       inp.addEventListener('input', () => {
         if (inp.getAttribute('aria-invalid') !== 'true') return;
         const val = (id === 'cf-msg') ? inp.value : inp.value.trim();
-        if (!required && !val) { _clearError(inp, err); return; }
-        if (val && regex.test(val)) _clearError(inp, err);
+        if (!_validarCampo(campo, val)) _clearError(inp, err);
       });
     });
 
@@ -180,16 +195,15 @@ window.ModuloVista = (function () {
       e.preventDefault();
       let valido = true;
 
-      CAMPOS.forEach(({ id, regex, required, msg }) => {
+      CAMPOS.forEach(campo => {
+        const { id } = campo;
         const inp = form.querySelector(`#${id}`);
         const err = form.querySelector(`#${id}-err`);
         if (!inp || !err) return;
         const val = (id === 'cf-msg') ? inp.value : inp.value.trim();
 
-        if (!required && !val) { _clearError(inp, err); return; }
-        if (required  && !val) { _setError(inp, err, 'Este campo es obligatorio.'); valido = false; return; }
-        if (!regex.test(val))  { _setError(inp, err, msg); valido = false; return; }
-        _clearError(inp, err);
+        const error = _validarCampo(campo, val);
+        if (error) { _setError(inp, err, error); valido = false; } else { _clearError(inp, err); }
       });
 
       if (!valido) {
