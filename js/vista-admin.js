@@ -998,7 +998,7 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, usu_id, usuarios(usu_nombre)')
+      .select('ped_id, ped_estado, usu_id')
       .eq('ped_fecha', hoyISO);
 
     const todos         = todosHoy ?? [];
@@ -1008,10 +1008,14 @@ window.VistaAdmin = (function () {
     const totalCobrados = cobrados.length;
     const diferencia    = totalCreados - totalCobrados;
 
+    // usuarios(usu_nombre) vía join anidado de PostgREST queda bloqueado por
+    // RLS para usuarios que no son el propio — usamos la lista ya cargada
+    // vía la RPC listar_usuarios() (SECURITY DEFINER), igual que en el resto del panel.
+    const usuariosCache = window.ModuloAutenticacion.leerUsuarios();
     const porMesero = {};
     todos.forEach(p => {
       const key    = p.usu_id ?? '__invitado__';
-      const nombre = p.usuarios?.usu_nombre ?? (p.usu_id ? p.usu_id : 'Invitado / Cliente');
+      const nombre = p.usu_id ? (usuariosCache.find(u => u.id === p.usu_id)?.nombre ?? p.usu_id) : 'Invitado / Cliente';
       if (!porMesero[key]) porMesero[key] = { nombre, creados: 0, cobrados: 0 };
       porMesero[key].creados++;
       if (p.ped_estado === 'cobrado') porMesero[key].cobrados++;
