@@ -1512,9 +1512,16 @@
 
   async function eliminarGasto(gastoId) {
     const session = ModuloAutenticacion.getSession();
+    const gastoPrevio = _gastos.find(g => g.id === gastoId) ?? null;
     _gastos = _gastos.filter(g => g.id !== gastoId);
     const { error } = await db.rpc('eliminar_gasto_staff', { p_token: session?.token ?? null, p_gasto_id: gastoId });
-    if (error) console.error('Supabase eliminar_gasto_staff (RPC):', error);
+    if (error) {
+      console.error('Supabase eliminar_gasto_staff (RPC):', error);
+      toast('Error al eliminar gasto', 'error');
+      if (gastoPrevio) _gastos.push(gastoPrevio);
+      return false;
+    }
+    return true;
   }
 
   async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false }) {

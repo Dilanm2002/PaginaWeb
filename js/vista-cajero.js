@@ -488,8 +488,10 @@ window.VistaCajero = (function () {
 
     const _hora = h => h.cobradoEn ? new Date(h.cobradoEn).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }) : '—';
     const _acciones = h => `
-      <button class="btn-cobrado-nota" data-hid="${h.id}">🖨️ Imprimir</button>
-      <button class="btn-cobrado-correo" data-hid="${h.id}">✉️ Enviar</button>`;
+      <div style="display:flex;gap:.6rem">
+        <button class="btn-cobrado-nota" data-hid="${h.id}">🖨️ Imprimir</button>
+        <button class="btn-cobrado-correo" data-hid="${h.id}">✉️ Enviar</button>
+      </div>`;
 
     wrap.innerHTML = `
       <table class="resumen-tabla">
