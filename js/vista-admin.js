@@ -11,6 +11,15 @@ window.VistaAdmin = (function () {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // Lunes de la semana calendario que contiene `d` (negocio opera lun-vie).
+  function _lunesDeSemana(d) {
+    const dow  = d.getDay(); // 0=Dom .. 6=Sáb
+    const diff = dow === 0 ? 6 : dow - 1;
+    const lunes = new Date(d);
+    lunes.setDate(lunes.getDate() - diff);
+    return lunes;
+  }
+
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
 
@@ -886,22 +895,29 @@ window.VistaAdmin = (function () {
 
     const hoy    = new Date();
     const hoyISO = _fechaLocalISO(hoy);
+    const dowHoy = hoy.getDay(); // 0=Dom .. 6=Sáb
 
-    let desdeStr, periodoLabel, chartTitleVentas, tablaTitulo;
+    let desdeStr, hastaStr, periodoLabel, chartTitleVentas, tablaTitulo;
     if (periodo === 'hoy') {
-      desdeStr         = hoyISO;
+      desdeStr = hoyISO; hastaStr = hoyISO;
       periodoLabel     = 'hoy';
       chartTitleVentas = 'Ventas por hora (hoy)';
       tablaTitulo      = 'Pedidos cobrados hoy';
     } else if (periodo === 'semana') {
-      const d = new Date(hoy); d.setDate(d.getDate() - 6);
-      desdeStr         = _fechaLocalISO(d);
-      periodoLabel     = '7 días';
-      chartTitleVentas = 'Ventas últimos 7 días';
-      tablaTitulo      = 'Pedidos — últimos 7 días';
+      // Semana laboral lun-vie: desde el lunes de esta semana hasta hoy
+      // (o hasta el viernes si hoy es sábado/domingo, ya que no se opera esos días).
+      const lunes   = _lunesDeSemana(hoy);
+      const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
+      const hastaDate = (dowHoy === 0 || dowHoy === 6) ? viernes : hoy;
+      desdeStr         = _fechaLocalISO(lunes);
+      hastaStr         = _fechaLocalISO(hastaDate);
+      periodoLabel     = 'semana laboral';
+      chartTitleVentas = 'Ventas semana laboral (lun-vie)';
+      tablaTitulo      = 'Pedidos — semana laboral';
     } else {
       const d = new Date(hoy); d.setDate(d.getDate() - 29);
       desdeStr         = _fechaLocalISO(d);
+      hastaStr         = hoyISO;
       periodoLabel     = '30 días';
       chartTitleVentas = 'Ventas últimos 30 días';
       tablaTitulo      = 'Pedidos — últimos 30 días';
@@ -917,6 +933,7 @@ window.VistaAdmin = (function () {
       .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre))')
       .eq('ped_estado', 'cobrado')
       .gte('ped_fecha', desdeStr)
+      .lte('ped_fecha', hastaStr)
       .order('ped_cobrado_en', { ascending: false });
 
     if (errPed) {
@@ -988,8 +1005,20 @@ window.VistaAdmin = (function () {
           if (idx >= 0 && idx < 18) yValues[idx] += parseFloat(p.ped_total) || 0;
         }
       });
+    } else if (periodo === 'semana') {
+      // Un punto por cada día lun-vie entre desdeStr y hastaStr (rango ya calculado arriba)
+      xLabels = [];
+      yValues = [];
+      const cursor = new Date(desdeStr + 'T00:00:00');
+      const hastaDate = new Date(hastaStr + 'T00:00:00');
+      while (cursor <= hastaDate) {
+        const isoFecha = _fechaLocalISO(cursor);
+        xLabels.push(cursor.toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit' }));
+        yValues.push(data.filter(p => p.ped_fecha === isoFecha).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
+        cursor.setDate(cursor.getDate() + 1);
+      }
     } else {
-      const nDias = periodo === 'semana' ? 7 : 30;
+      const nDias = 30;
       xLabels = [];
       yValues = [];
       for (let i = nDias - 1; i >= 0; i--) {
