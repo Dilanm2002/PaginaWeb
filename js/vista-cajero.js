@@ -9,6 +9,8 @@ window.VistaCajero = (function () {
   let _diaOffset = 0;
   let _pedidoParaCobrar = null;
   let _ultimoCobro = null; // { pedido, factNumero, metodoPagoNombre, montoPagado, cambio }
+  let _correoNotaCtx = null; // { pedido, factNumero, metodoPagoNombre, fechaCobro }
+  let _gastoAEliminar = null;
 
   const METODO_NOMBRE = {
     met001: 'Efectivo',
@@ -140,7 +142,7 @@ window.VistaCajero = (function () {
         <thead>
           <tr>
             <th>Descripción</th><th>Fecha</th><th>Hora</th>
-            <th style="text-align:right">Monto</th><th></th>
+            <th style="text-align:right">Monto</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody>
@@ -152,19 +154,40 @@ window.VistaCajero = (function () {
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
-              <td class="td-del"><button class="gasto-del-btn" data-del-id="${g.id}" aria-label="Eliminar gasto">✕</button></td>
+              <td class="td-del"><button class="gasto-del-btn" data-del-id="${g.id}">🗑️ Eliminar</button></td>
             </tr>`).join('')}
         </tbody>
       </table>`;
 
     listaEl.querySelectorAll('.gasto-del-btn').forEach(btn => {
-      btn.onclick = async () => {
-        const id = btn.dataset.delId;
-        btn.disabled = true;
-        await SC.eliminarGasto(id);
-        renderGastos();
+      btn.onclick = () => {
+        const g = gastos.find(x => String(x.id) === String(btn.dataset.delId));
+        if (!g) return;
+        _abrirModalEliminarGasto(g);
       };
     });
+  }
+
+  function _abrirModalEliminarGasto(gasto) {
+    _gastoAEliminar = gasto;
+    const infoEl = document.getElementById('eliminar-gasto-info');
+    if (infoEl) infoEl.innerHTML = `¿Seguro que deseas eliminar el gasto <strong>"${window.SC.escapeHtml(gasto.descripcion)}"</strong> de <strong>$${gasto.monto.toFixed(2)}</strong>? Esta acción no se puede deshacer.`;
+    const backdrop = document.getElementById('confirmar-eliminar-gasto-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+    }
+  }
+
+  function _cerrarModalEliminarGasto() {
+    const backdrop = document.getElementById('confirmar-eliminar-gasto-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    _gastoAEliminar = null;
   }
 
   function renderStock() {
@@ -465,8 +488,8 @@ window.VistaCajero = (function () {
 
     const _hora = h => h.cobradoEn ? new Date(h.cobradoEn).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }) : '—';
     const _acciones = h => `
-      <button class="btn-cobrado-nota" data-hid="${h.id}" title="Imprimir Nota de Venta">🖨️</button>
-      <button class="btn-cobrado-correo" data-hid="${h.id}" title="Enviar por correo">✉️</button>`;
+      <button class="btn-cobrado-nota" data-hid="${h.id}">🖨️ Imprimir</button>
+      <button class="btn-cobrado-correo" data-hid="${h.id}">✉️ Enviar</button>`;
 
     wrap.innerHTML = `
       <table class="resumen-tabla">
@@ -508,21 +531,43 @@ window.VistaCajero = (function () {
     });
 
     wrap.querySelectorAll('.btn-cobrado-correo').forEach(btn => {
-      btn.onclick = async () => {
+      btn.onclick = () => {
         const h = cobrados.find(x => String(x.id) === String(btn.dataset.hid));
         if (!h) return;
-        const email = window.prompt('Correo para enviar la Nota de Venta:', h.factEmail || '');
-        if (email === null) return;
-        const emailLimpio = email.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailLimpio)) {
-          SC.toast('Ingresa un correo electrónico válido', 'error');
-          return;
-        }
-        btn.disabled = true;
-        await enviarNotaVentaPorCorreo(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn, emailLimpio);
-        btn.disabled = false;
+        abrirModalCorreoNota(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn, h.factEmail || '');
       };
     });
+  }
+
+  /* ─────────────────────────────────────────────────────
+     MODAL: ENVIAR NOTA DE VENTA POR CORREO
+  ───────────────────────────────────────────────────── */
+  function abrirModalCorreoNota(pedido, factNumero, metodoPagoNombre, fechaCobro, emailDefault) {
+    const SC = window.SC;
+    _correoNotaCtx = { pedido, factNumero, metodoPagoNombre, fechaCobro };
+
+    const input = document.getElementById('correo-nota-input');
+    const errEl = document.getElementById('correo-nota-error');
+    if (input) input.value = emailDefault || '';
+    if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+
+    const backdrop = document.getElementById('correo-nota-modal-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = 'hidden';
+      setTimeout(() => input?.focus(), 100);
+    }
+  }
+
+  function _cerrarModalCorreoNota() {
+    const backdrop = document.getElementById('correo-nota-modal-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = '';
+    }
+    _correoNotaCtx = null;
   }
 
   /* ─────────────────────────────────────────────────────
@@ -929,7 +974,66 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         imprimirNotaVenta(_ultimoCobro.pedido, _ultimoCobro.factNumero, _ultimoCobro.metodoPagoNombre);
       }
     });
+
+    /* ── Modal enviar nota por correo ── */
+    const correoNotaBackdrop  = document.getElementById('correo-nota-modal-backdrop');
+    const btnCerrarCorreoNota = document.getElementById('btn-cerrar-correo-nota-modal');
+    const btnCancelarCorreoNota = document.getElementById('btn-cancelar-correo-nota');
+    const btnConfirmarCorreoNota = document.getElementById('btn-confirmar-correo-nota');
+    const correoNotaInput = document.getElementById('correo-nota-input');
+    const correoNotaError = document.getElementById('correo-nota-error');
+
+    if (btnCerrarCorreoNota)   btnCerrarCorreoNota.addEventListener('click', _cerrarModalCorreoNota);
+    if (btnCancelarCorreoNota) btnCancelarCorreoNota.addEventListener('click', _cerrarModalCorreoNota);
+    if (correoNotaInput) {
+      correoNotaInput.addEventListener('keydown', e => {
+        if (e.key === 'Enter') btnConfirmarCorreoNota?.click();
+      });
+    }
+    if (btnConfirmarCorreoNota) {
+      btnConfirmarCorreoNota.addEventListener('click', async () => {
+        const SC = window.SC;
+        if (!_correoNotaCtx) return;
+        const email = correoNotaInput?.value.trim() ?? '';
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) {
+          if (correoNotaError) { correoNotaError.textContent = 'Ingresa un correo electrónico válido.'; correoNotaError.style.display = 'block'; }
+          correoNotaInput?.focus();
+          return;
+        }
+        const { pedido, factNumero, metodoPagoNombre, fechaCobro } = _correoNotaCtx;
+        btnConfirmarCorreoNota.disabled    = true;
+        btnConfirmarCorreoNota.textContent = 'Enviando…';
+        const ok = await enviarNotaVentaPorCorreo(pedido, factNumero, metodoPagoNombre, fechaCobro, email);
+        btnConfirmarCorreoNota.disabled    = false;
+        btnConfirmarCorreoNota.textContent = '✉️ Enviar';
+        if (ok) _cerrarModalCorreoNota();
+      });
+    }
+
+    /* ── Modal confirmar eliminar gasto ── */
+    const btnCerrarElimGasto     = document.getElementById('btn-cerrar-eliminar-gasto');
+    const btnCancelarElimGasto   = document.getElementById('btn-cancelar-eliminar-gasto');
+    const btnConfirmarElimGasto  = document.getElementById('btn-confirmar-eliminar-gasto');
+
+    if (btnCerrarElimGasto)   btnCerrarElimGasto.addEventListener('click', _cerrarModalEliminarGasto);
+    if (btnCancelarElimGasto) btnCancelarElimGasto.addEventListener('click', _cerrarModalEliminarGasto);
+    if (btnConfirmarElimGasto) {
+      btnConfirmarElimGasto.addEventListener('click', async () => {
+        if (!_gastoAEliminar) return;
+        const id = _gastoAEliminar.id;
+        btnConfirmarElimGasto.disabled    = true;
+        btnConfirmarElimGasto.textContent = 'Eliminando…';
+        await window.SC.eliminarGasto(id);
+        btnConfirmarElimGasto.disabled    = false;
+        btnConfirmarElimGasto.textContent = '🗑️ Eliminar';
+        _cerrarModalEliminarGasto();
+        renderGastos();
+      });
+    }
   }
 
-  return { renderCajeroView, renderResumenDia, renderGastos, renderStock, init, imprimirNotaVenta, enviarNotaVentaPorCorreo };
+  return {
+    renderCajeroView, renderResumenDia, renderGastos, renderStock, init,
+    imprimirNotaVenta, enviarNotaVentaPorCorreo, abrirModalCorreoNota
+  };
 })();

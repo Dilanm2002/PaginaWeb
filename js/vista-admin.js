@@ -364,25 +364,13 @@ window.VistaAdmin = (function () {
     });
 
     el.querySelectorAll('.btn-enviar-nota').forEach(btn => {
-      btn.onclick = async () => {
+      btn.onclick = () => {
         const p = pedidos.find(x => String(x.ped_id) === String(btn.dataset.pid));
         if (!p) return;
         const factura = _factura(p);
         const emailDefault = factura?.fact_email || users.find(u => u.id === p.usu_id)?.email || '';
-        const email = window.prompt('Correo para enviar la Nota de Venta:', emailDefault);
-        if (email === null) return;
-        const emailLimpio = email.trim();
-        if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(emailLimpio)) {
-          SC.toast('Ingresa un correo electrónico válido', 'error');
-          return;
-        }
-        btn.disabled = true;
-        const textoOriginal = btn.textContent;
-        btn.textContent = 'Enviando…';
         const factNumero = factura?.fact_numero ?? 'FACT-000000';
-        await window.VistaCajero?.enviarNotaVentaPorCorreo(_pedidoShaped(p), factNumero, _metodoNombre(p), p.ped_cobrado_en, emailLimpio);
-        btn.disabled = false;
-        btn.textContent = textoOriginal;
+        window.VistaCajero?.abrirModalCorreoNota(_pedidoShaped(p), factNumero, _metodoNombre(p), p.ped_cobrado_en, emailDefault);
       };
     });
   }

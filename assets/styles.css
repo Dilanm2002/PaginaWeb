@@ -1233,14 +1233,15 @@
     .gastos-tabla .td-desc { font-weight: 500; }
     .gastos-tabla .td-hora  { color: #a07850; font-size: .78rem; white-space: nowrap; }
     .gastos-tabla .td-monto { font-weight: 800; color: #dc2626; font-size: .92rem; text-align: right; }
-    .gastos-tabla .td-del   { width: 44px; text-align: center; }
+    .gastos-tabla .td-del   { width: auto; text-align: center; }
     .gasto-del-btn {
-      width: 28px; height: 28px; border-radius: 50%;
+      border-radius: 6px; padding: .4rem .65rem;
       border: 1.5px solid #fca5a5; background: #fef2f2; color: #dc2626;
-      font-size: .75rem; cursor: pointer; display: inline-flex; align-items: center;
-      justify-content: center; transition: all .18s;
+      font-size: .78rem; font-weight: 600; cursor: pointer; white-space: nowrap;
+      display: inline-flex; align-items: center; justify-content: center; gap: .3rem;
+      transition: all .18s;
     }
-    .gasto-del-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; transform: scale(1.1); }
+    .gasto-del-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
     .gastos-empty {
       padding: 4rem 2rem; text-align: center;
       color: #b89a82; font-size: .9rem;
@@ -1286,7 +1287,8 @@
     .resumen-empty { color: var(--text-muted); font-style: italic; font-size: .88rem; padding: .5rem 0; }
     .btn-cobrado-nota, .btn-cobrado-correo {
       border: 1.5px solid var(--border); background: var(--white); border-radius: 6px;
-      width: 30px; height: 30px; font-size: .9rem; cursor: pointer; line-height: 1;
+      padding: .4rem .65rem; font-size: .78rem; font-weight: 600; color: var(--brown-dark);
+      cursor: pointer; line-height: 1; white-space: nowrap;
       transition: border-color .15s, background .15s;
     }
     .btn-cobrado-nota:hover, .btn-cobrado-correo:hover { border-color: var(--cinnamon); background: #fef5eb; }
