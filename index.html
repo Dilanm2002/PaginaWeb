@@ -1920,15 +1920,25 @@
   }
 
   async function guardarMenuItemDB(item) {
-    if (item.imagen?.startsWith('data:image')) {
-      item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id || 'nuevo') };
-    } else {
-      // Sin imagen (ahora es opcional) — normalizar null a '' para que nada
-      // intente cargar una imagen desde la URL literal "null".
-      item = { ...item, imagen: item.imagen ?? '' };
-    }
+    // Subir imagen, resolver categoría y resolver/crear ingredientes en
+    // paralelo — ninguna de las tres depende de las otras, y antes corrían
+    // una tras otra (además de los ingredientes, que iban uno por uno).
+    const nombresIngUnicos = Array.isArray(item.ingredientes) && item.ingredientes.length > 0
+      ? [...new Set(
+          item.ingredientes
+            .map(ingRaw => (typeof ingRaw === 'string' ? ingRaw.trim() : ingRaw.nombre))
+            .filter(Boolean)
+        )]
+      : [];
 
-    const catId = await _obtenerOCrearCategoria(item.categoria);
+    const [imagenFinal, catId, ingIds] = await Promise.all([
+      item.imagen?.startsWith('data:image')
+        ? subirImagenStorage(item.imagen, item.id || 'nuevo')
+        : Promise.resolve(item.imagen ?? ''), // '' en vez de null: nada debe pedir la URL literal "null"
+      _obtenerOCrearCategoria(item.categoria),
+      Promise.all(nombresIngUnicos.map(_obtenerOCrearIngrediente))
+    ]);
+    item = { ...item, imagen: imagenFinal };
 
     const platDataBase = {
       cat_id:           catId,
@@ -1978,17 +1988,22 @@
       else if (diff < 0) await actualizarStock(platId, Math.abs(diff));
     }
 
-    // Ingredientes
+    // Ingredientes — ya resueltos/creados en paralelo arriba; solo falta
+    // enlazarlos al plato, en un solo insert por lote.
     const ingredientesConId = [];
-    if (Array.isArray(item.ingredientes) && item.ingredientes.length > 0) {
+    if (nombresIngUnicos.length > 0) {
       await db.from('plato_ingredientes').delete().eq('plat_id', platId);
-      for (const ingRaw of item.ingredientes) {
-        const ingNombre = typeof ingRaw === 'string' ? ingRaw.trim() : ingRaw.nombre;
-        const ingId = await _obtenerOCrearIngrediente(ingNombre);
-        if (ingId) {
-          await db.from('plato_ingredientes').insert({ plat_id: platId, ing_id: ingId });
-          ingredientesConId.push({ id: ingId, nombre: ingNombre });
+
+      const filas = [];
+      nombresIngUnicos.forEach((nombre, i) => {
+        if (ingIds[i]) {
+          filas.push({ plat_id: platId, ing_id: ingIds[i] });
+          ingredientesConId.push({ id: ingIds[i], nombre });
         }
+      });
+      if (filas.length) {
+        const { error: ingError } = await db.from('plato_ingredientes').insert(filas);
+        if (ingError) console.error('Supabase insert plato_ingredientes:', ingError);
       }
     }
 
