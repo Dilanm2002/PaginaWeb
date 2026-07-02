@@ -186,7 +186,7 @@ BEGIN
   END IF;
 
   INSERT INTO gastos (usu_id, gast_descripcion, gast_monto, gast_fecha, gast_hora)
-  VALUES (v_usu_id, p_descripcion, p_monto, p_fecha, p_hora)
+  VALUES (v_usu_id, p_descripcion, p_monto, p_fecha, p_hora::TIME)
   RETURNING gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id
   INTO v_gasto;
 
