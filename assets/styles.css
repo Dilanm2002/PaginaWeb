@@ -2593,7 +2593,7 @@
 
   /* KPI grid */
   .reportes-kpis {
-    display: grid; grid-template-columns: repeat(4,1fr); gap: 1rem; margin-bottom: 1.5rem;
+    display: grid; grid-template-columns: repeat(3,1fr); gap: 1rem; margin-bottom: 1.5rem;
   }
   .reportes-kpi {
     background: #fff; border-radius: 14px;

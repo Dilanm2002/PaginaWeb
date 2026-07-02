@@ -307,22 +307,15 @@ window.VistaCajero = (function () {
   }
 
   function updatePedidoDisplay(pid, items) {
-    const SC  = window.SC;
-    const IVA = SC.IVA;
+    const SC = window.SC;
     items.forEach((it, idx) => {
       const qEl = document.getElementById(`qty-${pid}-${idx}`);
       const pEl = document.getElementById(`item-price-${pid}-${idx}`);
       if (qEl) qEl.textContent = it.cantidad;
       if (pEl) pEl.textContent = `$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}`;
     });
-    const total    = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-    const iva      = total * (IVA / (1 + IVA));
-    const subtotal = total - iva;
-    const subEl   = document.getElementById(`card-sub-${pid}`);
-    const ivaEl   = document.getElementById(`card-iva-${pid}`);
+    const total   = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
     const totalEl = document.getElementById(`card-total-${pid}`);
-    if (subEl)   subEl.textContent   = `$${subtotal.toFixed(2)}`;
-    if (ivaEl)   ivaEl.textContent   = `$${iva.toFixed(2)}`;
     if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
     /* actualizar el total global del header */
     const allPedidos  = SC.leerCaja();
@@ -363,14 +356,11 @@ window.VistaCajero = (function () {
       return;
     }
 
-    const IVA       = SC.IVA;
     const ROL_LABEL = SC.ROL_LABEL;
 
     cajeroGrid.innerHTML = pedidos.map(p => {
-      const items    = Array.isArray(p.items) ? p.items : [];
-      const total    = p.total    || 0;
-      const iva      = p.iva      || 0;
-      const subtotal = p.subtotal || 0;
+      const items = Array.isArray(p.items) ? p.items : [];
+      const total = p.total || 0;
       return `
       <div class="cajero-order-card" role="listitem" data-pid="${p.id}">
         <div class="cajero-order-card__head">
@@ -399,8 +389,6 @@ window.VistaCajero = (function () {
           ${!items.length ? '<p style="color:var(--text-muted);font-size:.85rem;padding:.25rem 0">Sin detalle de ítems</p>' : ''}
         </div>
         <div class="cajero-order-subtotals">
-          <div><span>Subtotal</span><span id="card-sub-${p.id}">$${subtotal.toFixed(2)}</span></div>
-          <div class="iva-line"><span>IVA 0 %</span><span id="card-iva-${p.id}">$${iva.toFixed(2)}</span></div>
           <div class="total-line"><span>Total</span><span id="card-total-${p.id}">$${total.toFixed(2)}</span></div>
         </div>
         <div class="cajero-order-card__foot">
@@ -501,8 +489,7 @@ window.VistaCajero = (function () {
   ───────────────────────────────────────────────────── */
   function imprimirRecibo(pedido, factNumero, metodoPagoNombre, montoPagado, cambio) {
     const SC = window.SC;
-    const ivaStr = `${(SC.IVA * 100).toFixed(0)}%`;
-    const items  = pedido.items || [];
+    const items = pedido.items || [];
     const win = window.open('', '_blank', 'width=380,height=650');
     if (!win) { SC.toast('Bloqueo de ventanas emergentes — autorízalas para imprimir', 'error'); return; }
     win.document.write(`<!doctype html><html lang="es"><head>
@@ -537,10 +524,6 @@ td{padding:2px 0;font-size:11px;vertical-align:top}
 <td>${i.nombre}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.join(', ')}</span>`:''}
 </td><td class="tr">${i.cantidad}</td><td class="tr">${i.precio.toFixed(2)}</td>
 <td class="tr">${(i.precio*i.cantidad).toFixed(2)}</td></tr>`).join('')}</tbody>
-<tbody class="tot">
-<tr><td colspan="3">Subtotal:</td><td class="tr">${pedido.subtotal.toFixed(2)}</td></tr>
-<tr><td colspan="3">IVA ${ivaStr}:</td><td class="tr">${pedido.iva.toFixed(2)}</td></tr>
-</tbody>
 <tbody class="big"><tr><td colspan="3">TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr></tbody>
 </table>
 <div class="mt">Método: ${metodoPagoNombre}</div>
@@ -640,8 +623,6 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </table>
 </div>
 <div class="tots"><table>
-  <tr><td>Subtotal:</td><td class="tr">$${pedido.subtotal.toFixed(2)}</td></tr>
-  <tr><td>IVA (tarifa 0%):</td><td class="tr">$${pedido.iva.toFixed(2)}</td></tr>
   <tr class="bold"><td>VALOR TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr>
 </table></div>
 <div class="pago-row"><strong>Forma de pago:</strong> ${metodoPagoNombre} · <strong>Total pagado:</strong> $${pedido.total.toFixed(2)}</div>

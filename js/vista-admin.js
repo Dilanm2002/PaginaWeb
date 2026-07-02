@@ -130,8 +130,6 @@ window.VistaAdmin = (function () {
   function _pedSubtotalsHtml(p) {
     return `
       <div class="cajero-order-subtotals">
-        <div><span>Subtotal</span><span>$${(parseFloat(p.ped_subtotal)||0).toFixed(2)}</span></div>
-        <div class="iva-line"><span>IVA 0 %</span><span>$${(parseFloat(p.ped_iva)||0).toFixed(2)}</span></div>
         <div class="total-line"><span>Total</span><span>$${(parseFloat(p.ped_total)||0).toFixed(2)}</span></div>
       </div>`;
   }
@@ -1009,7 +1007,6 @@ window.VistaAdmin = (function () {
     const totalVentas = data.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
     const numPedidos  = data.length;
     const promedio    = numPedidos ? totalVentas / numPedidos : 0;
-    const totalIva    = data.reduce((s, p) => s + (parseFloat(p.ped_iva) || 0), 0);
 
     kpisEl.innerHTML = `
       <div class="reportes-kpi rep-kpi--ventas">
@@ -1032,13 +1029,6 @@ window.VistaAdmin = (function () {
         </div>
         <div class="reportes-kpi__val">$${promedio.toFixed(2)}</div>
         <div class="reportes-kpi__lbl">Promedio / pedido</div>
-      </div>
-      <div class="reportes-kpi rep-kpi--iva">
-        <div class="rep-kpi__icon-wrap rep-kpi__icon-wrap--iva">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
-        </div>
-        <div class="reportes-kpi__val">$${totalIva.toFixed(2)}</div>
-        <div class="reportes-kpi__lbl">IVA recaudado (0 %)</div>
       </div>`;
 
     if (!window.Plotly) return;
@@ -1150,10 +1140,6 @@ window.VistaAdmin = (function () {
         <div class="resumen-kpi-card">
           <div class="resumen-kpi-card__val" style="color:var(--cinnamon)">$${totalVentas.toFixed(2)}</div>
           <div class="resumen-kpi-card__lbl">Total vendido</div>
-        </div>
-        <div class="resumen-kpi-card">
-          <div class="resumen-kpi-card__val" style="color:#5b7fa6">$${totalIva.toFixed(2)}</div>
-          <div class="resumen-kpi-card__lbl">IVA recaudado</div>
         </div>`;
     }
 
