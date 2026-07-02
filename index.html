@@ -1922,6 +1922,10 @@
   async function guardarMenuItemDB(item) {
     if (item.imagen?.startsWith('data:image')) {
       item = { ...item, imagen: await subirImagenStorage(item.imagen, item.id || 'nuevo') };
+    } else {
+      // Sin imagen (ahora es opcional) — normalizar null a '' para que nada
+      // intente cargar una imagen desde la URL literal "null".
+      item = { ...item, imagen: item.imagen ?? '' };
     }
 
     const catId = await _obtenerOCrearCategoria(item.categoria);
