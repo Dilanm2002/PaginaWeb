@@ -543,7 +543,9 @@ ${metodoPagoNombre==='Efectivo'?`<div class="mt">Recibido: $${montoPagado.toFixe
      en index.html) y nota de venta simple, no factura electrónica
      autorizada por el SRI (esa requiere otro trámite de autorización).
   ───────────────────────────────────────────────────── */
-  const RUC_NEGOCIO = '0601335128001';
+  const RUC_NEGOCIO        = '0601335128001';
+  const DIRECCION_NEGOCIO  = 'Villalengua y Jorge Drom, Quito';
+  const TELEFONO_NEGOCIO   = '0984 870 280';
 
   function imprimirNotaVenta(pedido, factNumero, metodoPagoNombre) {
     const SC = window.SC;
@@ -587,13 +589,13 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 <div class="logo-sec">
   <div class="logo-name">Sal y Canela</div>
   <div style="font-size:10px;color:#555">Restaurante Artesanal</div>
-  <div style="font-size:10px;margin-top:3px">Av. Principal 123, Quito</div>
+  <div style="font-size:10px;margin-top:3px">${DIRECCION_NEGOCIO}</div>
 </div>
 <div class="ruc-sec">
   <p><strong>RUC:</strong> ${RUC_NEGOCIO ?? 'Pendiente de registro'}</p>
   <p><strong>Régimen:</strong> RIMPE — Negocio Popular</p>
-  <p><strong>Dirección:</strong> Av. Principal 123, Quito</p>
-  <p><strong>Teléfono:</strong> 02-000-0000</p>
+  <p><strong>Dirección:</strong> ${DIRECCION_NEGOCIO}</p>
+  <p><strong>Teléfono:</strong> ${TELEFONO_NEGOCIO}</p>
 </div>
 <div class="num-sec">
   <p><strong>NOTA DE VENTA</strong></p>

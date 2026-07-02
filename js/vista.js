@@ -64,7 +64,7 @@ window.ModuloVista = (function () {
                   <div class="ci-item__icon">📞</div>
                   <div class="ci-item__text">
                     <span class="ci-item__label">Teléfono</span>
-                    <span class="ci-item__val">0960 227 340</span>
+                    <span class="ci-item__val">0984 870 280</span>
                   </div>
                 </div>
                 <div class="ci-item">
