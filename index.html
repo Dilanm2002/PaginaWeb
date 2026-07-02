@@ -820,7 +820,7 @@
               <input type="number" id="pf-stock" placeholder="20" min="0" max="999" step="1">
             </div>
             <div class="prod-form-group prod-form-full">
-              <label for="btn-elegir-imagen">Imagen del plato</label>
+              <label for="btn-elegir-imagen">Imagen del plato <small>(opcional)</small></label>
               <div class="prod-form-img-preview" id="pf-img-preview" role="img" aria-label="Vista previa de la imagen del plato">
                 <div id="pf-img-placeholder" style="display:flex;align-items:center;justify-content:center;">
                   <span style="color:var(--text-muted);font-size:.88rem;">Arrastra una imagen aquí</span>
@@ -1157,6 +1157,9 @@
   const LS_HISTORIAL = 'salycanela_historial';
   const LS_GASTOS    = 'salycanela_gastos';
   const IVA          = 0; // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
+
+  // Placeholder cuando un ítem no tiene imagen (mismo estilo que el panel admin)
+  const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
   /* ══════════════════════════════════════════════════
      AUTH — usuarios
@@ -1801,7 +1804,7 @@
       checkoutBtn.disabled = false;
       cartItemsEl.innerHTML = items.map(item => `
         <div class="cart-item" role="listitem">
-          <img class="cart-item__img" src="${item.imagen}" alt="${item.nombre}" loading="lazy" decoding="async">
+          <img class="cart-item__img" src="${item.imagen}" alt="${item.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           <div>
             <p class="cart-item__name">${item.nombre}</p>
             ${item.exclusiones?.length ? `<p class="cart-item__excl">sin: ${item.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</p>` : ''}

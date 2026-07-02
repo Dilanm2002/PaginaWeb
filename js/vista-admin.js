@@ -856,7 +856,6 @@ window.VistaAdmin = (function () {
       if (errPrecio)   { document.getElementById('pf-precio').focus(); return; }
       if (!descripcion){ document.getElementById('pf-descripcion').focus(); return; }
       if (errIng)      { document.getElementById('pf-ingredientes').focus(); return; }
-      if (!_prodFormImgBase64) { _mostrarErrorImagen('La imagen del plato es obligatoria.'); return; }
 
       /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');

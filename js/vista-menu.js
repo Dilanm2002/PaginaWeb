@@ -8,6 +8,9 @@ window.VistaMenu = (function () {
   let meseroMesaTarget = null;
   let _meseroOriginalItems = null;
 
+  // Placeholder cuando el plato no tiene imagen (mismo estilo que el panel admin)
+  const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
+
   /* ── Helpers de filtro ── */
   function setFiltroActivo(cat) {
     const filterBar = document.getElementById('filter-bar');
@@ -125,7 +128,7 @@ window.VistaMenu = (function () {
       return `
       <div class="product-card${agotado ? ' product-card--agotado' : ''}" role="listitem" aria-label="${p.nombre}" style="animation-delay:${idx*0.05}s" data-id="${p.id}">
         <div class="product-card__img-wrap">
-          <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450">
+          <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450" onerror="${_IMG_FALLBACK}">
           <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
           ${esNuevo ? '<span class="badge-nuevo">Nuevo</span>' : ''}
           ${stockBadge}
@@ -197,7 +200,7 @@ window.VistaMenu = (function () {
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
         <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
-        <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="eager" decoding="async" width="600" height="450">
+        <img class="modal-img" src="${p.imagen}" alt="Foto de ${p.nombre}" loading="eager" decoding="async" width="600" height="450" onerror="${_IMG_FALLBACK}">
         <button class="btn-modal-x" id="btn-cerrar-modal-x" aria-label="Cerrar">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
         </button>
