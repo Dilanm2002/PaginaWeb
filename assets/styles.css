@@ -1232,7 +1232,7 @@
     .gastos-tabla tr:last-child td { border-bottom: none; }
     .gastos-tabla .td-desc { font-weight: 500; }
     .gastos-tabla .td-hora  { color: #a07850; font-size: .78rem; white-space: nowrap; }
-    .gastos-tabla .td-monto { font-weight: 800; color: #dc2626; font-size: .92rem; }
+    .gastos-tabla .td-monto { font-weight: 800; color: #dc2626; font-size: .92rem; text-align: right; }
     .gastos-tabla .td-del   { width: 44px; text-align: center; }
     .gasto-del-btn {
       width: 28px; height: 28px; border-radius: 50%;
