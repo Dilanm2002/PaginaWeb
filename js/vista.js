@@ -254,5 +254,9 @@ window.ModuloVista = (function () {
     });
   };
 
-  return { renderContacto };
+  return {
+    renderContacto,
+    // Expuesta para pruebas unitarias (tests/vista.test.js) — función pura, sin efectos.
+    _esTextoRepetitivo
+  };
 })();

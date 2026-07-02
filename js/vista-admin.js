@@ -32,6 +32,17 @@ window.VistaAdmin = (function () {
     return _fechaConOffset(offset).toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: 'short' });
   }
 
+  // Rango de la semana laboral (lun-vie) que contiene `hoy`: desde el
+  // lunes hasta hoy, o hasta el viernes si hoy cae en fin de semana
+  // (el negocio no opera sáb/dom, así que no se agrega ese rango).
+  function _rangoSemanaLaboral(hoy) {
+    const dowHoy    = hoy.getDay(); // 0=Dom .. 6=Sáb
+    const lunes     = _lunesDeSemana(hoy);
+    const viernes   = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
+    const hastaDate = (dowHoy === 0 || dowHoy === 6) ? viernes : hoy;
+    return { desde: _fechaLocalISO(lunes), hasta: _fechaLocalISO(hastaDate) };
+  }
+
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
@@ -943,7 +954,6 @@ window.VistaAdmin = (function () {
 
     const hoy    = new Date();
     const hoyISO = _fechaLocalISO(hoy);
-    const dowHoy = hoy.getDay(); // 0=Dom .. 6=Sáb
 
     let desdeStr, hastaStr, periodoLabel, chartTitleVentas, tablaTitulo;
     if (periodo === 'hoy') {
@@ -960,13 +970,9 @@ window.VistaAdmin = (function () {
       const diaSigBtn = document.getElementById('rep-dia-sig');
       if (diaSigBtn) diaSigBtn.disabled = _repDiaOffset >= 0;
     } else if (periodo === 'semana') {
-      // Semana laboral lun-vie: desde el lunes de esta semana hasta hoy
-      // (o hasta el viernes si hoy es sábado/domingo, ya que no se opera esos días).
-      const lunes   = _lunesDeSemana(hoy);
-      const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
-      const hastaDate = (dowHoy === 0 || dowHoy === 6) ? viernes : hoy;
-      desdeStr         = _fechaLocalISO(lunes);
-      hastaStr         = _fechaLocalISO(hastaDate);
+      const rango = _rangoSemanaLaboral(hoy);
+      desdeStr         = rango.desde;
+      hastaStr         = rango.hasta;
       periodoLabel     = 'semana laboral';
       chartTitleVentas = 'Ventas semana laboral (lun-vie)';
       tablaTitulo      = 'Pedidos — semana laboral';
@@ -1828,5 +1834,9 @@ window.VistaAdmin = (function () {
     });
   }
 
-  return { renderAdminView, abrirFormProducto, cerrarFormProducto, init, cambiarModulo: _cambiarModulo };
+  return {
+    renderAdminView, abrirFormProducto, cerrarFormProducto, init, cambiarModulo: _cambiarModulo,
+    // Expuestas para pruebas unitarias (tests/vista-admin.test.js) — funciones puras, sin efectos.
+    _fechaLocalISO, _lunesDeSemana, _fechaConOffset, _labelDiaOffset, _rangoSemanaLaboral
+  };
 })();
