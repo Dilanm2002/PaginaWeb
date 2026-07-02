@@ -1072,7 +1072,7 @@ window.VistaAdmin = (function () {
   }
 
   async function _renderGastos() {
-    await window.SC?.recargarCaja?.();
+    await window.SC?.recargarGastos?.();
     window.VistaCajero?.renderGastos?.();
     _initBtnGasto();
   }

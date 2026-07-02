@@ -1296,6 +1296,17 @@
     }
   }
 
+  async function recargarGastos() {
+    try {
+      const { data, error } = await db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true });
+      if (!error) _gastos = (data || []).map(_mapGasto);
+      return !error;
+    } catch(e) {
+      console.warn('recargarGastos:', e);
+      return false;
+    }
+  }
+
   async function recargarStock() {
     try {
       const { data } = await db.from('productos').select('plat_id, prod_stock, prod_disponible');
@@ -2009,6 +2020,7 @@
     guardarFiltroSesion: cat => ModuloApp.guardarFiltroSesion(cat),
     getSession:          () => ModuloAutenticacion.getSession(),
     recargarCaja,
+    recargarGastos,
     renderCarrito: () => renderCarrito(),
   };
 
@@ -3461,7 +3473,7 @@
 
     db.channel('realtime-gastos')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gastos' }, async () => {
-        await recargarCaja();
+        await recargarGastos();
         window.VistaCajero?.renderGastos?.();
       })
       .subscribe();
