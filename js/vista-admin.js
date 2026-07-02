@@ -64,7 +64,81 @@ window.VistaAdmin = (function () {
     cancelado:  { label: 'Cancelado',   cls: 'adm-ped-estado--cancelado' }
   };
 
+  let _pedidosTab = 'activos'; // 'activos' | 'historial'
+
+  const _ROL_LABEL_PED = { cajero: 'Caja', mesero: 'Mesero', usuario: 'Cliente', invitado: 'Invitado' };
+
+  function _pedRolNombre(users, p) {
+    if (!p.usu_id) return 'invitado';
+    const u = users.find(u => u.id === p.usu_id);
+    return u?.rol ?? 'usuario';
+  }
+  function _pedNombre(users, p) {
+    if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
+    const u = users.find(u => u.id === p.usu_id);
+    return u?.nombre ?? 'Usuario';
+  }
+  function _pedMesa(p) { return p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar'; }
+  function _pedItemsHtml(SC, det) {
+    return det.map(d => {
+      const excl = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
+      return `
+        <div class="cajero-order-item">
+          <span class="cajero-order-item__name">
+            ${SC.escapeHtml(d.platos?.plat_nombre ?? '?')}
+            ${excl.length ? `<span class="cajero-excl"> sin: ${excl.join(', ')}</span>` : ''}
+          </span>
+          <span class="caj-qty__val">${d.detped_cantidad}</span>
+          <span class="cajero-order-item__price">$${(parseFloat(d.detped_subtotal)||0).toFixed(2)}</span>
+        </div>`;
+    }).join('');
+  }
+  function _pedSubtotalsHtml(p) {
+    return `
+      <div class="cajero-order-subtotals">
+        <div><span>Subtotal</span><span>$${(parseFloat(p.ped_subtotal)||0).toFixed(2)}</span></div>
+        <div class="iva-line"><span>IVA 15 %</span><span>$${(parseFloat(p.ped_iva)||0).toFixed(2)}</span></div>
+        <div class="total-line"><span>Total</span><span>$${(parseFloat(p.ped_total)||0).toFixed(2)}</span></div>
+      </div>`;
+  }
+
+  function _initPedidosTabs() {
+    const tabsWrap = document.getElementById('ped-tabs');
+    if (!tabsWrap || tabsWrap._bound) return;
+    tabsWrap._bound = true;
+    tabsWrap.addEventListener('click', e => {
+      const btn = e.target.closest('.rep-tab');
+      if (!btn) return;
+      _pedidosTab = btn.dataset.ptab;
+      tabsWrap.querySelectorAll('.rep-tab').forEach(t => {
+        const active = t === btn;
+        t.classList.toggle('active', active);
+        t.setAttribute('aria-selected', String(active));
+      });
+      const titleEl = document.getElementById('ped-section-title');
+      if (titleEl) titleEl.textContent = _pedidosTab === 'historial' ? 'Historial de pedidos' : 'Pedidos activos';
+      renderAdminPedidos();
+    });
+  }
+
   async function renderAdminPedidos() {
+    _initPedidosTabs();
+    _actualizarBadgePedidosActivos();
+    if (_pedidosTab === 'historial') return _renderPedidosHistorial();
+    return _renderPedidosActivos();
+  }
+
+  // Badge del sidebar siempre cuenta activos, independiente de la pestaña que se esté viendo
+  async function _actualizarBadgePedidosActivos() {
+    const hoy = _fechaLocalISO();
+    const { data } = await window.db.from('pedidos').select('ped_id')
+      .gte('ped_fecha', hoy).not('ped_estado', 'in', '("cancelado","cobrado")');
+    const badge = document.getElementById('adm-ped-badge');
+    const n = data?.length ?? 0;
+    if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none'; }
+  }
+
+  async function _renderPedidosActivos() {
     const el = document.getElementById('admin-pedidos-lista');
     if (!el) return;
 
@@ -91,27 +165,11 @@ window.VistaAdmin = (function () {
     if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem;padding:1rem 0">Error al cargar pedidos.</p>'; return; }
 
     const pedidos = data ?? [];
-    const badge = document.getElementById('adm-ped-badge');
-    if (badge) { badge.textContent = pedidos.length; badge.style.display = pedidos.length > 0 ? '' : 'none'; }
-
     const SC    = window.SC;
     const users = window.ModuloAutenticacion.leerUsuarios();
 
-    const ROL_LABEL = { cajero: 'Caja', mesero: 'Mesero', usuario: 'Cliente', invitado: 'Invitado' };
-
-    const _mesa  = p => p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
     const _hora  = p => p.ped_hora?.slice(0,5)
       ?? (p.ped_created_at ? new Date(p.ped_created_at).toLocaleTimeString('es-EC',{hour:'2-digit',minute:'2-digit'}) : '—');
-    const _rolNombre = p => {
-      if (!p.usu_id) return 'invitado';
-      const u = users.find(u => u.id === p.usu_id);
-      return u?.rol ?? 'usuario';
-    };
-    const _nombre = p => {
-      if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
-      const u = users.find(u => u.id === p.usu_id);
-      return u?.nombre ?? 'Usuario';
-    };
 
     if (!pedidos.length) {
       el.innerHTML = `
@@ -125,43 +183,101 @@ window.VistaAdmin = (function () {
 
     el.innerHTML = `<div class="cajero-grid">${pedidos.map(p => {
       const det  = p.detalle_pedidos ?? [];
-      const rol  = _rolNombre(p);
-      const nombre = _nombre(p);
+      const rol  = _pedRolNombre(users, p);
+      const nombre = _pedNombre(users, p);
       return `
         <div class="cajero-order-card" data-pid="${p.ped_id}">
           <div class="cajero-order-card__head">
             <div class="cajero-order-meta">
-              <div class="cajero-order-mesa">🪑 ${_mesa(p)}</div>
+              <div class="cajero-order-mesa">🪑 ${_pedMesa(p)}</div>
               <div class="cajero-order-quien">
-                <span class="rol-pill ${rol}">${ROL_LABEL[rol] ?? rol}</span>
+                <span class="rol-pill ${rol}">${_ROL_LABEL_PED[rol] ?? rol}</span>
                 <span>${SC.escapeHtml(nombre)}</span>
               </div>
             </div>
             <div class="cajero-order-time">🕐 ${_hora(p)}</div>
           </div>
-          <div class="cajero-order-items">
-            ${det.map(d => {
-              const excl = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
-              return `
-                <div class="cajero-order-item">
-                  <span class="cajero-order-item__name">
-                    ${SC.escapeHtml(d.platos?.plat_nombre ?? '?')}
-                    ${excl.length ? `<span class="cajero-excl"> sin: ${excl.join(', ')}</span>` : ''}
-                  </span>
-                  <span class="caj-qty__val">${d.detped_cantidad}</span>
-                  <span class="cajero-order-item__price">$${(parseFloat(d.detped_subtotal)||0).toFixed(2)}</span>
-                </div>`;
-            }).join('')}
-          </div>
-          <div class="cajero-order-subtotals">
-            <div><span>Subtotal</span><span>$${(parseFloat(p.ped_subtotal)||0).toFixed(2)}</span></div>
-            <div class="iva-line"><span>IVA 15 %</span><span>$${(parseFloat(p.ped_iva)||0).toFixed(2)}</span></div>
-            <div class="total-line"><span>Total</span><span>$${(parseFloat(p.ped_total)||0).toFixed(2)}</span></div>
-          </div>
+          <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
+          ${_pedSubtotalsHtml(p)}
           <div class="cajero-order-card__foot" style="justify-content:center">
             <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon);letter-spacing:.04em;text-transform:uppercase;opacity:.75">
               ⏳ Pendiente de cobro
             </span>
+          </div>
+        </div>`;
+    }).join('')}</div>`;
+  }
+
+  async function _renderPedidosHistorial() {
+    const el = document.getElementById('admin-pedidos-lista');
+    if (!el) return;
+
+    el.innerHTML = `<div class="cajero-grid">${Array(3).fill(0).map(() =>
+      `<div class="cajero-order-card" style="min-height:180px;opacity:.35;animation:pulse 1.2s infinite"></div>`
+    ).join('')}</div>`;
+
+    const PED_SEL = `
+      ped_id, ped_estado, ped_nombre_invitado, ped_cobrado_en,
+      ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
+      mesas(mes_numero),
+      detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal,
+        platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre))),
+      facturas(fact_numero, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
+    `;
+
+    const { data, error } = await window.db
+      .from('pedidos')
+      .select(PED_SEL)
+      .eq('ped_estado', 'cobrado')
+      .order('ped_cobrado_en', { ascending: false })
+      .limit(50);
+
+    if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem;padding:1rem 0">Error al cargar historial.</p>'; return; }
+
+    const pedidos = data ?? [];
+    const SC    = window.SC;
+    const users = window.ModuloAutenticacion.leerUsuarios();
+
+    const _fechaHora = p => p.ped_cobrado_en
+      ? new Date(p.ped_cobrado_en).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
+      : '—';
+    const _metodoNombre = p => {
+      const factura = Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
+      const pago    = Array.isArray(factura?.pagos) ? factura.pagos[0] : factura?.pagos;
+      return pago?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+    };
+
+    if (!pedidos.length) {
+      el.innerHTML = `
+        <div class="cajero-empty">
+          <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
+          <p>No hay pedidos cobrados todavía</p>
+          <small>Los últimos 50 pedidos cobrados aparecerán aquí</small>
+        </div>`;
+      return;
+    }
+
+    el.innerHTML = `<div class="cajero-grid">${pedidos.map(p => {
+      const det  = p.detalle_pedidos ?? [];
+      const rol  = _pedRolNombre(users, p);
+      const nombre = _pedNombre(users, p);
+      return `
+        <div class="cajero-order-card" data-pid="${p.ped_id}">
+          <div class="cajero-order-card__head">
+            <div class="cajero-order-meta">
+              <div class="cajero-order-mesa">🪑 ${_pedMesa(p)}</div>
+              <div class="cajero-order-quien">
+                <span class="rol-pill ${rol}">${_ROL_LABEL_PED[rol] ?? rol}</span>
+                <span>${SC.escapeHtml(nombre)}</span>
+              </div>
+            </div>
+            <div class="cajero-order-time">🕐 ${_fechaHora(p)}</div>
+          </div>
+          <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
+          ${_pedSubtotalsHtml(p)}
+          <div class="cajero-order-card__foot" style="justify-content:space-between">
+            <span class="adm-ped-estado adm-ped-estado--cobrado">✓ Cobrado</span>
+            <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon)">💳 ${SC.escapeHtml(_metodoNombre(p))}</span>
           </div>
         </div>`;
     }).join('')}</div>`;
@@ -743,7 +859,7 @@ window.VistaAdmin = (function () {
 
   async function renderReportes(periodo) {
     if (!periodo) {
-      const activeTab = document.querySelector('.rep-tab.active');
+      const activeTab = document.querySelector('#rep-periodo-tabs .rep-tab.active');
       periodo = activeTab?.dataset.period ?? 'hoy';
     }
 
@@ -758,7 +874,7 @@ window.VistaAdmin = (function () {
       });
     }
 
-    document.querySelectorAll('.rep-tab').forEach(t => {
+    document.querySelectorAll('#rep-periodo-tabs .rep-tab').forEach(t => {
       const active = t.dataset.period === periodo;
       t.classList.toggle('active', active);
       t.setAttribute('aria-selected', active ? 'true' : 'false');
