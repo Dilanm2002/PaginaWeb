@@ -4,13 +4,10 @@
   "type": "module",
   "scripts": {
     "test": "vitest run",
-    "test:watch": "vitest",
-    "build": "node scripts/build.js"
+    "test:watch": "vitest"
   },
   "devDependencies": {
     "vitest": "^2.0.0",
-    "jsdom": "^24.0.0",
-    "clean-css": "^5.3.3",
-    "terser": "^5.31.0"
+    "jsdom": "^24.0.0"
   }
 }

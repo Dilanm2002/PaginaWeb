@@ -1264,10 +1264,10 @@
       .gastos-tabla { font-size: .75rem; }
       .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }
       .gastos-tabla th:nth-child(3), .gastos-tabla td:nth-child(3) { display: none; }
-      .gastos-form { flex-wrap: wrap; }
-      .gastos-form-field { flex: 1 1 100%; }
-      .gastos-form-field.gastos-form-monto { flex: 1 1 auto; min-width: 110px; }
-      .btn-add-gasto { flex: 0 0 auto; width: auto; }
+      .gastos-nueva-fila { flex-wrap: wrap; }
+      .gastos-input-desc { flex: 1 1 100%; border-bottom: 1.5px solid var(--border); }
+      .gastos-monto-wrap { flex: 1 1 auto; border-left: none; border-bottom: 1.5px solid var(--border); }
+      .btn-add-gasto { flex: 1 1 100%; padding: .85rem 1rem; }
       .gastos-resumen { grid-template-columns: repeat(3, 1fr); }
       .gastos-kpi { padding: .75rem .7rem; }
       .gastos-kpi__val { font-size: 1.2rem; }
