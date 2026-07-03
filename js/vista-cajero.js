@@ -10,7 +10,6 @@ window.VistaCajero = (function () {
   let _pedidoParaCobrar = null;
   let _ultimoCobro = null; // { pedido, factNumero, metodoPagoNombre, montoPagado, cambio }
   let _correoNotaCtx = null; // { pedido, factNumero, metodoPagoNombre, fechaCobro }
-  let _gastoAEliminar = null;
 
   const METODO_NOMBRE = {
     met001: 'Efectivo',
@@ -160,34 +159,45 @@ window.VistaCajero = (function () {
       </table>`;
 
     listaEl.querySelectorAll('.gasto-del-btn').forEach(btn => {
-      btn.onclick = () => {
+      btn.onclick = async () => {
         const g = gastos.find(x => String(x.id) === String(btn.dataset.delId));
         if (!g) return;
-        _abrirModalEliminarGasto(g);
+        const ok = await _confirmarEliminarGasto(g);
+        if (!ok) return;
+        await SC.eliminarGasto(g.id);
+        renderGastos();
       };
     });
   }
 
-  function _abrirModalEliminarGasto(gasto) {
-    _gastoAEliminar = gasto;
-    const infoEl = document.getElementById('eliminar-gasto-info');
-    if (infoEl) infoEl.innerHTML = `¿Seguro que deseas eliminar el gasto <strong>"${window.SC.escapeHtml(gasto.descripcion)}"</strong> de <strong>$${gasto.monto.toFixed(2)}</strong>? Esta acción no se puede deshacer.`;
-    const backdrop = document.getElementById('confirmar-eliminar-gasto-backdrop');
-    if (backdrop) {
-      backdrop.classList.add('open');
-      backdrop.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
-    }
-  }
-
-  function _cerrarModalEliminarGasto() {
-    const backdrop = document.getElementById('confirmar-eliminar-gasto-backdrop');
-    if (backdrop) {
-      backdrop.classList.remove('open');
-      backdrop.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
-    }
-    _gastoAEliminar = null;
+  // Mismo look & feel que "¿Eliminar producto?" en vista-admin.js — overlay
+  // efímero creado/destruido al vuelo, sin depender de z-index estáticos.
+  function _confirmarEliminarGasto(gasto) {
+    return new Promise(resolve => {
+      const SC = window.SC;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
+          <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">🗑️</div>
+          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Eliminar gasto?</h3>
+          <p style="color:#7A5640;font-size:.88rem;margin-bottom:1.5rem;line-height:1.5;">
+            Se eliminará permanentemente<br><strong style="color:#C8561A;">"${SC.escapeHtml(gasto.descripcion)}"</strong> de <strong style="color:#C8561A;">$${gasto.monto.toFixed(2)}</strong>.<br>Esta acción no se puede deshacer.
+          </p>
+          <div style="display:flex;gap:.75rem;justify-content:center;">
+            <button id="_conf-cancel" style="flex:1;padding:.65rem 1rem;border:1.5px solid #E0C9B0;border-radius:10px;background:#fff;color:#7A5640;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;">Cancelar</button>
+            <button id="_conf-ok" style="flex:1;padding:.65rem 1rem;border:none;border-radius:10px;background:#dc2626;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;">Sí, eliminar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const cleanup = val => { document.body.removeChild(overlay); resolve(val); };
+      overlay.querySelector('#_conf-ok').addEventListener('click', () => cleanup(true));
+      overlay.querySelector('#_conf-cancel').addEventListener('click', () => cleanup(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
+      document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); cleanup(false); }
+      });
+    });
   }
 
   function renderStock() {
@@ -1009,27 +1019,6 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         btnConfirmarCorreoNota.disabled    = false;
         btnConfirmarCorreoNota.textContent = '✉️ Enviar';
         if (ok) _cerrarModalCorreoNota();
-      });
-    }
-
-    /* ── Modal confirmar eliminar gasto ── */
-    const btnCerrarElimGasto     = document.getElementById('btn-cerrar-eliminar-gasto');
-    const btnCancelarElimGasto   = document.getElementById('btn-cancelar-eliminar-gasto');
-    const btnConfirmarElimGasto  = document.getElementById('btn-confirmar-eliminar-gasto');
-
-    if (btnCerrarElimGasto)   btnCerrarElimGasto.addEventListener('click', _cerrarModalEliminarGasto);
-    if (btnCancelarElimGasto) btnCancelarElimGasto.addEventListener('click', _cerrarModalEliminarGasto);
-    if (btnConfirmarElimGasto) {
-      btnConfirmarElimGasto.addEventListener('click', async () => {
-        if (!_gastoAEliminar) return;
-        const id = _gastoAEliminar.id;
-        btnConfirmarElimGasto.disabled    = true;
-        btnConfirmarElimGasto.textContent = 'Eliminando…';
-        await window.SC.eliminarGasto(id);
-        btnConfirmarElimGasto.disabled    = false;
-        btnConfirmarElimGasto.textContent = '🗑️ Eliminar';
-        _cerrarModalEliminarGasto();
-        renderGastos();
       });
     }
   }
