@@ -636,6 +636,10 @@
                   <span id="rep-dia-label">Hoy</span>
                   <button class="btn-fecha-nav" id="rep-dia-sig" aria-label="Día siguiente" disabled>›</button>
                 </div>
+                <button class="cajero-refresh" id="btn-exportar-reporte" style="background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+                  Exportar a Excel
+                </button>
               </div>
             </div>
             <div id="admin-reportes-content">
@@ -1263,7 +1267,11 @@
         precio:      parseFloat(d.detped_precio_unit ?? 0),
         cantidad:    d.detped_cantidad ?? 1,
         imagen:      d.platos?.plat_imagen ?? null,
-        exclusiones: (d.det_exclusiones || []).map(e => e.ingredientes?.ing_nombre).filter(Boolean)
+        // {id, nombre} — el id se necesita para poder reinsertar la
+        // exclusión si el pedido se edita/repite (ver enviarACaja).
+        exclusiones: (d.det_exclusiones || [])
+          .map(e => e.ingredientes ? { id: e.ingredientes.ing_id, nombre: e.ingredientes.ing_nombre } : null)
+          .filter(Boolean)
       })),
       total:     parseFloat(r.ped_total    ?? 0),
       iva:       parseFloat(r.ped_iva      ?? 0),
@@ -1281,7 +1289,7 @@
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
     usu_id, mes_id,
     mesas(mes_numero),
-    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_nombre))),
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre))),
     facturas(fact_numero, fact_email, pagos(metodos_pago(metodo_nombre)))
   `;
 
@@ -1585,11 +1593,14 @@
     const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(detalles).select('detped_id, plat_id');
     if (detError) console.error('Supabase insert detalle_pedidos:', detError);
 
-    // Insertar exclusiones de ingredientes
+    // Insertar exclusiones de ingredientes — se correlaciona por posición
+    // (detData[i] corresponde a items[i], mismo orden que se insertó) y no
+    // por plat_id, porque un mismo plato puede pedirse más de una vez con
+    // distintas exclusiones y buscar por plat_id emparejaría mal esos casos.
     if (detData?.length) {
       const exclRows = [];
-      detData.forEach(det => {
-        const item = items.find(i => i.id === det.plat_id);
+      detData.forEach((det, idx) => {
+        const item = items[idx];
         (item?.exclusiones || []).forEach(excl => {
           if (excl?.id) exclRows.push({ detped_id: det.detped_id, ing_id: excl.id });
         });
@@ -1681,6 +1692,43 @@
 
     CarritoIDB.guardar(entrada).catch(() => {});
     return { pedido: cobrado, factNumero: resultado.fact_numero, factId: resultado.fact_id };
+  }
+
+  // Anula un pedido pendiente (no cobrado) — p.ej. el cliente se fue o se
+  // equivocó de pedido. Queda registrado como 'anulado' (no se borra) y
+  // repone el stock de sus ítems, ya que no se va a preparar/vender.
+  async function anularPedido(id, motivo) {
+    const pedido = _caja.find(x => String(x.id) === String(id));
+    if (!pedido) return false;
+
+    const session = ModuloAutenticacion.getSession();
+    const { data: resultado, error } = await db.rpc('anular_pedido', {
+      p_token:  session?.token ?? null,
+      p_ped_id: String(id),
+      p_motivo: motivo || null
+    });
+
+    if (error || !resultado?.ok) {
+      console.error('Supabase anular_pedido (RPC):', error, resultado);
+      toast(resultado?.msg ?? 'Error al anular pedido', 'error');
+      return false;
+    }
+
+    // El pedido ya quedó anulado server-side (fuente de verdad); si reponer
+    // el stock falla no debe dejar la UI desincronizada mostrándolo como
+    // pendiente todavía — se avisa aparte y sigue el flujo normal.
+    let stockOk = true;
+    try {
+      await Promise.all((pedido.items || []).map(i => reponerStock(i.id, i.cantidad)));
+    } catch (e) {
+      console.error('anularPedido: error reponiendo stock:', e);
+      stockOk = false;
+      toast('Pedido anulado, pero hubo un error reponiendo el stock — revísalo manualmente', 'error');
+    }
+
+    _caja = _caja.filter(x => String(x.id) !== String(id));
+    if (stockOk) toast('Pedido anulado ✓', 'success');
+    return true;
   }
 
   function actualizarPedido(pedidoId, nuevoItems) {
@@ -1880,7 +1928,13 @@
       checkoutBtn.disabled = true;
     } else {
       checkoutBtn.disabled = false;
-      cartItemsEl.innerHTML = items.map(item => `
+      cartItemsEl.innerHTML = items.map(item => {
+        const lineId = item.lineId || item.id;
+        // Stock disponible se valida contra el total del producto en el
+        // carrito, sumando todas sus líneas (puede haber más de una con
+        // distintas exclusiones), no solo esta línea.
+        const totalProducto = items.filter(x => x.id === item.id).reduce((s, x) => s + x.cantidad, 0);
+        return `
         <div class="cart-item" role="listitem">
           <img class="cart-item__img" src="${item.imagen}" alt="${item.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           <div>
@@ -1890,35 +1944,37 @@
           </div>
           <div class="cart-item__controls">
             <div class="qty-wrap" role="group" aria-label="Cantidad de ${item.nombre}">
-              <button class="qty-btn" data-action="dec" data-id="${item.id}" aria-label="Reducir">−</button>
+              <button class="qty-btn" data-action="dec" data-id="${lineId}" aria-label="Reducir">−</button>
               <span class="qty-value">${item.cantidad}</span>
-              <button class="qty-btn" data-action="inc" data-id="${item.id}" aria-label="Aumentar" ${item.cantidad >= getStock(item.id).stock ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>+</button>
+              <button class="qty-btn" data-action="inc" data-id="${lineId}" aria-label="Aumentar" ${totalProducto >= getStock(item.id).stock ? 'disabled style="opacity:.35;cursor:not-allowed"' : ''}>+</button>
             </div>
-            <button class="btn-remove" data-id="${item.id}" aria-label="Eliminar ${item.nombre}">
+            <button class="btn-remove" data-id="${lineId}" aria-label="Eliminar ${item.nombre}">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
                 <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14H6L5 6M10 11v6M14 11v6M9 6V4h6v2"/>
               </svg>
             </button>
           </div>
         </div>
-      `).join('');
+      `;
+      }).join('');
 
       cartItemsEl.onclick = e => {
         const btn = e.target.closest('[data-action],[data-id]');
         if (!btn) return;
         const id = btn.dataset.id;
         if (btn.classList.contains('btn-remove')) {
-          const nombre = items.find(i => i.id === id)?.nombre ?? 'Platillo';
+          const nombre = items.find(i => (i.lineId || i.id) === id)?.nombre ?? 'Platillo';
           LogicaCarrito.eliminarItem(id); renderCarrito(); toast(`"${nombre}" eliminado`);
         } else if (btn.dataset.action === 'inc') {
-          const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
+          const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
           if (it) {
-            const s = getStock(id);
-            if (it.cantidad >= s.stock) return;
+            const s = getStock(it.id);
+            const totalProducto = LogicaCarrito.leerCarrito().filter(x => x.id === it.id).reduce((s2, x) => s2 + x.cantidad, 0);
+            if (totalProducto >= s.stock) return;
             LogicaCarrito.cambiarCantidad(id, it.cantidad + 1); renderCarrito();
           }
         } else if (btn.dataset.action === 'dec') {
-          const it = LogicaCarrito.leerCarrito().find(i => i.id === id);
+          const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
           if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad - 1); renderCarrito(); }
         }
       };
@@ -2119,7 +2175,7 @@
     leerCaja, leerHistorial, leerGastos, guardarGastos,
     insertarGasto, eliminarGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, actualizarPedido, actualizarStock, reponerStock,
+    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
     comprimirImagen, toast, escapeHtml,
     IVA, ROL_LABEL,
@@ -2916,7 +2972,7 @@
   });
 
 
-  btnLogout.addEventListener('click', () => {
+  function _cerrarSesion() {
     window._modoEdicion = null;
     const _tokenSaliente = ModuloAutenticacion.getSession()?.token;
     if (_tokenSaliente) db.rpc('cerrar_sesion_staff', { p_token: _tokenSaliente }).catch(() => {});
@@ -2924,7 +2980,10 @@
     LogicaCarrito.vaciarCarrito();
     ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
     aplicarSesion();
-  });
+  }
+  window._cerrarSesion = _cerrarSesion;
+
+  btnLogout.addEventListener('click', _cerrarSesion);
 
   /* ══════════════════════════════════════════════════
      APLICAR SESIÓN — controla qué ve cada rol
@@ -3033,7 +3092,7 @@
       return (items || []).map(i => {
         const sub = ((i.precio || 0) * (i.cantidad || 1)).toFixed(2);
         const excl = i.exclusiones?.length
-          ? `<span class="ped-item-excl">sin ${i.exclusiones.join(', ')}</span>` : '';
+          ? `<span class="ped-item-excl">sin ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : '';
         return `<div class="ped-item-row">
           <span class="ped-item-qty">${i.cantidad}×</span>
           <div class="ped-item-info"><span class="ped-item-name">${i.nombre}</span>${excl}</div>
@@ -3123,7 +3182,7 @@
         if (!pedido) return;
         window._modoEdicion = { pedidoId: pedido.id, mesa: pedido.mesa, itemsOriginales: JSON.parse(JSON.stringify(pedido.items)) };
         LogicaCarrito.vaciarCarrito();
-        pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item); });
+        pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item, item.exclusiones); });
         irAlMenu();
         setTimeout(() => { renderCarrito(); document.getElementById('btn-cart')?.click(); }, 80);
         return;
@@ -3134,7 +3193,7 @@
       const pedido = sorted[Number(btnRep.dataset.idx)];
       if (!pedido?.items?.length) return;
       LogicaCarrito.vaciarCarrito();
-      pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item); });
+      pedido.items.forEach(item => { for (let i=0;i<item.cantidad;i++) LogicaCarrito.agregarItem(item, item.exclusiones); });
       irAlMenu();
       setTimeout(() => { renderCarrito(); document.getElementById('btn-cart')?.click(); }, 80);
     };
@@ -3606,16 +3665,12 @@
       })
       .subscribe();
 
-    // Detectar inhabilitación en tiempo real — cierra la sesión si el usuario activo es desactivado
-    db.channel('realtime-usuarios-estado')
-      .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'usuarios' }, payload => {
-        const sesion = ModuloAutenticacion.getSession();
-        if (!sesion?.id) return;
-        if (payload.new?.usu_id === sesion.id && payload.new?.usu_activo === false) {
-          _cerrarSesionForzado();
-        }
-      })
-      .subscribe();
+    // NOTA: no existe un canal postgres_changes para la tabla `usuarios` —
+    // su política RLS ("usuarios_deny_anon" en seguridad.sql) niega SELECT
+    // a anon por diseño (evita exponer datos de todos los usuarios), y
+    // Realtime respeta RLS, así que un canal ahí nunca entregaría eventos.
+    // La detección de inhabilitación depende de BroadcastChannel (misma
+    // sesión de navegador) y del sondeo periódico de abajo (multi-dispositivo).
 
     // BroadcastChannel: cierre de sesión instantáneo entre pestañas del mismo navegador
     const _scBroadcast = new BroadcastChannel('sc-sesion');
@@ -3626,7 +3681,8 @@
     };
     window._scBroadcast = _scBroadcast;
 
-    // Fallback: verificar estado cada 15 segundos por si Realtime no está habilitado en la tabla
+    // Fallback: verificar estado cada 5 segundos por si Realtime no está habilitado en la tabla
+    // (el mecanismo principal es la suscripción realtime-usuarios-estado; esto es el respaldo)
     setInterval(async () => {
       const sesion = ModuloAutenticacion.getSession();
       if (!sesion?.id || sesion.rol === 'invitado') return;
@@ -3634,12 +3690,15 @@
         const { data } = await db.rpc('verificar_estado_usuario', { p_usuario: sesion.usuario });
         if (data && data.activo === false) _cerrarSesionForzado();
       } catch (_) {}
-    }, 15000);
+    }, 5000);
   }
 
+  let _cerrandoForzado = false;
   function _cerrarSesionForzado() {
+    if (_cerrandoForzado) return; // evita disparos duplicados (realtime + broadcast + polling)
+    _cerrandoForzado = true;
     window.SC?.toast('Cuenta desactivada. Cerrando sesión…', 'error');
-    setTimeout(() => document.getElementById('btn-logout')?.click(), 2000);
+    setTimeout(() => { window._cerrarSesion?.(); _cerrandoForzado = false; }, 1200);
   }
 
   </script>

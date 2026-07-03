@@ -46,6 +46,7 @@ window.VistaAdmin = (function () {
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
+  let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
 
   const _CATS_ORDER = ['Desayunos','Entradas','Almuerzos','Postres','Bocaditos','Bebidas Calientes','Bebidas Frías','Platos Fuertes'];
@@ -273,6 +274,7 @@ window.VistaAdmin = (function () {
 
     const PED_SEL = `
       ped_id, ped_estado, ped_nombre_invitado, ped_cobrado_en,
+      ped_anulado_en, ped_motivo_anulacion,
       ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal,
@@ -283,19 +285,21 @@ window.VistaAdmin = (function () {
     const { data, error } = await window.db
       .from('pedidos')
       .select(PED_SEL)
-      .eq('ped_estado', 'cobrado')
+      .in('ped_estado', ['cobrado', 'anulado'])
       .eq('ped_fecha', diaSelISO)
       .order('ped_cobrado_en', { ascending: false });
 
     if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem;padding:1rem 0">Error al cargar historial.</p>'; return; }
 
-    const pedidos = data ?? [];
+    const pedidos = (data ?? []).sort((a, b) =>
+      new Date(b.ped_cobrado_en ?? b.ped_anulado_en ?? 0) - new Date(a.ped_cobrado_en ?? a.ped_anulado_en ?? 0));
     const SC    = window.SC;
     const users = window.ModuloAutenticacion.leerUsuarios();
 
-    const _fechaHora = p => p.ped_cobrado_en
-      ? new Date(p.ped_cobrado_en).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
-      : '—';
+    const _fechaHora = p => {
+      const t = p.ped_cobrado_en ?? p.ped_anulado_en;
+      return t ? new Date(t).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
+    };
     const _factura = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
     const _metodoNombre = p => {
       const factura = _factura(p);
@@ -308,7 +312,7 @@ window.VistaAdmin = (function () {
       el.innerHTML = `
         <div class="cajero-empty">
           <svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v2"/></svg>
-          <p>No hay pedidos cobrados ${label}</p>
+          <p>No hay pedidos cobrados ni anulados ${label}</p>
           <small>Usa las flechas para ver otros días</small>
         </div>`;
       return;
@@ -318,8 +322,9 @@ window.VistaAdmin = (function () {
       const det  = p.detalle_pedidos ?? [];
       const rol  = _pedRolNombre(users, p);
       const nombre = _pedNombre(users, p);
+      const esAnulado = p.ped_estado === 'anulado';
       return `
-        <div class="cajero-order-card" data-pid="${p.ped_id}">
+        <div class="cajero-order-card" data-pid="${p.ped_id}" style="${esAnulado ? 'opacity:.75' : ''}">
           <div class="cajero-order-card__head">
             <div class="cajero-order-meta">
               <div class="cajero-order-mesa">🪑 ${_pedMesa(p)}</div>
@@ -332,11 +337,14 @@ window.VistaAdmin = (function () {
           </div>
           <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
           ${_pedSubtotalsHtml(p)}
+          ${esAnulado && p.ped_motivo_anulacion ? `<p style="font-size:.78rem;color:#991b1b;padding:0 1rem;margin:.25rem 0 0">Motivo: ${SC.escapeHtml(p.ped_motivo_anulacion)}</p>` : ''}
           <div class="cajero-order-card__foot" style="justify-content:space-between;flex-wrap:wrap;gap:.5rem">
-            <span class="adm-ped-estado adm-ped-estado--cobrado">✓ Cobrado</span>
-            <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon)">💳 ${SC.escapeHtml(_metodoNombre(p))}</span>
-            <button class="btn-print-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">🖨️ Nota de Venta</button>
-            <button class="btn-enviar-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">✉️ Enviar por correo</button>
+            ${esAnulado
+              ? `<span class="adm-ped-estado" style="background:#fef2f2;color:#b91c1c;border:1px solid #f0b8b8">✕ Anulado</span>`
+              : `<span class="adm-ped-estado adm-ped-estado--cobrado">✓ Cobrado</span>
+                 <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon)">💳 ${SC.escapeHtml(_metodoNombre(p))}</span>
+                 <button class="btn-print-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">🖨️ Nota de Venta</button>
+                 <button class="btn-enviar-nota" data-pid="${p.ped_id}" style="width:100%;padding:.45rem;border:1.5px solid var(--cinnamon);background:transparent;color:var(--cinnamon);border-radius:8px;font-size:.78rem;font-weight:600;cursor:pointer">✉️ Enviar por correo</button>`}
           </div>
         </div>`;
     }).join('')}</div>`;
@@ -512,6 +520,8 @@ window.VistaAdmin = (function () {
     document.getElementById('rep-dia-sig')?.addEventListener('click', () => {
       if (_repDiaOffset < 0) { _repDiaOffset++; renderReportes('hoy'); }
     });
+    // Exportar reporte actual a Excel (auditoría)
+    document.getElementById('btn-exportar-reporte')?.addEventListener('click', _exportarReporteExcel);
     // Refrescar pedidos
     document.getElementById('btn-refrescar-pedidos')?.addEventListener('click', renderAdminPedidos);
     // Cerrar sesión
@@ -1135,6 +1145,12 @@ window.VistaAdmin = (function () {
       }
     }
 
+    // Con muchas categorías (30 días) mostrar todas las etiquetas del eje X
+    // las amontona y se solapan — se muestra solo un subconjunto legible.
+    const _tickStep = xLabels.length > 10 ? Math.ceil(xLabels.length / 8) : 1;
+    const _tickvals = xLabels.filter((_, i) => i % _tickStep === 0);
+    const _ticktext = _tickvals;
+
     window.Plotly.react(divVentas, [{
       type: 'bar',
       x:    xLabels,
@@ -1148,7 +1164,9 @@ window.VistaAdmin = (function () {
     }], {
       ..._layout,
       yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false },
-      xaxis: { showgrid: false }
+      xaxis: _tickStep > 1
+        ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40 }
+        : { showgrid: false }
     }, _config);
 
     // ── Gráfica 2: top 5 productos ────────────────────────────────
@@ -1163,6 +1181,9 @@ window.VistaAdmin = (function () {
     const topNombres = top5.map(([n]) => n.length > 20 ? n.slice(0, 18) + '…' : n);
     const topCants   = top5.map(([, c]) => c);
     const maxTop     = topCants.length ? Math.max(...topCants) : 1;
+    // dtick fijo en 1 generaba una marca por unidad (ilegible con 30+ ventas);
+    // se calcula para dejar como máximo ~6 marcas en el eje.
+    const _dtickTop  = Math.max(1, Math.ceil(maxTop / 6));
 
     window.Plotly.react(divTop, [{
       type:          'bar',
@@ -1178,7 +1199,7 @@ window.VistaAdmin = (function () {
     }], {
       ..._layout,
       margin: { t: 10, r: 20, b: 30, l: 130 },
-      xaxis: { tickformat: 'd', dtick: 1, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
+      xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
       yaxis: { showgrid: false, automargin: true }
     }, _config);
 
@@ -1203,6 +1224,10 @@ window.VistaAdmin = (function () {
       if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
       return users.find(u => u.id === p.usu_id)?.nombre ?? 'Usuario';
     };
+
+    // Cache del reporte actual — lo usa _exportarReporteExcel() para no
+    // tener que re-consultar Supabase al exportar.
+    _ultimoReporte = { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente };
 
     const tablaEl = document.getElementById('resumen-tabla-wrap');
     if (!tablaEl) return;
@@ -1237,6 +1262,75 @@ window.VistaAdmin = (function () {
     await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC);
   }
 
+  // Exporta el reporte actualmente visible (KPIs + detalle de pedidos +
+  // top productos) a un archivo .xlsx para auditoría contable.
+  async function _exportarReporteExcel() {
+    const SC = window.SC;
+    if (!_ultimoReporte) { SC?.toast('Espera a que cargue el reporte', 'error'); return; }
+
+    const btn = document.getElementById('btn-exportar-reporte');
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+
+    try {
+      if (!window.XLSX) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+          s.onload = resolve;
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+
+      const { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente } = _ultimoReporte;
+
+      const wsResumen = window.XLSX.utils.aoa_to_sheet([
+        ['Sal y Canela — Reporte de Ventas'],
+        ['Período', periodoLabel],
+        ['Desde', desdeStr],
+        ['Hasta', hastaStr],
+        ['Generado', new Date().toLocaleString('es-EC')],
+        [],
+        ['Total vendido', totalVentas],
+        ['Pedidos cobrados', numPedidos],
+        ['Promedio por pedido', promedio],
+      ]);
+      wsResumen['!cols'] = [{ wch: 20 }, { wch: 28 }];
+
+      const filasPedidos = data.map(p => {
+        const items = (p.detalle_pedidos ?? []).reduce((s, d) => s + (d.detped_cantidad || 0), 0);
+        const fechaHora = p.ped_cobrado_en ? new Date(p.ped_cobrado_en) : (p.ped_fecha ? new Date(p.ped_fecha + 'T00:00:00') : null);
+        return {
+          'Fecha / Hora': fechaHora ? fechaHora.toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
+          'Mesa':         _mesa(p),
+          'Cliente':      _cliente(p),
+          'Ítems':        items,
+          'Total ($)':    parseFloat(p.ped_total) || 0
+        };
+      });
+      const wsPedidos = window.XLSX.utils.json_to_sheet(filasPedidos);
+      wsPedidos['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 8 }, { wch: 12 }];
+
+      const wsTop = window.XLSX.utils.json_to_sheet(
+        (top5 ?? []).map(([nombre, cantidad], i) => ({ '#': i + 1, 'Producto': nombre, 'Unidades vendidas': cantidad }))
+      );
+      wsTop['!cols'] = [{ wch: 4 }, { wch: 28 }, { wch: 16 }];
+
+      const wb = window.XLSX.utils.book_new();
+      window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+      window.XLSX.utils.book_append_sheet(wb, wsPedidos, 'Pedidos');
+      window.XLSX.utils.book_append_sheet(wb, wsTop, 'Top productos');
+
+      const nombreArchivo = `sal-y-canela-reporte-${periodo}-${desdeStr}${periodo !== 'hoy' ? '_a_' + hastaStr : ''}.xlsx`;
+      window.XLSX.writeFile(wb, nombreArchivo);
+    } catch (e) {
+      console.error('Exportar reporte a Excel:', e);
+      SC?.toast('No se pudo generar el archivo Excel', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg> Exportar a Excel'; }
+    }
+  }
+
   async function _renderCuadreCaja(periodo, fechaSel, labelDia, SC) {
     const cuadreEl = document.getElementById('rep-cuadre-wrap');
     if (!cuadreEl) return;
@@ -1250,9 +1344,13 @@ window.VistaAdmin = (function () {
     const todos         = todosHoy ?? [];
     const cobrados      = todos.filter(p => p.ped_estado === 'cobrado');
     const pendientes    = todos.filter(p => p.ped_estado === 'pendiente');
+    const anulados      = todos.filter(p => p.ped_estado === 'anulado');
     const totalCreados  = todos.length;
     const totalCobrados = cobrados.length;
-    const diferencia    = totalCreados - totalCobrados;
+    // Un pedido anulado es un desenlace explicado, no una diferencia sin
+    // explicar — se resta para que la "Diferencia" solo marque lo que de
+    // verdad quedó sin resolver (ni cobrado ni anulado).
+    const diferencia    = totalCreados - totalCobrados - anulados.length;
 
     // usuarios(usu_nombre) vía join anidado de PostgREST queda bloqueado por
     // RLS para usuarios que no son el propio — usamos la lista ya cargada
@@ -1265,17 +1363,19 @@ window.VistaAdmin = (function () {
       const u   = p.usu_id ? usuariosCache.find(u => u.id === p.usu_id) : null;
       const nombre = p.usu_id ? (u?.nombre ?? p.usu_id) : 'Invitado';
       const rol    = p.usu_id ? (u?.rol ?? 'usuario') : 'invitado';
-      if (!porMesero[key]) porMesero[key] = { nombre, rol, creados: 0, cobrados: 0 };
+      if (!porMesero[key]) porMesero[key] = { nombre, rol, creados: 0, cobrados: 0, anulados: 0 };
       porMesero[key].creados++;
       if (p.ped_estado === 'cobrado') porMesero[key].cobrados++;
+      if (p.ped_estado === 'anulado') porMesero[key].anulados++;
     });
 
     const filasMesero = Object.values(porMesero).map(m => {
-      const diff = m.creados - m.cobrados;
+      const diff = m.creados - m.cobrados - m.anulados;
       return `<tr>
         <td><span class="rol-pill ${m.rol}">${ROL_LABEL_CUADRE[m.rol] ?? m.rol}</span> ${SC?.escapeHtml(m.nombre) ?? m.nombre}</td>
         <td style="text-align:center">${m.creados}</td>
         <td style="text-align:center;color:${diff === 0 ? '#16a34a' : 'var(--cinnamon)'}">${m.cobrados}</td>
+        <td style="text-align:center;color:var(--text-muted)">${m.anulados || '—'}</td>
         <td style="text-align:center;font-weight:700;color:${diff > 0 ? '#dc2626' : '#16a34a'}">
           ${diff > 0 ? `+${diff} pendiente${diff !== 1 ? 's' : ''}` : '✓ Cuadrado'}
         </td>
@@ -1301,6 +1401,10 @@ window.VistaAdmin = (function () {
           <div class="cuadre-kpi__lbl">Pendientes de cobro</div>
         </div>
         <div class="cuadre-kpi">
+          <div class="cuadre-kpi__val" style="color:var(--text-muted)">${anulados.length}</div>
+          <div class="cuadre-kpi__lbl">Anulados</div>
+        </div>
+        <div class="cuadre-kpi">
           <div class="cuadre-kpi__val" style="color:${diferencia > 0 ? '#dc2626' : '#16a34a'}">${diferencia > 0 ? '⚠ ' + diferencia : '✓ 0'}</div>
           <div class="cuadre-kpi__lbl">Diferencia</div>
         </div>
@@ -1311,6 +1415,7 @@ window.VistaAdmin = (function () {
           <th>Usuario / Mesero</th>
           <th style="text-align:center">Pedidos creados</th>
           <th style="text-align:center">Cobrados</th>
+          <th style="text-align:center">Anulados</th>
           <th style="text-align:center">Estado</th>
         </tr></thead>
         <tbody>${filasMesero}</tbody>

@@ -95,7 +95,7 @@ window.VistaCajero = (function () {
                 ${Array.isArray(h.items) ? h.items.map(i => `
                   <div class="resumen-card__item-row">
                     <span class="resumen-card__item-qty">${i.cantidad}×</span>
-                    <span>${i.nombre}${i.exclusiones?.length ? `<span class="cajero-excl">sin: ${i.exclusiones.join(', ')}</span>` : ''}</span>
+                    <span>${i.nombre}${i.exclusiones?.length ? `<span class="cajero-excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
                   </div>`).join('') : ''}
               </div>
               <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
@@ -192,6 +192,39 @@ window.VistaCajero = (function () {
       document.body.appendChild(overlay);
       const cleanup = val => { document.body.removeChild(overlay); resolve(val); };
       overlay.querySelector('#_conf-ok').addEventListener('click', () => cleanup(true));
+      overlay.querySelector('#_conf-cancel').addEventListener('click', () => cleanup(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
+      document.addEventListener('keydown', function esc(e) {
+        if (e.key === 'Escape') { document.removeEventListener('keydown', esc); cleanup(false); }
+      });
+    });
+  }
+
+  // Confirmar anulación de un pedido pendiente, con motivo opcional.
+  // Resuelve con el string del motivo (puede ser '') si confirma, o con
+  // `false` si cancela.
+  function _confirmarAnularPedido(pedido) {
+    return new Promise(resolve => {
+      const SC = window.SC;
+      const mesaTxt = pedido.paraLlevar || pedido.mesa === 'Para llevar' ? 'Para llevar' : `Mesa ${pedido.mesa}`;
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:380px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
+          <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">🚫</div>
+          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Anular pedido?</h3>
+          <p style="color:#7A5640;font-size:.88rem;margin-bottom:1rem;line-height:1.5;">
+            Se anulará el pedido de <strong style="color:#C8561A;">${SC.escapeHtml(mesaTxt)}</strong> (${SC.escapeHtml(pedido.nombreUsuario)}) por <strong style="color:#C8561A;">$${(pedido.total||0).toFixed(2)}</strong> y se repondrá el stock. Esta acción no se puede deshacer.
+          </p>
+          <textarea id="_anular-motivo" placeholder="Motivo (opcional)" style="width:100%;min-height:60px;border:1.5px solid #E0C9B0;border-radius:10px;padding:.6rem .75rem;font-size:.85rem;font-family:inherit;resize:vertical;margin-bottom:1.25rem;box-sizing:border-box;"></textarea>
+          <div style="display:flex;gap:.75rem;justify-content:center;">
+            <button id="_conf-cancel" style="flex:1;padding:.65rem 1rem;border:1.5px solid #E0C9B0;border-radius:10px;background:#fff;color:#7A5640;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;">Cancelar</button>
+            <button id="_conf-ok" style="flex:1;padding:.65rem 1rem;border:none;border-radius:10px;background:#dc2626;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;">Sí, anular</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const cleanup = val => { document.body.removeChild(overlay); resolve(val); };
+      overlay.querySelector('#_conf-ok').addEventListener('click', () => cleanup(overlay.querySelector('#_anular-motivo').value.trim()));
       overlay.querySelector('#_conf-cancel').addEventListener('click', () => cleanup(false));
       overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
       document.addEventListener('keydown', function esc(e) {
@@ -410,7 +443,7 @@ window.VistaCajero = (function () {
         <div class="cajero-order-items">
           ${items.map((it, idx) => `
             <div class="cajero-order-item">
-              <span class="cajero-order-item__name">${it.nombre}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.join(', ')}</span>` : ''}</span>
+              <span class="cajero-order-item__name">${it.nombre}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
               <div class="caj-qty">
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
                 <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
@@ -425,8 +458,9 @@ window.VistaCajero = (function () {
         <div class="cajero-order-subtotals">
           <div class="total-line"><span>Total</span><span id="card-total-${p.id}">$${total.toFixed(2)}</span></div>
         </div>
-        <div class="cajero-order-card__foot">
-          <button class="btn-cobrar" data-pedido-id="${p.id}">Cobrado ✓</button>
+        <div class="cajero-order-card__foot" style="gap:.5rem">
+          <button class="btn-cobrar" data-pedido-id="${p.id}" style="flex:2">Cobrado ✓</button>
+          <button class="btn-anular" data-pedido-id="${p.id}" style="flex:1">Anular</button>
         </div>
       </div>`;
     }).join('');
@@ -435,6 +469,18 @@ window.VistaCajero = (function () {
       const btnCobrar = e.target.closest('.btn-cobrar');
       if (btnCobrar) {
         abrirModalPago(btnCobrar.dataset.pedidoId);
+        return;
+      }
+      const btnAnular = e.target.closest('.btn-anular');
+      if (btnAnular) {
+        const pedido = SC.leerCaja().find(p => String(p.id) === String(btnAnular.dataset.pedidoId));
+        if (!pedido) return;
+        const motivo = await _confirmarAnularPedido(pedido);
+        if (motivo === false) return; // canceló
+        btnAnular.disabled = true;
+        const ok = await SC.anularPedido(pedido.id, motivo);
+        if (ok) renderCajeroView();
+        else btnAnular.disabled = false;
         return;
       }
       const btnDel = e.target.closest('.caj-del');
@@ -685,7 +731,7 @@ td{padding:2px 0;font-size:11px;vertical-align:top}
 <hr class="sep">
 <table><thead><tr><th>Descripción</th><th class="tr">Cant</th><th class="tr">$U</th><th class="tr">$Total</th></tr></thead>
 <tbody>${items.map(i=>`<tr>
-<td>${i.nombre}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.join(', ')}</span>`:''}
+<td>${i.nombre}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>`:''}
 </td><td class="tr">${i.cantidad}</td><td class="tr">${i.precio.toFixed(2)}</td>
 <td class="tr">${(i.precio*i.cantidad).toFixed(2)}</td></tr>`).join('')}</tbody>
 <tbody class="big"><tr><td colspan="3">TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr></tbody>
@@ -784,7 +830,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </tr></thead>
 <tbody>${items.map((i,idx)=>`<tr>
   <td class="tc">${idx+1}</td>
-  <td>${i.nombre}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.join(', ')})</em>`:''}</td>
+  <td>${i.nombre}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
   <td class="tc">${i.cantidad}</td>
   <td class="tr">$${i.precio.toFixed(2)}</td>
   <td class="tr">$${(i.precio*i.cantidad).toFixed(2)}</td>

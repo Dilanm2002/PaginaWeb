@@ -26,45 +26,61 @@ window.LogicaCarrito = (function () {
   };
 
   /**
-   * Agrega un producto al carrito. Si ya existe, incrementa su cantidad.
+   * Clave que identifica una combinación de exclusiones, sin importar si
+   * cada una viene como string ("Arroz") u objeto ({id, nombre}) — ambas
+   * formas conviven en el código según de dónde vengan los datos.
+   */
+  const _exclKey = (exclusiones = []) =>
+    [...exclusiones]
+      .map(e => (typeof e === 'string' ? e : (e?.id ?? e?.nombre ?? '')))
+      .sort()
+      .join('|');
+
+  /**
+   * Agrega un producto al carrito. Si ya existe una línea con el mismo id
+   * Y las mismas exclusiones, incrementa su cantidad; si las exclusiones
+   * difieren (p.ej. mismo plato, una vez normal y otra "sin arroz"), crea
+   * una línea nueva — de lo contrario se perdía o mezclaba esa información.
    * @param {Object} producto — Debe tener id, nombre, precio, imagen.
    * @returns {Array} Carrito actualizado.
    */
   const agregarItem = (producto, exclusiones = []) => {
     const items = leerCarrito();
-    const idx   = items.findIndex(i => i.id === producto.id);
+    const key   = _exclKey(exclusiones);
+    const idx   = items.findIndex(i => i.id === producto.id && _exclKey(i.exclusiones) === key);
     if (idx >= 0) {
       items[idx].cantidad += 1;
-      if (exclusiones.length > 0) items[idx].exclusiones = exclusiones;
     } else {
       const { id, nombre, precio, imagen } = producto;
-      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones });
+      const lineId = id + (key ? '::' + key : '');
+      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, lineId });
     }
     guardarCarrito(items);
     return items;
   };
 
   /**
-   * Elimina un ítem del carrito por id.
-   * @param {number} id
+   * Elimina un ítem del carrito por su lineId (o id, para carritos previos
+   * a que existiera lineId).
+   * @param {string} lineId
    * @returns {Array} Carrito actualizado.
    */
-  const eliminarItem = id => {
-    const items = leerCarrito().filter(i => i.id !== id);
+  const eliminarItem = lineId => {
+    const items = leerCarrito().filter(i => (i.lineId || i.id) !== lineId);
     guardarCarrito(items);
     return items;
   };
 
   /**
    * Cambia la cantidad de un ítem. Si cantidad <= 0, lo elimina.
-   * @param {number} id
+   * @param {string} lineId
    * @param {number} cantidad
    * @returns {Array} Carrito actualizado.
    */
-  const cambiarCantidad = (id, cantidad) => {
-    if (cantidad <= 0) return eliminarItem(id);
+  const cambiarCantidad = (lineId, cantidad) => {
+    if (cantidad <= 0) return eliminarItem(lineId);
     const items = leerCarrito();
-    const idx   = items.findIndex(i => i.id === id);
+    const idx   = items.findIndex(i => (i.lineId || i.id) === lineId);
     if (idx >= 0) items[idx].cantidad = cantidad;
     guardarCarrito(items);
     return items;

@@ -66,6 +66,30 @@ describe('agregarItem', () => {
     const guardado = JSON.parse(localStorage.getItem('test_carrito'))
     expect(guardado).toHaveLength(1)
   })
+
+  it('mismo producto con distintas exclusiones crea líneas separadas (no se mezclan)', () => {
+    window.LogicaCarrito.agregarItem(producto) // sin exclusiones
+    const items = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Arroz' }])
+    expect(items).toHaveLength(2)
+    expect(items[0].cantidad).toBe(1)
+    expect(items[0].exclusiones).toEqual([])
+    expect(items[1].cantidad).toBe(1)
+    expect(items[1].exclusiones).toEqual([{ id: 'ing1', nombre: 'Arroz' }])
+  })
+
+  it('mismo producto con las mismas exclusiones sí incrementa cantidad', () => {
+    window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Arroz' }])
+    const items = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Arroz' }])
+    expect(items).toHaveLength(1)
+    expect(items[0].cantidad).toBe(2)
+  })
+
+  it('mismas exclusiones en distinto orden se consideran la misma línea', () => {
+    window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Arroz' }, { id: 'ing2', nombre: 'Ensalada' }])
+    const items = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing2', nombre: 'Ensalada' }, { id: 'ing1', nombre: 'Arroz' }])
+    expect(items).toHaveLength(1)
+    expect(items[0].cantidad).toBe(2)
+  })
 })
 
 // ── eliminarItem ───────────────────────────────────────────────
@@ -76,6 +100,15 @@ describe('eliminarItem', () => {
     const items = window.LogicaCarrito.eliminarItem('p1')
     expect(items).toHaveLength(1)
     expect(items[0].id).toBe('p2')
+  })
+
+  it('elimina solo la línea correcta cuando el mismo producto tiene dos líneas (distintas exclusiones)', () => {
+    const producto = { id: 'p1', nombre: 'Almuerzo', precio: 3, imagen: '' }
+    window.LogicaCarrito.agregarItem(producto)
+    const [, conExcl] = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Arroz' }])
+    const items = window.LogicaCarrito.eliminarItem(conExcl.lineId)
+    expect(items).toHaveLength(1)
+    expect(items[0].exclusiones).toEqual([])
   })
 
   it('no falla si el id no existe', () => {

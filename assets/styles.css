@@ -674,7 +674,8 @@
       padding: .85rem 1.1rem; border-top: 2px solid var(--border);
       background: var(--cream);
     }
-    .cajero-order-card__foot .btn-cobrar { width: 100%; justify-content: center; }
+    .cajero-order-card__foot .btn-cobrar,
+    .cajero-order-card__foot .btn-anular { justify-content: center; }
     .cajero-order-total { font-size: 1.05rem; font-weight: 700; color: var(--brown-dark); }
     .cajero-order-total span { color: var(--cinnamon); }
 
@@ -686,6 +687,16 @@
       display: flex; align-items: center; gap: .35rem;
     }
     .btn-cobrar:hover { background: var(--cinnamon); }
+
+    .btn-anular {
+      background: transparent; color: #b91c1c;
+      border: 1.5px solid #f0b8b8; border-radius: var(--radius-sm);
+      padding: .5rem 1rem; font-size: .84rem; font-weight: 700;
+      cursor: pointer; transition: background .2s, border-color .2s;
+      display: flex; align-items: center; gap: .35rem;
+    }
+    .btn-anular:hover { background: #fef2f2; border-color: #dc2626; }
+    .btn-anular:disabled { opacity: .5; cursor: not-allowed; }
 
     .cajero-empty {
       grid-column: 1 / -1; text-align: center;

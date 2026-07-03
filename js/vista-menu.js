@@ -557,8 +557,9 @@ window.VistaMenu = (function () {
 
       if (btn.classList.contains('add')) {
         const carrito = LogicaCarrito.leerCarrito();
-        const enCarrito = carrito.find(x => x.id === prod.id);
-        const totalEnCarrito = enCarrito ? enCarrito.cantidad : 0;
+        // Sumar todas las líneas de este producto (puede haber más de una
+        // si alguna tiene exclusiones distintas) para validar el stock total.
+        const totalEnCarrito = carrito.filter(x => x.id === prod.id).reduce((s, x) => s + x.cantidad, 0);
         const s = SC.getStock(prod.id);
         if (totalEnCarrito >= s.stock) return;
         LogicaCarrito.agregarItem(prod);
@@ -566,7 +567,7 @@ window.VistaMenu = (function () {
       } else {
         const carrito = LogicaCarrito.leerCarrito();
         const item    = carrito.find(x => x.id === prod.id);
-        if (item) LogicaCarrito.cambiarCantidad(prod.id, item.cantidad - 1);
+        if (item) LogicaCarrito.cambiarCantidad(item.lineId || item.id, item.cantidad - 1);
       }
       syncQtys();
       SC.renderCarrito();
