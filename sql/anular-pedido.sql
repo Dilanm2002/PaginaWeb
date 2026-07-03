@@ -12,6 +12,13 @@ ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS ped_motivo_anulacion TEXT;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS ped_anulado_en TIMESTAMPTZ;
 ALTER TABLE pedidos ADD COLUMN IF NOT EXISTS ped_anulado_por TEXT REFERENCES usuarios(usu_id);
 
+-- La columna ped_estado tiene un CHECK que hasta ahora solo permitía
+-- 'pendiente'/'cobrado' — sin esto, UPDATE ... SET ped_estado='anulado'
+-- falla con "violates check constraint pedidos_ped_estado_check".
+ALTER TABLE pedidos DROP CONSTRAINT IF EXISTS pedidos_ped_estado_check;
+ALTER TABLE pedidos ADD CONSTRAINT pedidos_ped_estado_check
+  CHECK (ped_estado IN ('pendiente', 'cobrado', 'anulado'));
+
 CREATE OR REPLACE FUNCTION anular_pedido(
   p_token  TEXT,
   p_ped_id TEXT,

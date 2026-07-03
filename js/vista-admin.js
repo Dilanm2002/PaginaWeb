@@ -989,6 +989,13 @@ window.VistaAdmin = (function () {
       periodo = activeTab?.dataset.period ?? 'hoy';
     }
 
+    // Mientras se recarga el reporte (p.ej. al cambiar de pestaña Hoy/5
+    // días/30 días), _ultimoReporte todavía apunta al período anterior —
+    // se deshabilita "Exportar" para que no se pueda exportar ese período
+    // viejo por error mientras carga el nuevo.
+    const btnExportar = document.getElementById('btn-exportar-reporte');
+    if (btnExportar) btnExportar.disabled = true;
+
     // Carga Plotly dinámicamente la primera vez que se abre Reportes
     if (!window.Plotly) {
       await new Promise((resolve, reject) => {
@@ -1228,6 +1235,7 @@ window.VistaAdmin = (function () {
     // Cache del reporte actual — lo usa _exportarReporteExcel() para no
     // tener que re-consultar Supabase al exportar.
     _ultimoReporte = { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente };
+    if (btnExportar) btnExportar.disabled = false;
 
     const tablaEl = document.getElementById('resumen-tabla-wrap');
     if (!tablaEl) return;
@@ -1272,57 +1280,117 @@ window.VistaAdmin = (function () {
     if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
 
     try {
-      if (!window.XLSX) {
+      // xlsx-js-style: mismo API que la librería "xlsx" pero soporta
+      // estilos de celda (colores/bordes) al escribir — la versión gratuita
+      // de SheetJS no permite escribir estilos en .xlsx. Se marca con
+      // window.__XLSX_STYLED__ para no confundirla con una carga previa
+      // de la librería "xlsx" normal (ambas exponen el mismo global).
+      if (!window.__XLSX_STYLED__) {
         await new Promise((resolve, reject) => {
           const s = document.createElement('script');
-          s.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
-          s.onload = resolve;
+          s.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+          s.onload = () => { window.__XLSX_STYLED__ = true; resolve(); };
           s.onerror = reject;
           document.head.appendChild(s);
         });
       }
+      const XLSX = window.XLSX;
 
       const { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente } = _ultimoReporte;
 
-      const wsResumen = window.XLSX.utils.aoa_to_sheet([
-        ['Sal y Canela — Reporte de Ventas'],
-        ['Período', periodoLabel],
-        ['Desde', desdeStr],
-        ['Hasta', hastaStr],
-        ['Generado', new Date().toLocaleString('es-EC')],
-        [],
-        ['Total vendido', totalVentas],
-        ['Pedidos cobrados', numPedidos],
-        ['Promedio por pedido', promedio],
-      ]);
-      wsResumen['!cols'] = [{ wch: 20 }, { wch: 28 }];
+      // ── Paleta de marca (misma que el panel admin) ──
+      const CINNAMON    = 'C8561A';
+      const BROWN_DARK   = '3B1A08';
+      const CREAM        = 'FDF6EF';
+      const WHITE        = 'FFFFFF';
+      const BORDER_COLOR = 'E0C9B0';
 
-      const filasPedidos = data.map(p => {
+      const _thin = { style: 'thin', color: { rgb: BORDER_COLOR } };
+      const _borderAll = { top: _thin, bottom: _thin, left: _thin, right: _thin };
+
+      const _sTitle = {
+        font: { bold: true, sz: 16, color: { rgb: WHITE } },
+        fill: { fgColor: { rgb: BROWN_DARK } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      };
+      const _sSubtitle = {
+        font: { italic: true, sz: 10, color: { rgb: WHITE } },
+        fill: { fgColor: { rgb: BROWN_DARK } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      };
+      const _sLabel  = { font: { bold: true, color: { rgb: BROWN_DARK } }, border: _borderAll };
+      const _sValue  = { font: { color: { rgb: BROWN_DARK } }, border: _borderAll };
+      const _sHeader = {
+        font: { bold: true, color: { rgb: WHITE } },
+        fill: { fgColor: { rgb: CINNAMON } },
+        alignment: { horizontal: 'center', vertical: 'center' },
+        border: _borderAll
+      };
+      const _sCell = (bg) => ({ font: { color: { rgb: BROWN_DARK } }, fill: { fgColor: { rgb: bg } }, border: _borderAll, alignment: { vertical: 'center' } });
+      const _sCellRight = (bg) => ({ ..._sCell(bg), alignment: { horizontal: 'right', vertical: 'center' } });
+      const _sCellCenter = (bg) => ({ ..._sCell(bg), alignment: { horizontal: 'center', vertical: 'center' } });
+      const MONEY_FMT = '"$"#,##0.00';
+
+      const _cell = (v, s, z) => { const c = { v, s }; if (z) c.z = z; if (typeof v === 'number') c.t = 'n'; return c; };
+      const _merge = (ws, r1, c1, r2, c2) => { ws['!merges'] = ws['!merges'] || []; ws['!merges'].push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }); };
+
+      // ── Hoja Resumen ──
+      const wsResumen = XLSX.utils.aoa_to_sheet([
+        [_cell('Sal y Canela — Reporte de Ventas', _sTitle), _cell('', _sTitle)],
+        [_cell(`Restaurante Artesanal · Generado ${new Date().toLocaleString('es-EC')}`, _sSubtitle), _cell('', _sSubtitle)],
+        [],
+        [_cell('Período', _sLabel), _cell(periodoLabel, _sValue)],
+        [_cell('Desde', _sLabel), _cell(desdeStr, _sValue)],
+        [_cell('Hasta', _sLabel), _cell(hastaStr, _sValue)],
+        [],
+        [_cell('Total vendido', _sLabel), _cell(totalVentas, _sValue, MONEY_FMT)],
+        [_cell('Pedidos cobrados', _sLabel), _cell(numPedidos, _sValue)],
+        [_cell('Promedio por pedido', _sLabel), _cell(promedio, _sValue, MONEY_FMT)],
+      ]);
+      _merge(wsResumen, 0, 0, 0, 1);
+      _merge(wsResumen, 1, 0, 1, 1);
+      wsResumen['!cols'] = [{ wch: 22 }, { wch: 32 }];
+      wsResumen['!rows'] = [{ hpt: 26 }, { hpt: 18 }];
+
+      // ── Hoja Pedidos ──
+      const headerPedidos = ['Fecha / Hora', 'Mesa', 'Cliente', 'Ítems', 'Total'].map(h => _cell(h, _sHeader));
+      const filasPedidos = data.map((p, i) => {
+        const bg = i % 2 === 0 ? WHITE : CREAM;
         const items = (p.detalle_pedidos ?? []).reduce((s, d) => s + (d.detped_cantidad || 0), 0);
         const fechaHora = p.ped_cobrado_en ? new Date(p.ped_cobrado_en) : (p.ped_fecha ? new Date(p.ped_fecha + 'T00:00:00') : null);
-        return {
-          'Fecha / Hora': fechaHora ? fechaHora.toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—',
-          'Mesa':         _mesa(p),
-          'Cliente':      _cliente(p),
-          'Ítems':        items,
-          'Total ($)':    parseFloat(p.ped_total) || 0
-        };
+        return [
+          _cell(fechaHora ? fechaHora.toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—', _sCell(bg)),
+          _cell(_mesa(p), _sCell(bg)),
+          _cell(_cliente(p), _sCell(bg)),
+          _cell(items, _sCellCenter(bg)),
+          _cell(parseFloat(p.ped_total) || 0, _sCellRight(bg), MONEY_FMT)
+        ];
       });
-      const wsPedidos = window.XLSX.utils.json_to_sheet(filasPedidos);
-      wsPedidos['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 20 }, { wch: 8 }, { wch: 12 }];
+      const wsPedidos = XLSX.utils.aoa_to_sheet([headerPedidos, ...filasPedidos]);
+      wsPedidos['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 8 }, { wch: 14 }];
+      wsPedidos['!rows'] = [{ hpt: 20 }];
 
-      const wsTop = window.XLSX.utils.json_to_sheet(
-        (top5 ?? []).map(([nombre, cantidad], i) => ({ '#': i + 1, 'Producto': nombre, 'Unidades vendidas': cantidad }))
-      );
-      wsTop['!cols'] = [{ wch: 4 }, { wch: 28 }, { wch: 16 }];
+      // ── Hoja Top productos ──
+      const headerTop = ['#', 'Producto', 'Unidades vendidas'].map(h => _cell(h, _sHeader));
+      const filasTop = (top5 ?? []).map(([nombre, cantidad], i) => {
+        const bg = i % 2 === 0 ? WHITE : CREAM;
+        return [
+          _cell(i + 1, _sCellCenter(bg)),
+          _cell(nombre, _sCell(bg)),
+          _cell(cantidad, _sCellCenter(bg))
+        ];
+      });
+      const wsTop = XLSX.utils.aoa_to_sheet([headerTop, ...filasTop]);
+      wsTop['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 18 }];
+      wsTop['!rows'] = [{ hpt: 20 }];
 
-      const wb = window.XLSX.utils.book_new();
-      window.XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
-      window.XLSX.utils.book_append_sheet(wb, wsPedidos, 'Pedidos');
-      window.XLSX.utils.book_append_sheet(wb, wsTop, 'Top productos');
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
+      XLSX.utils.book_append_sheet(wb, wsPedidos, 'Pedidos');
+      XLSX.utils.book_append_sheet(wb, wsTop, 'Top productos');
 
       const nombreArchivo = `sal-y-canela-reporte-${periodo}-${desdeStr}${periodo !== 'hoy' ? '_a_' + hastaStr : ''}.xlsx`;
-      window.XLSX.writeFile(wb, nombreArchivo);
+      XLSX.writeFile(wb, nombreArchivo);
     } catch (e) {
       console.error('Exportar reporte a Excel:', e);
       SC?.toast('No se pudo generar el archivo Excel', 'error');

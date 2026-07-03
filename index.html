@@ -2975,7 +2975,16 @@
   function _cerrarSesion() {
     window._modoEdicion = null;
     const _tokenSaliente = ModuloAutenticacion.getSession()?.token;
-    if (_tokenSaliente) db.rpc('cerrar_sesion_staff', { p_token: _tokenSaliente }).catch(() => {});
+    if (_tokenSaliente) {
+      // Best-effort: invalidar el token en el servidor, pero nunca debe
+      // bloquear el cierre de sesión local si falla (antes .catch()
+      // encadenado directo sobre el builder de Supabase lanzaba
+      // "db.rpc(...).catch is not a function" y abortaba todo el resto
+      // de esta función).
+      (async () => {
+        try { await db.rpc('cerrar_sesion_staff', { p_token: _tokenSaliente }); } catch (_) {}
+      })();
+    }
     ModuloAutenticacion.clearSession();
     LogicaCarrito.vaciarCarrito();
     ModuloAutenticacion.setSession({ id: null, nombre: 'Invitado', usuario: null, rol: 'invitado' });
