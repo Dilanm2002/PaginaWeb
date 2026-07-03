@@ -5,6 +5,11 @@
  */
 window.VistaAdmin = (function () {
 
+  // Datos legales del negocio (mismos que en la Nota de Venta de vista-cajero.js)
+  const RUC_NEGOCIO       = '0601335128001';
+  const DIRECCION_NEGOCIO = 'Villalengua y Jorge Drom, Quito';
+  const TELEFONO_NEGOCIO  = '0984 870 280';
+
   // Fecha local (YYYY-MM-DD) — toISOString() usa UTC y desfasa la fecha en
   // zonas horarias detrás de UTC (p.ej. Ecuador, UTC-5) durante la noche.
   function _fechaLocalISO(d = new Date()) {
@@ -1058,13 +1063,22 @@ window.VistaAdmin = (function () {
     const tablaTituloEl = document.getElementById('rep-tabla-titulo');
     if (tablaTituloEl) tablaTituloEl.textContent = tablaTitulo;
 
-    const { data: pedidos, error: errPed } = await window.db
-      .from('pedidos')
-      .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre))')
-      .eq('ped_estado', 'cobrado')
-      .gte('ped_fecha', desdeStr)
-      .lte('ped_fecha', hastaStr)
-      .order('ped_cobrado_en', { ascending: false });
+    const [{ data: pedidos, error: errPed }, { data: anulados, error: errAnul }] = await Promise.all([
+      window.db
+        .from('pedidos')
+        .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre)), facturas(fact_numero, pagos(metodo_id, pago_monto, metodos_pago(metodo_nombre)))')
+        .eq('ped_estado', 'cobrado')
+        .gte('ped_fecha', desdeStr)
+        .lte('ped_fecha', hastaStr)
+        .order('ped_cobrado_en', { ascending: false }),
+      window.db
+        .from('pedidos')
+        .select('ped_id, ped_total, ped_fecha, ped_anulado_en, ped_motivo_anulacion, ped_nombre_invitado, usu_id, ped_anulado_por, mesas(mes_numero)')
+        .eq('ped_estado', 'anulado')
+        .gte('ped_fecha', desdeStr)
+        .lte('ped_fecha', hastaStr)
+        .order('ped_anulado_en', { ascending: false })
+    ]);
 
     if (errPed) {
       kpisEl.innerHTML = '<p style="color:#dc2626;font-size:.9rem;grid-column:1/-1">Error al cargar reportes.</p>';
@@ -1072,6 +1086,7 @@ window.VistaAdmin = (function () {
     }
 
     const data = pedidos ?? [];
+    const dataAnulados = errAnul ? [] : (anulados ?? []);
 
     // ── KPIs ──────────────────────────────────────────────────────
     const totalVentas = data.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
@@ -1177,11 +1192,18 @@ window.VistaAdmin = (function () {
     }, _config);
 
     // ── Gráfica 2: top 5 productos ────────────────────────────────
+    // conteo: solo unidades (para la gráfica). ventasPorProducto: unidades
+    // + ingresos por producto, para el detalle completo del Excel.
     const conteo = {};
+    const ventasPorProducto = {};
     data.forEach(p => {
       (p.detalle_pedidos ?? []).forEach(d => {
         const nombre = d.platos?.plat_nombre;
-        if (nombre) conteo[nombre] = (conteo[nombre] || 0) + (d.detped_cantidad || 0);
+        if (!nombre) return;
+        conteo[nombre] = (conteo[nombre] || 0) + (d.detped_cantidad || 0);
+        if (!ventasPorProducto[nombre]) ventasPorProducto[nombre] = { unidades: 0, ingresos: 0 };
+        ventasPorProducto[nombre].unidades += d.detped_cantidad || 0;
+        ventasPorProducto[nombre].ingresos += parseFloat(d.detped_subtotal) || 0;
       });
     });
     const top5       = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
@@ -1231,10 +1253,28 @@ window.VistaAdmin = (function () {
       if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
       return users.find(u => u.id === p.usu_id)?.nombre ?? 'Usuario';
     };
+    const _facturaDe = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
+    const _pagoDe    = p => { const f = _facturaDe(p); return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null; };
+    const _metodoDe  = p => _pagoDe(p)?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+
+    // Desglose por método de pago — clave para cuadrar caja/tarjeta/
+    // transferencia en una auditoría.
+    const porMetodo = {};
+    data.forEach(p => {
+      const m = _metodoDe(p);
+      if (!porMetodo[m]) porMetodo[m] = { total: 0, cantidad: 0 };
+      porMetodo[m].total    += parseFloat(p.ped_total) || 0;
+      porMetodo[m].cantidad += 1;
+    });
 
     // Cache del reporte actual — lo usa _exportarReporteExcel() para no
     // tener que re-consultar Supabase al exportar.
-    _ultimoReporte = { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente };
+    _ultimoReporte = {
+      periodo, periodoLabel, desdeStr, hastaStr,
+      data, totalVentas, numPedidos, promedio, top5, ventasPorProducto,
+      dataAnulados, porMetodo,
+      _mesa, _cliente, _metodoDe
+    };
     if (btnExportar) btnExportar.disabled = false;
 
     const tablaEl = document.getElementById('resumen-tabla-wrap');
@@ -1296,14 +1336,24 @@ window.VistaAdmin = (function () {
       }
       const XLSX = window.XLSX;
 
-      const { periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio, top5, _mesa, _cliente } = _ultimoReporte;
+      const {
+        periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio,
+        top5, ventasPorProducto, dataAnulados, porMetodo, _mesa, _cliente, _metodoDe
+      } = _ultimoReporte;
+      const users = window.ModuloAutenticacion?.leerUsuarios() ?? [];
+      const _quienAnulo = p => {
+        if (!p.ped_anulado_por) return '—';
+        return users.find(u => u.id === p.ped_anulado_por)?.nombre ?? p.ped_anulado_por;
+      };
 
-      // ── Paleta de marca (misma que el panel admin) ──
-      const CINNAMON    = 'C8561A';
-      const BROWN_DARK   = '3B1A08';
-      const CREAM        = 'FDF6EF';
-      const WHITE        = 'FFFFFF';
-      const BORDER_COLOR = 'E0C9B0';
+      // ── Paleta de marca (misma que :root en assets/styles.css) ──
+      const CINNAMON     = 'C8561A';
+      const BROWN_DARK    = '3B1A08';
+      const CREAM         = 'FDF6EE';
+      const WHITE         = 'FFFFFF';
+      const BORDER_COLOR  = 'E0C9B0';
+      const ROJO_ANULADO  = 'FDECEC';
+      const ROJO_TEXTO    = '991B1B';
 
       const _thin = { style: 'thin', color: { rgb: BORDER_COLOR } };
       const _borderAll = { top: _thin, bottom: _thin, left: _thin, right: _thin };
@@ -1314,12 +1364,18 @@ window.VistaAdmin = (function () {
         alignment: { horizontal: 'left', vertical: 'center' }
       };
       const _sSubtitle = {
-        font: { italic: true, sz: 10, color: { rgb: WHITE } },
+        font: { sz: 10, color: { rgb: WHITE } },
         fill: { fgColor: { rgb: BROWN_DARK } },
         alignment: { horizontal: 'left', vertical: 'center' }
       };
-      const _sLabel  = { font: { bold: true, color: { rgb: BROWN_DARK } }, border: _borderAll };
+      const _sSeccion = {
+        font: { bold: true, sz: 11, color: { rgb: WHITE } },
+        fill: { fgColor: { rgb: CINNAMON } },
+        alignment: { horizontal: 'left', vertical: 'center' }
+      };
+      const _sLabel  = { font: { bold: true, color: { rgb: BROWN_DARK } }, fill: { fgColor: { rgb: CREAM } }, border: _borderAll };
       const _sValue  = { font: { color: { rgb: BROWN_DARK } }, border: _borderAll };
+      const _sValueBold = { font: { bold: true, color: { rgb: CINNAMON } }, border: _borderAll };
       const _sHeader = {
         font: { bold: true, color: { rgb: WHITE } },
         fill: { fgColor: { rgb: CINNAMON } },
@@ -1335,25 +1391,42 @@ window.VistaAdmin = (function () {
       const _merge = (ws, r1, c1, r2, c2) => { ws['!merges'] = ws['!merges'] || []; ws['!merges'].push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }); };
 
       // ── Hoja Resumen ──
-      const wsResumen = XLSX.utils.aoa_to_sheet([
-        [_cell('Sal y Canela — Reporte de Ventas', _sTitle), _cell('', _sTitle)],
-        [_cell(`Restaurante Artesanal · Generado ${new Date().toLocaleString('es-EC')}`, _sSubtitle), _cell('', _sSubtitle)],
-        [],
-        [_cell('Período', _sLabel), _cell(periodoLabel, _sValue)],
-        [_cell('Desde', _sLabel), _cell(desdeStr, _sValue)],
-        [_cell('Hasta', _sLabel), _cell(hastaStr, _sValue)],
-        [],
-        [_cell('Total vendido', _sLabel), _cell(totalVentas, _sValue, MONEY_FMT)],
-        [_cell('Pedidos cobrados', _sLabel), _cell(numPedidos, _sValue)],
-        [_cell('Promedio por pedido', _sLabel), _cell(promedio, _sValue, MONEY_FMT)],
-      ]);
-      _merge(wsResumen, 0, 0, 0, 1);
-      _merge(wsResumen, 1, 0, 1, 1);
-      wsResumen['!cols'] = [{ wch: 22 }, { wch: 32 }];
-      wsResumen['!rows'] = [{ hpt: 26 }, { hpt: 18 }];
+      const totalAnulado = (dataAnulados ?? []).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
+      const metodosFilas = Object.entries(porMetodo ?? {}).sort((a, b) => b[1].total - a[1].total)
+        .map(([nombre, m]) => [_cell(nombre, _sValue), _cell(m.cantidad, { ..._sValue, alignment: { horizontal: 'center' } }), _cell(m.total, _sValue, MONEY_FMT)]);
 
-      // ── Hoja Pedidos ──
-      const headerPedidos = ['Fecha / Hora', 'Mesa', 'Cliente', 'Ítems', 'Total'].map(h => _cell(h, _sHeader));
+      const resumenFilas = [
+        [_cell('Sal y Canela — Reporte de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
+        [_cell(`RUC ${RUC_NEGOCIO} · RIMPE Negocio Popular (exento de IVA)`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
+        [_cell(`${DIRECCION_NEGOCIO} · ${TELEFONO_NEGOCIO}`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
+        [],
+        [_cell('Período', _sLabel), _cell(periodoLabel, _sValue), _cell('', _sValue)],
+        [_cell('Desde', _sLabel), _cell(desdeStr, _sValue), _cell('', _sValue)],
+        [_cell('Hasta', _sLabel), _cell(hastaStr, _sValue), _cell('', _sValue)],
+        [_cell('Generado', _sLabel), _cell(new Date().toLocaleString('es-EC'), _sValue), _cell('', _sValue)],
+        [],
+        [_cell('Indicadores', _sSeccion), _cell('', _sSeccion), _cell('', _sSeccion)],
+        [_cell('Total vendido', _sLabel), _cell(totalVentas, _sValueBold, MONEY_FMT), _cell('', _sValue)],
+        [_cell('Pedidos cobrados', _sLabel), _cell(numPedidos, _sValue), _cell('', _sValue)],
+        [_cell('Promedio por pedido', _sLabel), _cell(promedio, _sValue, MONEY_FMT), _cell('', _sValue)],
+        [_cell('Pedidos anulados', _sLabel), _cell((dataAnulados ?? []).length, _sValue), _cell('', _sValue)],
+        [_cell('Valor anulado (no vendido)', _sLabel), _cell(totalAnulado, _sValue, MONEY_FMT), _cell('', _sValue)],
+        [],
+        [_cell('Desglose por método de pago', _sSeccion), _cell('', _sSeccion), _cell('', _sSeccion)],
+        [_cell('Método', _sHeader), _cell('Pedidos', _sHeader), _cell('Total', _sHeader)],
+        ...metodosFilas
+      ];
+      const wsResumen = XLSX.utils.aoa_to_sheet(resumenFilas);
+      _merge(wsResumen, 0, 0, 0, 2);
+      _merge(wsResumen, 1, 0, 1, 2);
+      _merge(wsResumen, 2, 0, 2, 2);
+      _merge(wsResumen, 9, 0, 9, 2);
+      _merge(wsResumen, 16, 0, 16, 2);
+      wsResumen['!cols'] = [{ wch: 26 }, { wch: 20 }, { wch: 16 }];
+      wsResumen['!rows'] = [{ hpt: 26 }, { hpt: 16 }, { hpt: 16 }];
+
+      // ── Hoja Pedidos (detalle de ventas cobradas) ──
+      const headerPedidos = ['Fecha / Hora', 'Mesa', 'Cliente', 'Ítems', 'Método de pago', 'Total'].map(h => _cell(h, _sHeader));
       const filasPedidos = data.map((p, i) => {
         const bg = i % 2 === 0 ? WHITE : CREAM;
         const items = (p.detalle_pedidos ?? []).reduce((s, d) => s + (d.detped_cantidad || 0), 0);
@@ -1363,30 +1436,52 @@ window.VistaAdmin = (function () {
           _cell(_mesa(p), _sCell(bg)),
           _cell(_cliente(p), _sCell(bg)),
           _cell(items, _sCellCenter(bg)),
+          _cell(_metodoDe(p), _sCell(bg)),
           _cell(parseFloat(p.ped_total) || 0, _sCellRight(bg), MONEY_FMT)
         ];
       });
       const wsPedidos = XLSX.utils.aoa_to_sheet([headerPedidos, ...filasPedidos]);
-      wsPedidos['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 8 }, { wch: 14 }];
+      wsPedidos['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 8 }, { wch: 16 }, { wch: 14 }];
       wsPedidos['!rows'] = [{ hpt: 20 }];
 
-      // ── Hoja Top productos ──
-      const headerTop = ['#', 'Producto', 'Unidades vendidas'].map(h => _cell(h, _sHeader));
-      const filasTop = (top5 ?? []).map(([nombre, cantidad], i) => {
-        const bg = i % 2 === 0 ? WHITE : CREAM;
+      // ── Hoja Anulados (rastro de auditoría de pedidos no cobrados) ──
+      const headerAnulados = ['Fecha / Hora', 'Mesa', 'Cliente', 'Total', 'Motivo', 'Anulado por'].map(h => _cell(h, _sHeader));
+      const filasAnulados = (dataAnulados ?? []).map(p => {
+        const fechaHora = p.ped_anulado_en ? new Date(p.ped_anulado_en) : (p.ped_fecha ? new Date(p.ped_fecha + 'T00:00:00') : null);
         return [
-          _cell(i + 1, _sCellCenter(bg)),
-          _cell(nombre, _sCell(bg)),
-          _cell(cantidad, _sCellCenter(bg))
+          _cell(fechaHora ? fechaHora.toLocaleString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—', _sCell(ROJO_ANULADO)),
+          _cell(_mesa(p), _sCell(ROJO_ANULADO)),
+          _cell(_cliente(p), _sCell(ROJO_ANULADO)),
+          _cell(parseFloat(p.ped_total) || 0, { ..._sCellRight(ROJO_ANULADO), font: { color: { rgb: ROJO_TEXTO }, bold: true } }, MONEY_FMT),
+          _cell(p.ped_motivo_anulacion || '—', _sCell(ROJO_ANULADO)),
+          _cell(_quienAnulo(p), _sCell(ROJO_ANULADO))
         ];
       });
+      const wsAnulados = XLSX.utils.aoa_to_sheet(
+        filasAnulados.length ? [headerAnulados, ...filasAnulados] : [headerAnulados, [_cell('Sin pedidos anulados en este período', { font: { italic: true, color: { rgb: BROWN_DARK } } })]]
+      );
+      wsAnulados['!cols'] = [{ wch: 20 }, { wch: 14 }, { wch: 22 }, { wch: 14 }, { wch: 30 }, { wch: 18 }];
+      wsAnulados['!rows'] = [{ hpt: 20 }];
+
+      // ── Hoja Top productos (detalle completo, no solo el top 5) ──
+      const headerTop = ['Producto', 'Unidades vendidas', 'Ingresos'].map(h => _cell(h, _sHeader));
+      const filasTop = Object.entries(ventasPorProducto ?? {}).sort((a, b) => b[1].ingresos - a[1].ingresos)
+        .map(([nombre, v], i) => {
+          const bg = i % 2 === 0 ? WHITE : CREAM;
+          return [
+            _cell(nombre, _sCell(bg)),
+            _cell(v.unidades, _sCellCenter(bg)),
+            _cell(v.ingresos, _sCellRight(bg), MONEY_FMT)
+          ];
+        });
       const wsTop = XLSX.utils.aoa_to_sheet([headerTop, ...filasTop]);
-      wsTop['!cols'] = [{ wch: 5 }, { wch: 30 }, { wch: 18 }];
+      wsTop['!cols'] = [{ wch: 32 }, { wch: 18 }, { wch: 14 }];
       wsTop['!rows'] = [{ hpt: 20 }];
 
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
       XLSX.utils.book_append_sheet(wb, wsPedidos, 'Pedidos');
+      XLSX.utils.book_append_sheet(wb, wsAnulados, 'Anulados');
       XLSX.utils.book_append_sheet(wb, wsTop, 'Top productos');
 
       const nombreArchivo = `sal-y-canela-reporte-${periodo}-${desdeStr}${periodo !== 'hoy' ? '_a_' + hastaStr : ''}.xlsx`;

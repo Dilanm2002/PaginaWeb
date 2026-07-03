@@ -2688,7 +2688,7 @@
     padding: .6rem 1rem; margin-bottom: 1rem;
   }
   .cuadre-kpis {
-    display: grid; grid-template-columns: repeat(4,1fr); gap: .9rem; margin-bottom: 1rem;
+    display: grid; grid-template-columns: repeat(5,1fr); gap: .9rem; margin-bottom: 1rem;
   }
   .cuadre-kpi {
     background: #fff; border: 1px solid rgba(224,201,176,.6);
