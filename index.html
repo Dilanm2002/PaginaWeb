@@ -1516,12 +1516,14 @@
   async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false }) {
     const totales = LogicaCarrito.calcularTotales(items);
 
-    // Buscar mes_id desde el número de mesa (solo si no es para llevar)
-    let mesaData = null;
-    if (!paraLlevar && mesa) {
-      const { data } = await db.from('mesas').select('mes_id').eq('mes_numero', mesa).single();
-      mesaData = data;
-    }
+    // Buscar mes_id y verificar stock real en paralelo — son consultas
+    // independientes (antes iban una tras otra, sumando su latencia).
+    const [{ data: mesaData }, { data: stockDB }] = await Promise.all([
+      (!paraLlevar && mesa)
+        ? db.from('mesas').select('mes_id').eq('mes_numero', mesa).single()
+        : Promise.resolve({ data: null }),
+      db.from('productos').select('plat_id, prod_stock, prod_disponible').in('plat_id', items.map(i => i.id))
+    ]);
 
     // Limpiar pedido pendiente previo en orden (FK: exclusiones → detalles → pedido)
     async function _limpiarPeds(query) {
@@ -1541,10 +1543,6 @@
       await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('usu_id', idUsuario).is('mes_id', null));
     }
 
-    // Verificar stock real en BD (la memoria local puede estar desactualizada entre sesiones)
-    const { data: stockDB } = await db.from('productos')
-      .select('plat_id, prod_stock, prod_disponible')
-      .in('plat_id', items.map(i => i.id));
     if (stockDB?.length) {
       stockDB.forEach(s => { _stock[s.plat_id] = { stock: s.prod_stock, disponible: s.prod_disponible }; });
       const sinStockDB = items.filter(item => {
@@ -1631,8 +1629,11 @@
     };
     _caja.push(pedido);
 
-    // Descontar stock
-    await Promise.all(items.map(i => actualizarStock(i.id, i.cantidad)));
+    // Descontar stock en segundo plano — actualizarStock ya actualiza la
+    // caché local (_stock) de forma síncrona antes de escribir a la BD, así
+    // que no hace falta bloquear el envío del pedido esperando la escritura.
+    Promise.all(items.map(i => actualizarStock(i.id, i.cantidad)))
+      .catch(e => console.error('enviarACaja: error descontando stock:', e));
     return _caja;
   }
 

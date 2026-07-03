@@ -628,7 +628,7 @@ window.VistaAdmin = (function () {
 
     el.querySelectorAll('.admin-msg-btn-leido').forEach(btn => {
       btn.onclick = async () => {
-        const id = Number(btn.dataset.id);
+        const id = btn.dataset.id;
         const { error } = await window.db.rpc('admin_marcar_mensaje_leido', { p_token: token, p_mens_id: id });
         if (error) { window.SC?.toast('Error al marcar el mensaje', 'error'); return; }
         renderMensajes();
@@ -1368,9 +1368,12 @@ window.VistaAdmin = (function () {
         fill: { fgColor: { rgb: BROWN_DARK } },
         alignment: { horizontal: 'left', vertical: 'center' }
       };
+      // Un solo color de fondo fuerte (café oscuro, el mismo del sidebar del
+      // panel admin) para todos los encabezados — la canela queda solo como
+      // acento de texto en cifras clave, igual que en el resto del sitio.
       const _sSeccion = {
         font: { bold: true, sz: 11, color: { rgb: WHITE } },
-        fill: { fgColor: { rgb: CINNAMON } },
+        fill: { fgColor: { rgb: BROWN_DARK } },
         alignment: { horizontal: 'left', vertical: 'center' }
       };
       const _sLabel  = { font: { bold: true, color: { rgb: BROWN_DARK } }, fill: { fgColor: { rgb: CREAM } }, border: _borderAll };
@@ -1378,7 +1381,7 @@ window.VistaAdmin = (function () {
       const _sValueBold = { font: { bold: true, color: { rgb: CINNAMON } }, border: _borderAll };
       const _sHeader = {
         font: { bold: true, color: { rgb: WHITE } },
-        fill: { fgColor: { rgb: CINNAMON } },
+        fill: { fgColor: { rgb: BROWN_DARK } },
         alignment: { horizontal: 'center', vertical: 'center' },
         border: _borderAll
       };
@@ -1387,13 +1390,17 @@ window.VistaAdmin = (function () {
       const _sCellCenter = (bg) => ({ ..._sCell(bg), alignment: { horizontal: 'center', vertical: 'center' } });
       const MONEY_FMT = '"$"#,##0.00';
 
-      const _cell = (v, s, z) => { const c = { v, s }; if (z) c.z = z; if (typeof v === 'number') c.t = 'n'; return c; };
+      // z siempre explícito (nunca queda "sin formato") — un cell sin z
+      // puede heredar visualmente el formato de moneda de una celda vecina
+      // en algunos lectores de .xlsx si no se declara "General" a propósito.
+      const INT_FMT = '0';
+      const _cell = (v, s, z) => { const c = { v, s }; c.z = z || (typeof v === 'number' ? INT_FMT : 'General'); if (typeof v === 'number') c.t = 'n'; return c; };
       const _merge = (ws, r1, c1, r2, c2) => { ws['!merges'] = ws['!merges'] || []; ws['!merges'].push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }); };
 
       // ── Hoja Resumen ──
       const totalAnulado = (dataAnulados ?? []).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
       const metodosFilas = Object.entries(porMetodo ?? {}).sort((a, b) => b[1].total - a[1].total)
-        .map(([nombre, m]) => [_cell(nombre, _sValue), _cell(m.cantidad, { ..._sValue, alignment: { horizontal: 'center' } }), _cell(m.total, _sValue, MONEY_FMT)]);
+        .map(([nombre, m]) => [_cell(nombre, _sValue), _cell(m.cantidad, { ..._sValue, alignment: { horizontal: 'center' } }, INT_FMT), _cell(m.total, _sValue, MONEY_FMT)]);
 
       const resumenFilas = [
         [_cell('Sal y Canela — Reporte de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
@@ -1407,9 +1414,9 @@ window.VistaAdmin = (function () {
         [],
         [_cell('Indicadores', _sSeccion), _cell('', _sSeccion), _cell('', _sSeccion)],
         [_cell('Total vendido', _sLabel), _cell(totalVentas, _sValueBold, MONEY_FMT), _cell('', _sValue)],
-        [_cell('Pedidos cobrados', _sLabel), _cell(numPedidos, _sValue), _cell('', _sValue)],
+        [_cell('Pedidos cobrados', _sLabel), _cell(numPedidos, _sValue, INT_FMT), _cell('', _sValue)],
         [_cell('Promedio por pedido', _sLabel), _cell(promedio, _sValue, MONEY_FMT), _cell('', _sValue)],
-        [_cell('Pedidos anulados', _sLabel), _cell((dataAnulados ?? []).length, _sValue), _cell('', _sValue)],
+        [_cell('Pedidos anulados', _sLabel), _cell((dataAnulados ?? []).length, _sValue, INT_FMT), _cell('', _sValue)],
         [_cell('Valor anulado (no vendido)', _sLabel), _cell(totalAnulado, _sValue, MONEY_FMT), _cell('', _sValue)],
         [],
         [_cell('Desglose por método de pago', _sSeccion), _cell('', _sSeccion), _cell('', _sSeccion)],
