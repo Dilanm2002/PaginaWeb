@@ -785,15 +785,10 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-categoria">Categoría</label>
-              <select id="pf-categoria">
-                <option value="Desayunos">Desayunos</option>
-                <option value="Entradas">Entradas</option>
-                <option value="Almuerzos">Almuerzos</option>
-                <option value="Postres">Postres</option>
-                <option value="Bocaditos">Bocaditos</option>
-                <option value="Bebidas Calientes">Bebidas Calientes</option>
-                <option value="Bebidas Frías">Bebidas Frías</option>
-              </select>
+              <input type="text" id="pf-categoria" list="pf-categoria-datalist" maxlength="40"
+                placeholder="Elige una o escribe una nueva" aria-describedby="pf-categoria-error">
+              <datalist id="pf-categoria-datalist"></datalist>
+              <span id="pf-categoria-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
               <label for="pf-precio">Precio (USD)</label>

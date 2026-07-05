@@ -8,6 +8,13 @@ window.VistaMenu = (function () {
   let meseroMesaTarget = null;
   let _meseroOriginalItems = null;
 
+  // Misma idea que _exclKey en logica-carrito.js, para las líneas de un
+  // pedido activo (ped.items), que no pasan por LogicaCarrito.
+  const _exclKeyPed = (exclusiones = []) =>
+    [...(exclusiones || [])].map(e => (typeof e === 'string' ? e : (e?.id ?? e?.nombre ?? ''))).sort().join('|');
+  const _puedeExcluirIngredientes = p =>
+    Array.isArray(p.ingredientes) && p.ingredientes.some(i => i && i.id) && p.permiteExcluir === true;
+
   // Placeholder cuando el plato no tiene imagen (mismo estilo que el panel admin)
   const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
@@ -241,20 +248,41 @@ window.VistaMenu = (function () {
     modalBox.querySelector('.btn-modal-add').onclick = () => {
       const s = SC.getStock(p.id);
       if (!s.disponible || s.stock <= 0) { SC.toast(`"${p.nombre}" está agotado`, 'error'); return; }
-      const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === p.id);
-      if (enCarrito && enCarrito.cantidad >= s.stock) return;
 
       const exclusiones = [];
       modalBox.querySelectorAll('.ing-check:not(:checked)').forEach(cb => {
         exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
       });
-
-      LogicaCarrito.agregarItem(p, exclusiones);
-      SC.renderCarrito();
       const msg = exclusiones.length
         ? `"${p.nombre}" sin: ${exclusiones.map(e => e.nombre).join(', ')}`
-        : `"${p.nombre}" agregado a tu orden`;
-      SC.toast(msg, 'success');
+        : `"${p.nombre}" agregado`;
+
+      // Mesero agregando a una mesa ya activa: va directo al pedido en caja,
+      // no al carrito (mismo camino que el resto de renderProductosMesero).
+      if (meseroMesaTarget) {
+        const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));
+        if (ped) {
+          const key = _exclKeyPed(exclusiones);
+          const totalEnPedido = ped.items.filter(x => x.id === p.id).reduce((s2, x) => s2 + x.cantidad, 0);
+          if (totalEnPedido >= s.stock) { SC.toast(`"${p.nombre}" sin stock suficiente`, 'error'); return; }
+          const existente = ped.items.find(x => x.id === p.id && _exclKeyPed(x.exclusiones) === key);
+          if (existente) existente.cantidad += 1;
+          else ped.items.push({ id: p.id, nombre: p.nombre, precio: p.precio, cantidad: 1, exclusiones });
+          SC.actualizarStock(p.id, 1);
+          renderMesasActivas();
+          syncQtys();
+          SC.toast(`${msg} a Mesa ${meseroMesaTarget.mesa}`, 'success');
+        }
+        cerrarModalProducto();
+        return;
+      }
+
+      const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === p.id);
+      if (enCarrito && enCarrito.cantidad >= s.stock) return;
+      LogicaCarrito.agregarItem(p, exclusiones);
+      SC.renderCarrito();
+      syncQtys();
+      SC.toast(exclusiones.length ? msg : `"${p.nombre}" agregado a tu orden`, 'success');
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -282,8 +310,9 @@ window.VistaMenu = (function () {
     SC.getProductosMergeados().forEach(p => {
       const el = document.getElementById(`mqty-${p.id}`);
       if (!el) return;
-      const item = fuente.find(x => x.id === p.id);
-      const qty  = item ? item.cantidad : 0;
+      // Sumar todas las líneas de este producto — puede haber más de una si
+      // se agregó con distintas exclusiones (antes solo tomaba la primera).
+      const qty = fuente.filter(x => x.id === p.id).reduce((s, x) => s + x.cantidad, 0);
       el.textContent = qty;
       const row = el.closest('.mesero-row');
       if (row) row.classList.toggle('has-qty', qty > 0);
@@ -525,22 +554,27 @@ window.VistaMenu = (function () {
       if (btn.classList.contains('add')) {
         const s = SC.getStock(prod.id);
         if (!s.disponible || s.stock <= 0) return;
+        // Si el plato admite excluir ingredientes, el mesero necesita poder
+        // elegir cuáles antes de agregarlo — se abre el mismo modal que usa
+        // el cliente (abrirModalProducto ya sabe si hay que meterlo al
+        // carrito o directo a la mesa activa, según meseroMesaTarget).
+        if (_puedeExcluirIngredientes(prod)) { abrirModalProducto(prod); return; }
       }
 
       if (meseroMesaTarget) {
         const peds = SC.leerCaja();
         const ped  = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
         if (ped) {
-          const existente = ped.items.find(x => x.id === prod.id);
+          const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === '');
           if (btn.classList.contains('add')) {
-            const totalEnPedido = existente ? existente.cantidad : 0;
+            const totalEnPedido = ped.items.filter(x => x.id === prod.id).reduce((s, x) => s + x.cantidad, 0);
             const s = SC.getStock(prod.id);
             if (!s.disponible || s.stock <= 0 || totalEnPedido >= s.stock) {
               SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error');
               return;
             }
             if (existente) { existente.cantidad += 1; }
-            else { ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1 }); }
+            else { ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1, exclusiones: [] }); }
             SC.actualizarStock(prod.id, 1);
             SC.toast(`"${prod.nombre}" agregado a Mesa ${meseroMesaTarget.mesa}`, 'success');
           } else {

@@ -643,7 +643,14 @@ window.VistaAdmin = (function () {
 
     document.getElementById('prod-form-title').textContent = p ? 'Editar Producto' : 'Agregar Producto';
     document.getElementById('pf-nombre').value       = p?.nombre      ?? '';
-    document.getElementById('pf-categoria').value    = p?.categoria   ?? 'Desayunos';
+    // Categorías existentes como sugerencias (datalist) — el admin puede
+    // elegir una o escribir una nueva; guardarMenuItemDB ya la crea sola.
+    const catDatalist = document.getElementById('pf-categoria-datalist');
+    if (catDatalist) {
+      const categoriasExistentes = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))].sort();
+      catDatalist.innerHTML = categoriasExistentes.map(c => `<option value="${SC.escapeHtml(c)}"></option>`).join('');
+    }
+    document.getElementById('pf-categoria').value    = p?.categoria   ?? '';
     document.getElementById('pf-precio').value       = p?.precio != null ? (+p.precio).toFixed(2) : '';
     document.getElementById('pf-descripcion').value  = p?.descripcion ?? '';
     document.getElementById('pf-tag').value               = p?.tag            ?? '';
@@ -741,6 +748,7 @@ window.VistaAdmin = (function () {
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
     _mostrarErrorNombre('');
+    _mostrarErrorCategoria('');
     _mostrarErrorPrecio('');
     _mostrarErrorDescripcion('');
     _mostrarErrorIngredientes('');
@@ -849,6 +857,7 @@ window.VistaAdmin = (function () {
   }
 
   const _mostrarErrorNombre      = msg => _mostrarError('pf-nombre',      'pf-nombre-error',      msg);
+  const _mostrarErrorCategoria   = msg => _mostrarError('pf-categoria',   'pf-categoria-error',   msg);
   const _mostrarErrorPrecio      = msg => _mostrarError('pf-precio',      'pf-precio-error',      msg);
   const _mostrarErrorDescripcion = msg => _mostrarError('pf-descripcion', 'pf-descripcion-error', msg);
   const _mostrarErrorIngredientes= msg => _mostrarError('pf-ingredientes','pf-ingredientes-error', msg);
@@ -884,6 +893,9 @@ window.VistaAdmin = (function () {
     pfStock.addEventListener('input', () => _mostrarErrorStock(_validarStock(pfStock.value)));
     pfStock.addEventListener('blur',  () => _mostrarErrorStock(_validarStock(pfStock.value)));
 
+    const pfCategoria = document.getElementById('pf-categoria');
+    pfCategoria.addEventListener('blur', () => _mostrarErrorCategoria(pfCategoria.value.trim() ? '' : 'Elige o escribe una categoría.'));
+
     const pfDesc = document.getElementById('pf-descripcion');
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
 
@@ -903,6 +915,7 @@ window.VistaAdmin = (function () {
     document.getElementById('btn-prod-save').addEventListener('click', async () => {
       const SC     = window.SC;
       const nombre        = document.getElementById('pf-nombre').value.trim();
+      const categoria     = document.getElementById('pf-categoria').value.trim();
       const precioRaw     = document.getElementById('pf-precio').value;
       const precio        = Math.round(parseFloat(precioRaw) * 100) / 100;
       const descripcion   = document.getElementById('pf-descripcion').value.trim();
@@ -913,18 +926,21 @@ window.VistaAdmin = (function () {
       const errPrecio = _validarPrecio(precioRaw);
       const errIng    = _validarIngredientes(ingredientesRaw);
       const errStock  = _validarStock(stockRaw);
+      const errCategoria = categoria ? '' : 'Elige o escribe una categoría.';
 
       _mostrarErrorNombre(errNombre);
+      _mostrarErrorCategoria(errCategoria);
       _mostrarErrorPrecio(errPrecio);
       _mostrarErrorDescripcion(!descripcion ? 'La descripción es obligatoria.' : '');
       _mostrarErrorIngredientes(errIng);
       _mostrarErrorStock(errStock);
 
-      if (errNombre)   { document.getElementById('pf-nombre').focus(); return; }
-      if (errPrecio)   { document.getElementById('pf-precio').focus(); return; }
-      if (!descripcion){ document.getElementById('pf-descripcion').focus(); return; }
-      if (errIng)      { document.getElementById('pf-ingredientes').focus(); return; }
-      if (errStock)    { document.getElementById('pf-stock').focus(); return; }
+      if (errNombre)    { document.getElementById('pf-nombre').focus(); return; }
+      if (errCategoria) { document.getElementById('pf-categoria').focus(); return; }
+      if (errPrecio)    { document.getElementById('pf-precio').focus(); return; }
+      if (!descripcion) { document.getElementById('pf-descripcion').focus(); return; }
+      if (errIng)       { document.getElementById('pf-ingredientes').focus(); return; }
+      if (errStock)     { document.getElementById('pf-stock').focus(); return; }
 
       /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -961,7 +977,7 @@ window.VistaAdmin = (function () {
       const item = {
         id,
         nombre,
-        categoria:   document.getElementById('pf-categoria').value,
+        categoria,
         descripcion,
         precio,
         ingredientes,
