@@ -455,9 +455,10 @@ window.VistaAdmin = (function () {
     todos.forEach(p => { if (!porCat[p.categoria]) porCat[p.categoria] = []; porCat[p.categoria].push(p); });
     const cats = _CATS_ORDER.filter(c => porCat[c]).concat(Object.keys(porCat).filter(c => !_CATS_ORDER.includes(c) && porCat[c]));
 
+    const colores = SC.getCategoriasColores ? SC.getCategoriasColores() : {};
     grid.innerHTML = cats.map(cat => `
       <div class="admin-cat-section">
-        <h3 class="admin-cat-title" data-cat="${cat}">${cat} <span class="admin-cat-count">${porCat[cat].length}</span></h3>
+        <h3 class="admin-cat-title" data-cat="${cat}"${colores[cat] ? ` style="--cat-c:${colores[cat]}"` : ''}>${cat} <span class="admin-cat-count">${porCat[cat].length}</span></h3>
         <div class="admin-cat-grid">${porCat[cat].map(_renderAdminCard).join('')}</div>
       </div>`).join('');
 
@@ -653,7 +654,10 @@ window.VistaAdmin = (function () {
     // el admin también puede abrir "+ Agregar categoría nueva…" para
     // escribir un nombre distinto (guardarMenuItemDB la crea en Supabase).
     const catSelect = document.getElementById('pf-categoria');
-    const catsPersonalizadas = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))]
+    const catsPersonalizadas = [...new Set([
+      ...SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean),
+      ...Object.keys(SC.getCategoriasColores ? SC.getCategoriasColores() : {}),
+    ])]
       .filter(c => !_CATS_ORDER.includes(c))
       .sort();
     const categoriasExistentes = [..._CATS_ORDER, ...catsPersonalizadas];
@@ -663,8 +667,6 @@ window.VistaAdmin = (function () {
         + '<option value="__nueva__">+ Agregar categoría nueva…</option>';
       catSelect.value = (p?.categoria && categoriasExistentes.includes(p.categoria)) ? p.categoria : '';
     }
-    const catNueva = document.getElementById('pf-categoria-nueva');
-    if (catNueva) { catNueva.value = ''; catNueva.style.display = 'none'; }
     document.getElementById('pf-precio').value       = p?.precio != null ? (+p.precio).toFixed(2) : '';
     document.getElementById('pf-descripcion').value  = p?.descripcion ?? '';
     document.getElementById('pf-tag').value               = p?.tag            ?? '';
@@ -761,8 +763,6 @@ window.VistaAdmin = (function () {
     document.body.style.overflow = '';
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
-    const catNueva = document.getElementById('pf-categoria-nueva');
-    if (catNueva) { catNueva.value = ''; catNueva.style.display = 'none'; }
     _mostrarErrorNombre('');
     _mostrarErrorCategoria('');
     _mostrarErrorPrecio('');
@@ -873,32 +873,11 @@ window.VistaAdmin = (function () {
   }
 
   const _mostrarErrorNombre      = msg => _mostrarError('pf-nombre',      'pf-nombre-error',      msg);
-  // La categoría vive en dos campos (select + input "nueva"), así que el
-  // borde de error va en el que esté visible/activo en cada momento.
-  function _mostrarErrorCategoria(msg) {
-    const sel   = document.getElementById('pf-categoria');
-    const nueva = document.getElementById('pf-categoria-nueva');
-    const err   = document.getElementById('pf-categoria-error');
-    if (!sel || !err) return;
-    const activo = sel.value === '__nueva__' ? nueva : sel;
-    [sel, nueva].forEach(el => { if (el) el.style.borderColor = ''; });
-    if (msg) {
-      if (activo) activo.style.borderColor = '#dc2626';
-      err.textContent = msg;
-      err.style.display = 'block';
-    } else {
-      err.textContent = '';
-      err.style.display = 'none';
-    }
-  }
-  // Valor efectivo de categoría: el nombre elegido, o lo escrito en
-  // "nueva categoría" cuando el select está en esa opción.
-  function _leerCategoriaForm() {
-    const sel = document.getElementById('pf-categoria');
-    if (!sel) return '';
-    if (sel.value === '__nueva__') return document.getElementById('pf-categoria-nueva')?.value.trim() ?? '';
-    return sel.value.trim();
-  }
+  // La categoría nueva ahora se crea en su propio modal (con color), así
+  // que el select siempre termina con un nombre real seleccionado — nunca
+  // se queda parado en "__nueva__" salvo mientras el modal está abierto.
+  const _mostrarErrorCategoria   = msg => _mostrarError('pf-categoria',   'pf-categoria-error',   msg);
+  const _leerCategoriaForm       = () => document.getElementById('pf-categoria')?.value.trim() ?? '';
   const _mostrarErrorPrecio      = msg => _mostrarError('pf-precio',      'pf-precio-error',      msg);
   const _mostrarErrorDescripcion = msg => _mostrarError('pf-descripcion', 'pf-descripcion-error', msg);
   const _mostrarErrorIngredientes= msg => _mostrarError('pf-ingredientes','pf-ingredientes-error', msg);
@@ -919,6 +898,124 @@ window.VistaAdmin = (function () {
     }
   }
 
+  // Paleta ofrecida al crear una categoría nueva — incluye los 7 colores
+  // que ya venían fijos por nombre (Desayunos, Entradas, etc.) más 5 tonos
+  // adicionales dentro de la misma gama cálida, para dar variedad real.
+  const _PALETA_CATEGORIAS = [
+    '#C4890A', '#B8720A', '#7A2215', '#9B4520', '#A0751A', '#6B3A1F', '#2E7A5B',
+    '#8B4F9F', '#1F6F78', '#5B7A3A', '#B8455C', '#4A5A6B',
+  ];
+
+  let _catModalColorSel   = null;
+  let _catModalValorPrevio = '';
+
+  function _abrirModalCategoria() {
+    const SC = window.SC;
+    const nombreInp = document.getElementById('cat-modal-nombre');
+    const nombreErr = document.getElementById('cat-modal-nombre-error');
+    const colorErr  = document.getElementById('cat-modal-color-error');
+    const swatches  = document.getElementById('cat-modal-swatches');
+    if (nombreInp) nombreInp.value = '';
+    if (nombreErr) { nombreErr.textContent = ''; nombreErr.style.display = 'none'; }
+    if (colorErr)  { colorErr.textContent  = ''; colorErr.style.display  = 'none'; }
+    _catModalColorSel = null;
+
+    // Invierte { categoría: color } a { color: categoría } para poder
+    // mostrar "en uso por X" y deshabilitar ese color en la paleta.
+    const colorAUsuario = {};
+    Object.entries(SC.getCategoriasColores()).forEach(([nombre, color]) => {
+      colorAUsuario[color.toLowerCase()] = nombre;
+    });
+
+    if (swatches) {
+      swatches.innerHTML = _PALETA_CATEGORIAS.map(hex => {
+        const usadaPor = colorAUsuario[hex.toLowerCase()];
+        return `<button type="button" class="cat-swatch${usadaPor ? ' cat-swatch--used' : ''}"
+          style="background:${hex}" data-color="${hex}" ${usadaPor ? 'disabled' : ''}
+          title="${usadaPor ? `En uso: ${SC.escapeHtml(usadaPor)}` : hex}"
+          aria-label="Color ${hex}${usadaPor ? ` (en uso por ${SC.escapeHtml(usadaPor)})` : ''}"></button>`;
+      }).join('');
+    }
+
+    const backdrop = document.getElementById('cat-modal-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      setTimeout(() => nombreInp?.focus(), 100);
+    }
+  }
+
+  // revertir=true: el admin canceló, así que el select de categoría vuelve
+  // a lo que tenía antes de abrir "+ Agregar categoría nueva…".
+  function _cerrarModalCategoria(revertir) {
+    const backdrop = document.getElementById('cat-modal-backdrop');
+    if (backdrop) { backdrop.classList.remove('open'); backdrop.setAttribute('aria-hidden', 'true'); }
+    if (revertir) {
+      const sel = document.getElementById('pf-categoria');
+      if (sel) sel.value = _catModalValorPrevio;
+    }
+  }
+
+  async function _confirmarNuevaCategoria() {
+    const SC = window.SC;
+    const sel       = document.getElementById('pf-categoria');
+    const nombreInp = document.getElementById('cat-modal-nombre');
+    const nombreErr = document.getElementById('cat-modal-nombre-error');
+    const colorErr  = document.getElementById('cat-modal-color-error');
+    const nombre    = nombreInp?.value.trim() ?? '';
+
+    const yaExiste = [...sel.options].some(o => o.value !== '__nueva__' && o.value.toLowerCase() === nombre.toLowerCase());
+    let err = '';
+    if (!nombre)             err = 'Escribe el nombre de la categoría.';
+    else if (nombre.length < 2) err = 'El nombre debe tener al menos 2 caracteres.';
+    else if (yaExiste)       err = 'Ya existe una categoría con ese nombre.';
+    if (nombreErr) { nombreErr.textContent = err; nombreErr.style.display = err ? 'block' : 'none'; }
+    if (err) { nombreInp?.focus(); return; }
+
+    if (!_catModalColorSel) {
+      if (colorErr) { colorErr.textContent = 'Elige un color.'; colorErr.style.display = 'block'; }
+      return;
+    }
+    if (colorErr) { colorErr.textContent = ''; colorErr.style.display = 'none'; }
+
+    const btn = document.getElementById('btn-confirmar-cat-modal');
+    if (btn) { btn.disabled = true; btn.textContent = 'Creando…'; }
+    const ok = await SC.crearCategoriaConColor(nombre, _catModalColorSel);
+    if (btn) { btn.disabled = false; btn.textContent = 'Crear categoría'; }
+    if (!ok) { SC.toast('Error al crear la categoría. Intenta de nuevo.', 'error'); return; }
+
+    const opt = document.createElement('option');
+    opt.value = nombre;
+    opt.textContent = nombre;
+    sel.insertBefore(opt, sel.querySelector('option[value="__nueva__"]'));
+    sel.value = nombre;
+    _catModalValorPrevio = nombre;
+    _mostrarErrorCategoria('');
+    _cerrarModalCategoria(false);
+    SC.toast(`Categoría "${nombre}" creada ✓`, 'success');
+  }
+
+  function _initModalCategoria() {
+    document.getElementById('cat-modal-swatches')?.addEventListener('click', e => {
+      const btn = e.target.closest('.cat-swatch');
+      if (!btn || btn.disabled) return;
+      _catModalColorSel = btn.dataset.color;
+      document.querySelectorAll('#cat-modal-swatches .cat-swatch').forEach(s => s.classList.remove('cat-swatch--selected'));
+      btn.classList.add('cat-swatch--selected');
+      const colorErr = document.getElementById('cat-modal-color-error');
+      if (colorErr) { colorErr.textContent = ''; colorErr.style.display = 'none'; }
+    });
+    document.getElementById('btn-confirmar-cat-modal')?.addEventListener('click', _confirmarNuevaCategoria);
+    document.getElementById('btn-cancelar-cat-modal')?.addEventListener('click', () => _cerrarModalCategoria(true));
+    document.getElementById('btn-cerrar-cat-modal')?.addEventListener('click', () => _cerrarModalCategoria(true));
+    document.getElementById('cat-modal-backdrop')?.addEventListener('click', e => {
+      if (e.target.id === 'cat-modal-backdrop') _cerrarModalCategoria(true);
+    });
+    document.getElementById('cat-modal-nombre')?.addEventListener('keydown', e => {
+      if (e.key === 'Enter') { e.preventDefault(); _confirmarNuevaCategoria(); }
+    });
+  }
+
   function init() {
     _setupDragDrop();
 
@@ -935,20 +1032,24 @@ window.VistaAdmin = (function () {
     pfStock.addEventListener('blur',  () => _mostrarErrorStock(_validarStock(pfStock.value)));
 
     const pfCategoria = document.getElementById('pf-categoria');
-    const pfCategoriaNueva = document.getElementById('pf-categoria-nueva');
+    // Guarda el valor "real" (no "__nueva__") antes de que el usuario abra
+    // el desplegable, para poder restaurarlo si cancela el modal de categoría.
+    pfCategoria.addEventListener('mousedown', () => {
+      if (pfCategoria.value !== '__nueva__') _catModalValorPrevio = pfCategoria.value;
+    });
+    pfCategoria.addEventListener('focus', () => {
+      if (pfCategoria.value !== '__nueva__') _catModalValorPrevio = pfCategoria.value;
+    });
     pfCategoria.addEventListener('change', () => {
-      const esNueva = pfCategoria.value === '__nueva__';
-      pfCategoriaNueva.style.display = esNueva ? '' : 'none';
-      if (esNueva) pfCategoriaNueva.focus();
-      else pfCategoriaNueva.value = '';
+      if (pfCategoria.value === '__nueva__') { _abrirModalCategoria(); return; }
+      _catModalValorPrevio = pfCategoria.value;
       _mostrarErrorCategoria('');
     });
     pfCategoria.addEventListener('blur', () => {
-      if (pfCategoria.value === '__nueva__') return; // se valida con el input de abajo
+      if (pfCategoria.value === '__nueva__') return; // el modal está manejando la selección
       _mostrarErrorCategoria(_leerCategoriaForm() ? '' : 'Elige o escribe una categoría.');
     });
-    pfCategoriaNueva.addEventListener('blur',  () => _mostrarErrorCategoria(_leerCategoriaForm() ? '' : 'Escribe el nombre de la categoría.'));
-    pfCategoriaNueva.addEventListener('input', () => { if (pfCategoriaNueva.value.trim()) _mostrarErrorCategoria(''); });
+    _initModalCategoria();
 
     const pfDesc = document.getElementById('pf-descripcion');
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
@@ -980,7 +1081,7 @@ window.VistaAdmin = (function () {
       const errPrecio = _validarPrecio(precioRaw);
       const errIng    = _validarIngredientes(ingredientesRaw);
       const errStock  = _validarStock(stockRaw);
-      const errCategoria = categoria ? '' : (document.getElementById('pf-categoria').value === '__nueva__' ? 'Escribe el nombre de la categoría.' : 'Elige o escribe una categoría.');
+      const errCategoria = categoria ? '' : 'Elige o escribe una categoría.';
 
       _mostrarErrorNombre(errNombre);
       _mostrarErrorCategoria(errCategoria);
@@ -990,12 +1091,7 @@ window.VistaAdmin = (function () {
       _mostrarErrorStock(errStock);
 
       if (errNombre)    { document.getElementById('pf-nombre').focus(); return; }
-      if (errCategoria) {
-        (document.getElementById('pf-categoria').value === '__nueva__'
-          ? document.getElementById('pf-categoria-nueva')
-          : document.getElementById('pf-categoria')).focus();
-        return;
-      }
+      if (errCategoria) { document.getElementById('pf-categoria').focus(); return; }
       if (errPrecio)    { document.getElementById('pf-precio').focus(); return; }
       if (!descripcion) { document.getElementById('pf-descripcion').focus(); return; }
       if (errIng)       { document.getElementById('pf-ingredientes').focus(); return; }

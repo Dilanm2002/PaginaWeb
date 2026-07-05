@@ -789,8 +789,6 @@
                 <option value="">Elige una categoría…</option>
                 <option value="__nueva__">+ Agregar categoría nueva…</option>
               </select>
-              <input type="text" id="pf-categoria-nueva" maxlength="40" style="display:none;margin-top:.5rem;"
-                placeholder="Nombre de la nueva categoría">
               <span id="pf-categoria-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
@@ -1127,6 +1125,31 @@
     </div>
   </div>
 
+  <div id="cat-modal-backdrop" class="pago-modal-backdrop cat-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cat-modal-title">
+    <div class="pago-modal-box">
+      <div class="pago-modal-head">
+        <h3 id="cat-modal-title">Nueva categoría</h3>
+        <button id="btn-cerrar-cat-modal" class="btn-close" aria-label="Cancelar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="pago-modal-body">
+        <p class="pago-section-label">Nombre de la categoría</p>
+        <input type="text" id="cat-modal-nombre" class="pago-monto-input" maxlength="40" placeholder="Ej: Sánduches">
+        <span id="cat-modal-nombre-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.35rem;"></span>
+
+        <p class="pago-section-label" style="margin-top:1.1rem;">Color</p>
+        <div id="cat-modal-swatches" class="cat-swatch-grid"></div>
+        <span id="cat-modal-color-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.35rem;"></span>
+
+        <div class="pago-modal-foot">
+          <button id="btn-cancelar-cat-modal" class="btn-pago-cancel">Cancelar</button>
+          <button id="btn-confirmar-cat-modal" class="btn-pago-confirm">Crear categoría</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div id="toast-container" aria-live="polite" aria-atomic="true"></div>
 
   <!-- ══ SUPABASE CLIENT ══ -->
@@ -1221,6 +1244,7 @@
   let _gastos    = [];
   let _stock     = {}; // { [productoId]: { stock, disponible } }
   let _menuItems = [];
+  let _categoriasColores = {}; // { [cat_nombre]: '#rrggbb' } — para pintar cada categoría con su propio color en todo el sitio
   const _pedidoUpdateTimers = {}; // debounce timers para actualizarPedido
   const _cobrando = new Set();    // IDs de pedidos en proceso de cobro (evita flash realtime)
 
@@ -1327,13 +1351,19 @@
      en cargarDatosOperativos() para no retrasar la primera pintura del menú. */
   async function inicializarDB() {
     try {
-      const { data } = await db.from('platos').select(`
+      const [{ data }, { data: catsData }] = await Promise.all([
+        db.from('platos').select(`
           plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen,
           plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
           plato_ingredientes(ingredientes(ing_id, ing_nombre))
-        `);
+        `),
+        // Se pide aparte (no solo el join de arriba) porque el join solo trae
+        // categorías que YA tienen algún plato — el selector de categoría del
+        // admin necesita ver también las que existen pero siguen vacías.
+        db.from('categorias').select('cat_nombre, cat_color')
+      ]);
 
       _menuItems = (data || []).map(_mapPlato);
 
@@ -1344,6 +1374,9 @@
           disponible: r.productos?.prod_disponible ?? false
         };
       });
+
+      _categoriasColores = {};
+      (catsData || []).forEach(c => { if (c.cat_color) _categoriasColores[c.cat_nombre] = c.cat_color; });
 
       localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
     } catch(e) {
@@ -2054,6 +2087,20 @@
     return nueva?.cat_id ?? null;
   }
 
+  // Crea una categoría NUEVA con un color elegido a mano (desde el modal del
+  // admin) — a diferencia de _obtenerOCrearCategoria, esta siempre inserta;
+  // el admin ya vio que el nombre no existe todavía antes de llegar aquí.
+  async function crearCategoriaConColor(catNombre, color) {
+    const { error } = await db.from('categorias').insert({ cat_nombre: catNombre, cat_color: color });
+    if (error) { console.error('crearCategoriaConColor:', error); return false; }
+    _categoriasColores[catNombre] = color;
+    return true;
+  }
+
+  function getCategoriasColores() {
+    return { ..._categoriasColores };
+  }
+
   async function _obtenerOCrearIngrediente(ingNombre) {
     const { data } = await db.from('ingredientes').select('ing_id').ilike('ing_nombre', ingNombre).maybeSingle();
     if (data?.ing_id) return data.ing_id;
@@ -2205,6 +2252,7 @@
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
     cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
+    getCategoriasColores, crearCategoriaConColor,
     comprimirImagen, toast, escapeHtml,
     IVA, ROL_LABEL,
     getFiltroSesion:     () => ModuloApp.getFiltroSesion(),
@@ -3718,6 +3766,7 @@
     db.channel('realtime-platos')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'platos' }, _refrescarPlatosDebounced)
       .on('postgres_changes', { event: '*', schema: 'public', table: 'plato_ingredientes' }, _refrescarPlatosDebounced)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categorias' }, _refrescarPlatosDebounced)
       .subscribe();
 
     // NOTA: no existe un canal postgres_changes para la tabla `usuarios` —

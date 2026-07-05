@@ -15,6 +15,14 @@ window.VistaMenu = (function () {
   const _puedeExcluirIngredientes = p =>
     Array.isArray(p.ingredientes) && p.ingredientes.some(i => i && i.id) && p.permiteExcluir === true;
 
+  // Color de una categoría (elegido por el admin al crearla) como estilo
+  // inline --cat-c — el CSS de cada badge/título lee esa variable con un
+  // fallback, así que categorías nuevas se pintan solas sin tocar CSS.
+  const _colorEstilo = cat => {
+    const color = window.SC.getCategoriasColores()[cat];
+    return color ? ` style="--cat-c:${color}"` : '';
+  };
+
   // Agrega un producto (con o sin exclusiones) al destino correcto: directo
   // a la mesa activa si el mesero está agregando ahí (meseroMesaTarget), o
   // al carrito en cualquier otro caso. Centraliza la lógica que antes vivía
@@ -89,7 +97,7 @@ window.VistaMenu = (function () {
     if (!filterBar) return;
     const cats = ['Destacados', 'Todos', ...[...new Set(SC.getProductosMergeados().map(p => p.categoria))]];
     filterBar.innerHTML = cats.map((cat,i) => `
-      <button class="filter-btn${i===0?' active':''}" data-cat="${cat}" aria-pressed="${i===0}">${cat === 'Destacados' ? '⭐ Destacados' : cat}</button>
+      <button class="filter-btn${i===0?' active':''}" data-cat="${cat}"${_colorEstilo(cat)} aria-pressed="${i===0}">${cat === 'Destacados' ? '⭐ Destacados' : cat}</button>
     `).join('');
     filterBar.onclick = e => {
       const btn = e.target.closest('.filter-btn');
@@ -176,7 +184,7 @@ window.VistaMenu = (function () {
       <div class="product-card${agotado ? ' product-card--agotado' : ''}" role="listitem" aria-label="${p.nombre}" style="animation-delay:${idx*0.05}s" data-id="${p.id}">
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" width="600" height="450" onerror="${_IMG_FALLBACK}">
-          <span class="product-card__badge" data-cat="${p.categoria}">${p.categoria}</span>
+          <span class="product-card__badge" data-cat="${p.categoria}"${_colorEstilo(p.categoria)}>${p.categoria}</span>
           ${esNuevo ? '<span class="badge-nuevo">Nuevo</span>' : ''}
           ${stockBadge}
         </div>
@@ -253,7 +261,7 @@ window.VistaMenu = (function () {
         </button>
       </div>
       <div class="modal-body">
-        <span class="modal-badge" data-cat="${p.categoria}">${p.categoria}</span>
+        <span class="modal-badge" data-cat="${p.categoria}"${_colorEstilo(p.categoria)}>${p.categoria}</span>
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
         ${tieneIngredientes ? `
@@ -495,7 +503,7 @@ window.VistaMenu = (function () {
       const prods = todosProds.filter(p => p.categoria === cat);
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+          <div class="mesero-cat-title" data-cat="${cat}"${_colorEstilo(cat)} role="button" aria-expanded="true">
             ${cat}
             <span class="mesero-cat-chevron">▾</span>
           </div>
@@ -663,7 +671,7 @@ window.VistaMenu = (function () {
       const prods = todos.filter(p => p.categoria === cat);
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title" data-cat="${cat}" role="button" aria-expanded="true">
+          <div class="mesero-cat-title" data-cat="${cat}"${_colorEstilo(cat)} role="button" aria-expanded="true">
             ${cat}<span class="mesero-cat-chevron">▾</span>
           </div>
           <div class="mesero-list">

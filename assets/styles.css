@@ -440,20 +440,12 @@
     }
     .filter-btn:hover { background: rgba(255,255,255,.20); border-color: rgba(255,255,255,.45); color: #fff; }
     .filter-btn[data-cat="Todos"].active                  { background: var(--cinnamon); border-color: var(--cinnamon-lt); color: #fff; }
-    .filter-btn[data-cat="Desayunos"]                     { border-color: rgba(196,137,10,.8); }
-    .filter-btn[data-cat="Desayunos"].active              { background: var(--cat-desayunos); border-color: var(--cat-desayunos); color: #fff; }
-    .filter-btn[data-cat="Entradas"]                      { border-color: rgba(184,114,10,.7); }
-    .filter-btn[data-cat="Entradas"].active               { background: var(--cat-entradas); border-color: var(--cat-entradas); color: #fff; }
-    .filter-btn[data-cat="Almuerzos"]                     { border-color: rgba(122,34,21,.9); }
-    .filter-btn[data-cat="Almuerzos"].active              { background: var(--cat-almuerzos); border-color: var(--cat-almuerzos); color: #fff; }
-    .filter-btn[data-cat="Postres"]                       { border-color: rgba(155,69,32,.8); }
-    .filter-btn[data-cat="Postres"].active                { background: var(--cat-postres); border-color: var(--cat-postres); color: #fff; }
-    .filter-btn[data-cat="Bocaditos"]                     { border-color: rgba(160,117,26,.8); }
-    .filter-btn[data-cat="Bocaditos"].active              { background: var(--cat-bocaditos); border-color: var(--cat-bocaditos); color: #fff; }
-    .filter-btn[data-cat="Bebidas Calientes"]             { border-color: rgba(107,58,31,.9); }
-    .filter-btn[data-cat="Bebidas Calientes"].active      { background: var(--cat-bcalientes); border-color: var(--cat-bcalientes); color: #fff; }
-    .filter-btn[data-cat="Bebidas Frías"]                 { border-color: rgba(46,122,91,.9); }
-    .filter-btn[data-cat="Bebidas Frías"].active          { background: var(--cat-bfrias); border-color: var(--cat-bfrias); color: #fff; }
+    /* Color por categoría: cada elemento trae su --cat-c inline (calculado
+       en JS desde la tabla `categorias`, editable por el admin en el modal
+       de "nueva categoría"), en vez de una regla fija por nombre — así
+       funciona igual para categorías nuevas sin tocar CSS cada vez. */
+    .filter-btn[style*="--cat-c"] { border-color: var(--cat-c); }
+    .filter-btn.active { background: var(--cat-c, var(--cinnamon)); border-color: var(--cat-c, var(--cinnamon)); color: #fff; }
 
     /* ════════════════════════════════════════
        MENÚ SECTION
@@ -498,13 +490,7 @@
       text-transform: uppercase; padding: .3rem .75rem; border-radius: 999px;
       box-shadow: 0 2px 8px rgba(0,0,0,.25); backdrop-filter: blur(4px);
     }
-    .product-card__badge[data-cat="Desayunos"]        { background: var(--cat-desayunos); }
-    .product-card__badge[data-cat="Entradas"]         { background: var(--cat-entradas); }
-    .product-card__badge[data-cat="Almuerzos"]        { background: var(--cat-almuerzos); }
-    .product-card__badge[data-cat="Postres"]          { background: var(--cat-postres); }
-    .product-card__badge[data-cat="Bocaditos"]        { background: var(--cat-bocaditos); }
-    .product-card__badge[data-cat="Bebidas Calientes"]{ background: var(--cat-bcalientes); }
-    .product-card__badge[data-cat="Bebidas Frías"]    { background: var(--cat-bfrias); }
+    .product-card__badge { background: var(--cat-c, var(--cinnamon)); }
 
     .product-card__body { padding: 1rem 1.1rem .5rem; flex: 1; }
     .product-card__name { font-size: 1rem; font-weight: 700; color: var(--brown-dark); margin-bottom: .35rem; }
@@ -920,13 +906,7 @@
       display: flex; align-items: center; gap: .65rem;
       cursor: default;
     }
-    .admin-cat-title[data-cat="Desayunos"]        { background: var(--cat-desayunos); }
-    .admin-cat-title[data-cat="Entradas"]         { background: var(--cat-entradas); }
-    .admin-cat-title[data-cat="Almuerzos"]        { background: var(--cat-almuerzos); }
-    .admin-cat-title[data-cat="Postres"]          { background: var(--cat-postres); }
-    .admin-cat-title[data-cat="Bocaditos"]        { background: var(--cat-bocaditos); }
-    .admin-cat-title[data-cat="Bebidas Calientes"]{ background: var(--cat-bcalientes); }
-    .admin-cat-title[data-cat="Bebidas Frías"]    { background: var(--cat-bfrias); }
+    .admin-cat-title[style*="--cat-c"] { background: var(--cat-c); }
     .admin-cat-count {
       font-size: .7rem; background: rgba(255,255,255,.25); color: #fff;
       border-radius: 999px; padding: .12rem .55rem; font-weight: 800;
@@ -1516,13 +1496,7 @@
       transition: opacity .2s ease;
     }
     .mesero-list.hidden { display: none; }
-    .mesero-cat-title[data-cat="Desayunos"]       { background: var(--cat-desayunos); }
-    .mesero-cat-title[data-cat="Entradas"]        { background: var(--cat-entradas); }
-    .mesero-cat-title[data-cat="Almuerzos"]       { background: var(--cat-almuerzos); }
-    .mesero-cat-title[data-cat="Postres"]         { background: var(--cat-postres); }
-    .mesero-cat-title[data-cat="Bocaditos"]       { background: var(--cat-bocaditos); }
-    .mesero-cat-title[data-cat="Bebidas Calientes"]{ background: var(--cat-bcalientes); }
-    .mesero-cat-title[data-cat="Bebidas Frías"]   { background: var(--cat-bfrias); }
+    .mesero-cat-title { background: var(--cat-c, var(--brown-dark)); }
 
     .mesero-list { display: flex; flex-direction: column; gap: .35rem; }
     .mesero-row {
@@ -1705,13 +1679,7 @@
     .modal-img { position: relative; z-index: 1; width: 100%; height: 100%; object-fit: contain; object-position: center; display: block; }
     .modal-body { padding: 1.5rem; }
     .modal-badge { display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: .25rem .7rem; border-radius: 999px; color: #fff; margin-bottom: .75rem; }
-    .modal-badge[data-cat="Desayunos"]        { background: var(--cat-desayunos); }
-    .modal-badge[data-cat="Entradas"]         { background: var(--cat-entradas); }
-    .modal-badge[data-cat="Almuerzos"]        { background: var(--cat-almuerzos); }
-    .modal-badge[data-cat="Postres"]          { background: var(--cat-postres); }
-    .modal-badge[data-cat="Bocaditos"]        { background: var(--cat-bocaditos); }
-    .modal-badge[data-cat="Bebidas Calientes"]{ background: var(--cat-bcalientes); }
-    .modal-badge[data-cat="Bebidas Frías"]    { background: var(--cat-bfrias); }
+    .modal-badge { background: var(--cat-c, var(--cinnamon)); }
     .modal-title { font-family: 'Dancing Script', cursive; font-size: 1.7rem; color: var(--brown-dark); margin-bottom: .5rem; }
     .modal-desc { font-size: .86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
     .btn-modal-x {
@@ -2597,6 +2565,25 @@
   }
   .btn-pago-confirm:hover:not(:disabled) { background: #c0651a; transform: translateY(-1px); }
   .btn-pago-confirm:disabled { opacity: .6; cursor: not-allowed; }
+
+  /* Modal "Nueva categoría" — por encima del formulario de producto
+     (z-index 1100), que suele estar abierto detrás cuando se usa este modal. */
+  .cat-modal-backdrop { z-index: 1200; }
+  .cat-swatch-grid {
+    display: grid; grid-template-columns: repeat(6, 1fr); gap: .5rem;
+  }
+  .cat-swatch {
+    width: 100%; aspect-ratio: 1; border-radius: 50%; border: 3px solid transparent;
+    cursor: pointer; padding: 0; position: relative; transition: transform .12s, border-color .12s;
+  }
+  .cat-swatch:hover:not(:disabled) { transform: scale(1.1); }
+  .cat-swatch--selected { border-color: var(--brown-dark); box-shadow: 0 0 0 2px #fff inset; }
+  .cat-swatch--used { cursor: not-allowed; opacity: .3; }
+  .cat-swatch--used::after {
+    content: '✕'; position: absolute; inset: 0; display: flex; align-items: center;
+    justify-content: center; color: #fff; font-size: .85rem; font-weight: 700;
+    text-shadow: 0 1px 2px rgba(0,0,0,.6);
+  }
 
   /* Post-cobro */
   .postcobro-info {
