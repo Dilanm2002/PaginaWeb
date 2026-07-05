@@ -485,13 +485,18 @@ window.VistaAdmin = (function () {
         const confirmado = await _modalConfirmar(prod?.nombre ?? 'este producto');
         if (!confirmado) return;
         btn.disabled = true;
-        const ok = await SC.eliminarMenuItemDB(id);
+        const resultado = await SC.eliminarMenuItemDB(id);
+        if (resultado === 'en_uso') {
+          btn.disabled = false;
+          SC.toast('No se puede eliminar: ya tiene pedidos en su historial. Desactívalo en su lugar (edítalo y desmarca "Visible en el menú").', 'error');
+          return;
+        }
         _renderProductosGrid();
         _renderDashboardStats();
         const cat = SC.getFiltroSesion();
         window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
-        if (ok) SC.toast('Producto eliminado ✓', 'success');
-        else    SC.toast('Eliminado localmente (error en la nube)', 'error');
+        if (resultado === true) SC.toast('Producto eliminado ✓', 'success');
+        else                    SC.toast('Error al eliminar el producto. Intenta de nuevo.', 'error');
       }
     };
   }

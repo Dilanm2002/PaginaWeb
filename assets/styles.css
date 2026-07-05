@@ -2566,6 +2566,10 @@
   .btn-pago-confirm:hover:not(:disabled) { background: #c0651a; transform: translateY(-1px); }
   .btn-pago-confirm:disabled { opacity: .6; cursor: not-allowed; }
 
+  /* "+ Agregar categoría nueva…" es una ACCIÓN, no una categoría más — se
+     resalta en naranja para que no se confunda con el resto de la lista. */
+  #pf-categoria option[value="__nueva__"] { color: var(--cinnamon); font-weight: 700; }
+
   /* Modal "Nueva categoría" — por encima del formulario de producto
      (z-index 1100), que suele estar abierto detrás cuando se usa este modal. */
   .cat-modal-backdrop { z-index: 1200; }

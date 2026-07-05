@@ -2224,11 +2224,20 @@
     return true;
   }
 
+  // Devuelve true (éxito), false (error genérico), o 'en_uso' si el plato
+  // tiene pedidos en su historial — Postgres lo bloquea (23503, viola la FK
+  // de detalle_pedidos) para no romper el registro de esa venta ya hecha.
+  // La caché local solo se toca DESPUÉS de confirmar el borrado en la nube:
+  // antes se borraba primero y el admin veía el plato desaparecer en pantalla
+  // aunque Supabase hubiera rechazado el borrado, dejando todo desincronizado.
   async function eliminarMenuItemDB(id) {
+    const { error } = await db.from('platos').delete().eq('plat_id', id);
+    if (error) {
+      console.error('Supabase delete plato:', error);
+      return error.code === '23503' ? 'en_uso' : false;
+    }
     _menuItems = _menuItems.filter(m => m.id !== id);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
-    const { error } = await db.from('platos').delete().eq('plat_id', id);
-    if (error) { console.error('Supabase delete plato:', error); return false; }
     return true;
   }
 
