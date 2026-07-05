@@ -650,29 +650,26 @@ window.VistaCajero = (function () {
     if (radioEfectivo) radioEfectivo.checked = true;
     if (efectivoSec) efectivoSec.style.display = '';
 
-    // Correo para la Nota de Venta: si el pedido es de un usuario registrado,
-    // se usa su correo automáticamente (sin preguntar); si es invitado, se
-    // ofrece un checkbox opcional para pedirlo.
+    // Correo para la Nota de Venta: siempre es opcional (checkbox), nunca
+    // se manda sin que alguien lo decida. Si el cliente está registrado,
+    // el checkbox viene precargado con su correo y marcado por comodidad,
+    // pero se puede desmarcar si no la quiere; si es invitado, arranca
+    // desmarcado y pide escribir el correo.
     const correoCheckbox   = document.getElementById('pago-enviar-correo');
-    const correoCheckboxLb = correoCheckbox?.closest('label');
+    const correoLabel      = document.getElementById('pago-enviar-correo-label');
     const correoInput      = document.getElementById('pago-correo-input');
-    const correoRegistrado = document.getElementById('pago-correo-registrado');
     const usuarioReg = pedido.idUsuario
       ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario)
       : null;
 
-    if (correoCheckbox) correoCheckbox.checked = false;
-    if (correoInput)    { correoInput.value = ''; correoInput.style.display = 'none'; }
-
     if (usuarioReg?.email) {
-      if (correoCheckboxLb) correoCheckboxLb.style.display = 'none';
-      if (correoRegistrado) {
-        correoRegistrado.style.display = '';
-        correoRegistrado.textContent = `📧 Se enviará la nota de venta a ${usuarioReg.email}`;
-      }
+      if (correoCheckbox) { correoCheckbox.checked = true; correoCheckbox.dataset.registrado = 'true'; }
+      if (correoLabel) correoLabel.textContent = `Enviar Nota de Venta a ${usuarioReg.email}`;
+      if (correoInput) { correoInput.value = ''; correoInput.style.display = 'none'; }
     } else {
-      if (correoCheckboxLb) correoCheckboxLb.style.display = '';
-      if (correoRegistrado) correoRegistrado.style.display = 'none';
+      if (correoCheckbox) { correoCheckbox.checked = false; correoCheckbox.dataset.registrado = 'false'; }
+      if (correoLabel) correoLabel.textContent = 'Enviar Nota de Venta por correo';
+      if (correoInput) { correoInput.value = ''; correoInput.style.display = 'none'; }
     }
 
     const backdrop = document.getElementById('pago-modal-backdrop');
@@ -908,6 +905,9 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     const correoInput    = document.getElementById('pago-correo-input');
     if (correoCheckbox) {
       correoCheckbox.addEventListener('change', () => {
+        // Si el correo ya viene de una cuenta registrada no hay nada que
+        // escribir — el campo de texto solo aplica al flujo de invitado.
+        if (correoCheckbox.dataset.registrado === 'true') return;
         if (correoInput) {
           correoInput.style.display = correoCheckbox.checked ? '' : 'none';
           if (correoCheckbox.checked) correoInput.focus();
@@ -951,22 +951,27 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
           cambio = Math.max(0, montoPagado - pedido.total);
         }
 
-        // Correo para la nota: automático si el cliente está registrado,
-        // opcional (checkbox + input) si es invitado.
+        // Correo para la nota: siempre depende del checkbox — si está
+        // desmarcado no se manda, sin importar si el cliente es registrado
+        // o invitado.
         const usuarioReg = pedido.idUsuario
           ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario)
           : null;
         const correoCheckbox = document.getElementById('pago-enviar-correo');
         const correoInput    = document.getElementById('pago-correo-input');
-        let email = usuarioReg?.email || null;
-        if (!email && correoCheckbox?.checked) {
-          const val = correoInput?.value.trim();
-          if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) {
-            SC.toast('Ingresa un correo electrónico válido', 'error');
-            correoInput?.focus();
-            return;
+        let email = null;
+        if (correoCheckbox?.checked) {
+          if (usuarioReg?.email) {
+            email = usuarioReg.email;
+          } else {
+            const val = correoInput?.value.trim();
+            if (!val || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(val)) {
+              SC.toast('Ingresa un correo electrónico válido', 'error');
+              correoInput?.focus();
+              return;
+            }
+            email = val;
           }
-          email = val;
         }
 
         btnConfirmarPago.disabled    = true;

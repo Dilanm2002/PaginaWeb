@@ -1071,10 +1071,9 @@
         <div id="pago-correo-section" class="pago-efectivo-section">
           <label class="pago-checkbox-label" for="pago-enviar-correo">
             <input type="checkbox" id="pago-enviar-correo">
-            Enviar Nota de Venta por correo
+            <span id="pago-enviar-correo-label">Enviar Nota de Venta por correo</span>
           </label>
           <input type="email" id="pago-correo-input" class="pago-monto-input" placeholder="correo@ejemplo.com" style="display:none;margin-top:.4rem">
-          <div id="pago-correo-registrado" class="pago-correo-registrado" style="display:none"></div>
         </div>
         <div class="pago-modal-foot">
           <button id="btn-cancelar-pago" class="btn-pago-cancel">Cancelar</button>
@@ -2049,6 +2048,20 @@
   }
 
   async function guardarMenuItemDB(item) {
+    try {
+      return await _guardarMenuItemDBInterno(item);
+    } catch (e) {
+      // Antes, un error inesperado a mitad de esta función (ej. subiendo la
+      // imagen, o vinculando ingredientes) abortaba todo en silencio: el
+      // plato SÍ quedaba insertado en Supabase, pero _menuItems (la caché
+      // local que usa el panel) nunca se actualizaba — por eso el producto
+      // "no aparecía" hasta recargar la página, aunque sí se había guardado.
+      console.error('guardarMenuItemDB: error inesperado:', e);
+      return false;
+    }
+  }
+
+  async function _guardarMenuItemDBInterno(item) {
     // Subir imagen, resolver categoría y resolver/crear ingredientes en
     // paralelo — ninguna de las tres depende de las otras, y antes corrían
     // una tras otra (además de los ingredientes, que iban uno por uno).

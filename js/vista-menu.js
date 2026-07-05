@@ -15,6 +15,46 @@ window.VistaMenu = (function () {
   const _puedeExcluirIngredientes = p =>
     Array.isArray(p.ingredientes) && p.ingredientes.some(i => i && i.id) && p.permiteExcluir === true;
 
+  // Agrega un producto (con o sin exclusiones) al destino correcto: directo
+  // a la mesa activa si el mesero está agregando ahí (meseroMesaTarget), o
+  // al carrito en cualquier otro caso. Centraliza la lógica que antes vivía
+  // duplicada en 3 lugares (fila compacta del mesero, popover de exclusión,
+  // modal de producto).
+  function _agregarConExclusiones(prod, exclusiones) {
+    const SC = window.SC;
+    const s = SC.getStock(prod.id);
+    if (!s.disponible || s.stock <= 0) { SC.toast(`"${prod.nombre}" está agotado`, 'error'); return false; }
+
+    const msg = exclusiones.length
+      ? `"${prod.nombre}" sin: ${exclusiones.map(e => e.nombre).join(', ')}`
+      : `"${prod.nombre}" agregado`;
+
+    if (meseroMesaTarget) {
+      const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));
+      if (!ped) return false;
+      const key = _exclKeyPed(exclusiones);
+      const totalEnPedido = ped.items.filter(x => x.id === prod.id).reduce((s2, x) => s2 + x.cantidad, 0);
+      if (totalEnPedido >= s.stock) { SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error'); return false; }
+      const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === key);
+      if (existente) existente.cantidad += 1;
+      else ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1, exclusiones });
+      SC.actualizarStock(prod.id, 1);
+      renderMesasActivas();
+      syncQtys();
+      SC.toast(`${msg} a Mesa ${meseroMesaTarget.mesa}`, 'success');
+      return true;
+    }
+
+    const carrito = LogicaCarrito.leerCarrito();
+    const totalEnCarrito = carrito.filter(x => x.id === prod.id).reduce((s2, x) => s2 + x.cantidad, 0);
+    if (totalEnCarrito >= s.stock) return false;
+    LogicaCarrito.agregarItem(prod, exclusiones);
+    SC.renderCarrito();
+    syncQtys();
+    SC.toast(exclusiones.length ? msg : `"${prod.nombre}" agregado a tu orden`, 'success');
+    return true;
+  }
+
   // Placeholder cuando el plato no tiene imagen (mismo estilo que el panel admin)
   const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
@@ -246,43 +286,11 @@ window.VistaMenu = (function () {
     document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
-      const s = SC.getStock(p.id);
-      if (!s.disponible || s.stock <= 0) { SC.toast(`"${p.nombre}" está agotado`, 'error'); return; }
-
       const exclusiones = [];
       modalBox.querySelectorAll('.ing-check:not(:checked)').forEach(cb => {
         exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
       });
-      const msg = exclusiones.length
-        ? `"${p.nombre}" sin: ${exclusiones.map(e => e.nombre).join(', ')}`
-        : `"${p.nombre}" agregado`;
-
-      // Mesero agregando a una mesa ya activa: va directo al pedido en caja,
-      // no al carrito (mismo camino que el resto de renderProductosMesero).
-      if (meseroMesaTarget) {
-        const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));
-        if (ped) {
-          const key = _exclKeyPed(exclusiones);
-          const totalEnPedido = ped.items.filter(x => x.id === p.id).reduce((s2, x) => s2 + x.cantidad, 0);
-          if (totalEnPedido >= s.stock) { SC.toast(`"${p.nombre}" sin stock suficiente`, 'error'); return; }
-          const existente = ped.items.find(x => x.id === p.id && _exclKeyPed(x.exclusiones) === key);
-          if (existente) existente.cantidad += 1;
-          else ped.items.push({ id: p.id, nombre: p.nombre, precio: p.precio, cantidad: 1, exclusiones });
-          SC.actualizarStock(p.id, 1);
-          renderMesasActivas();
-          syncQtys();
-          SC.toast(`${msg} a Mesa ${meseroMesaTarget.mesa}`, 'success');
-        }
-        cerrarModalProducto();
-        return;
-      }
-
-      const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === p.id);
-      if (enCarrito && enCarrito.cantidad >= s.stock) return;
-      LogicaCarrito.agregarItem(p, exclusiones);
-      SC.renderCarrito();
-      syncQtys();
-      SC.toast(exclusiones.length ? msg : `"${p.nombre}" agregado a tu orden`, 'success');
+      _agregarConExclusiones(p, exclusiones);
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -497,18 +505,33 @@ window.VistaMenu = (function () {
                 const _agotado = !_s.disponible || _s.stock <= 0;
                 const _stockColor = _s.stock <= 0 ? '#dc2626' : _s.stock <= 5 ? '#d97706' : '#16a34a';
                 const _stockTxt = _s.stock <= 0 ? 'Agotado' : `${_s.stock} en stock`;
+                const _puedeExcl = _puedeExcluirIngredientes(p);
+                // Si el plato admite excluir ingredientes, el popover deja
+                // desmarcarlos ahí mismo y agregarlo con un botón — rápido,
+                // sin salir de la lista ni abrir el modal grande del cliente.
+                const _popContent = _puedeExcl ? `
+                    <strong>Sin ingredientes que no quiera</strong>
+                    <div class="mesero-ing-pop__chips">
+                      ${p.ingredientes.filter(i => i && i.id).map(i => `
+                        <label class="mesero-ing-check">
+                          <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" checked>
+                          ${i.nombre}
+                        </label>`).join('')}
+                    </div>
+                    <button class="mesero-ing-pop__add" data-id="${p.id}" type="button">+ Agregar</button>
+                  ` : `
+                    <strong>Ingredientes</strong>
+                    ${p.ingredientes.map(i => i.nombre).join(' · ')}
+                    <span style="display:block;margin-top:.4rem;font-weight:700;color:${_stockColor};font-size:.75rem;">${_stockTxt}</span>
+                  `;
                 return `
               <div class="mesero-row${_agotado ? ' mesero-row--agotado' : ''}" data-id="${p.id}">
                 <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_agotado ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>' : ''}</span>
                 <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
-                <button class="mesero-info-btn" data-id="${p.id}" aria-label="Ver ingredientes de ${p.nombre}" title="Ingredientes">
-                  i
-                  <div class="mesero-ing-pop" id="mpop-${p.id}">
-                    <strong>Ingredientes</strong>
-                    ${p.ingredientes.map(i => i.nombre).join(' · ')}
-                    <span style="display:block;margin-top:.4rem;font-weight:700;color:${_stockColor};font-size:.75rem;">${_stockTxt}</span>
-                  </div>
-                </button>
+                <span class="mesero-info-btn${_puedeExcl ? ' mesero-info-btn--excl' : ''}" data-id="${p.id}" role="button" tabindex="0" aria-label="${_puedeExcl ? 'Elegir ingredientes de' : 'Ver ingredientes de'} ${p.nombre}" title="${_puedeExcl ? 'Personalizar' : 'Ingredientes'}">
+                  ${_puedeExcl ? '⚙' : 'i'}
+                  <div class="mesero-ing-pop${_puedeExcl ? ' mesero-ing-pop--excl' : ''}" id="mpop-${p.id}">${_popContent}</div>
+                </span>
                 <div class="mesero-qty">
                   <button class="mesero-qty__btn dec" data-id="${p.id}" aria-label="Quitar uno de ${p.nombre}">−</button>
                   <span class="mesero-qty__val" id="mqty-${p.id}">0</span>
@@ -535,6 +558,23 @@ window.VistaMenu = (function () {
     syncQtys();
 
     grid.onclick = e => {
+      // Botón "+ Agregar" dentro del popover de exclusión — agrega con las
+      // casillas que queden desmarcadas y cierra el popover.
+      const popAddBtn = e.target.closest('.mesero-ing-pop__add');
+      if (popAddBtn) {
+        e.stopPropagation();
+        const prod = SC.getProductosMergeados().find(x => x.id === popAddBtn.dataset.id);
+        if (!prod) return;
+        const pop = document.getElementById(`mpop-${prod.id}`);
+        const exclusiones = [];
+        pop?.querySelectorAll('.mesero-excl-check:not(:checked)').forEach(cb => {
+          exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
+        });
+        _agregarConExclusiones(prod, exclusiones);
+        pop?.classList.remove('visible');
+        return;
+      }
+
       const infoBtn = e.target.closest('.mesero-info-btn');
       if (infoBtn) {
         e.stopPropagation();
@@ -552,59 +592,39 @@ window.VistaMenu = (function () {
       if (!prod) return;
 
       if (btn.classList.contains('add')) {
-        const s = SC.getStock(prod.id);
-        if (!s.disponible || s.stock <= 0) return;
-        // Si el plato admite excluir ingredientes, el mesero necesita poder
-        // elegir cuáles antes de agregarlo — se abre el mismo modal que usa
-        // el cliente (abrirModalProducto ya sabe si hay que meterlo al
-        // carrito o directo a la mesa activa, según meseroMesaTarget).
-        if (_puedeExcluirIngredientes(prod)) { abrirModalProducto(prod); return; }
-      }
-
-      if (meseroMesaTarget) {
-        const peds = SC.leerCaja();
-        const ped  = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
-        if (ped) {
-          const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === '');
-          if (btn.classList.contains('add')) {
-            const totalEnPedido = ped.items.filter(x => x.id === prod.id).reduce((s, x) => s + x.cantidad, 0);
-            const s = SC.getStock(prod.id);
-            if (!s.disponible || s.stock <= 0 || totalEnPedido >= s.stock) {
-              SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error');
-              return;
-            }
-            if (existente) { existente.cantidad += 1; }
-            else { ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1, exclusiones: [] }); }
-            SC.actualizarStock(prod.id, 1);
-            SC.toast(`"${prod.nombre}" agregado a Mesa ${meseroMesaTarget.mesa}`, 'success');
-          } else {
-            if (existente) {
-              existente.cantidad -= 1;
-              if (existente.cantidad <= 0) ped.items.splice(ped.items.indexOf(existente), 1);
-            }
-          }
-          renderMesasActivas();
-          syncQtys();
+        // Si admite excluir ingredientes, "+" abre el popover (⚙) para
+        // elegir ahí mismo — el botón "+ Agregar" de adentro hace el
+        // agregado real. Rápido: sin modal grande, sin salir de la lista.
+        if (_puedeExcluirIngredientes(prod)) {
+          const pop = document.getElementById(`mpop-${prod.id}`);
+          const isOpen = pop?.classList.contains('visible');
+          grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+          if (!isOpen) pop?.classList.add('visible');
+          return;
         }
+        _agregarConExclusiones(prod, []);
         return;
       }
 
-      if (btn.classList.contains('add')) {
-        const carrito = LogicaCarrito.leerCarrito();
-        // Sumar todas las líneas de este producto (puede haber más de una
-        // si alguna tiene exclusiones distintas) para validar el stock total.
-        const totalEnCarrito = carrito.filter(x => x.id === prod.id).reduce((s, x) => s + x.cantidad, 0);
-        const s = SC.getStock(prod.id);
-        if (totalEnCarrito >= s.stock) return;
-        LogicaCarrito.agregarItem(prod);
-        SC.toast(`"${prod.nombre}" agregado`, 'success');
+      // Restar uno (sin exclusiones — la variante con exclusiones se quita
+      // desde el resumen del pedido/carrito, no desde esta fila compacta).
+      if (meseroMesaTarget) {
+        const ped = SC.leerCaja().find(p => String(p.id) === String(meseroMesaTarget.id));
+        if (ped) {
+          const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === '');
+          if (existente) {
+            existente.cantidad -= 1;
+            if (existente.cantidad <= 0) ped.items.splice(ped.items.indexOf(existente), 1);
+          }
+          renderMesasActivas();
+        }
       } else {
         const carrito = LogicaCarrito.leerCarrito();
-        const item    = carrito.find(x => x.id === prod.id);
+        const item = carrito.find(x => x.id === prod.id);
         if (item) LogicaCarrito.cambiarCantidad(item.lineId || item.id, item.cantidad - 1);
+        SC.renderCarrito();
       }
       syncQtys();
-      SC.renderCarrito();
     };
 
     if (!renderProductosMesero._popoverListenerAdded) {

@@ -989,9 +989,13 @@ window.VistaAdmin = (function () {
         stock_inicial: stockInicial
       };
 
-      await SC.guardarMenuItemDB(item);
+      const ok = await SC.guardarMenuItemDB(item);
       saveBtn.disabled = false;
       saveBtn.textContent = 'Guardar';
+      if (!ok) {
+        SC.toast('Error al guardar el producto. Intenta de nuevo.', 'error');
+        return;
+      }
       cerrarFormProducto();
       _renderProductosGrid();
       _renderDashboardStats();
