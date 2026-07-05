@@ -1472,6 +1472,9 @@
     const nuevoStock = Math.max(0, actual.stock - cantidad);
     const disponible = nuevoStock > 0;
     _stock[platId] = { stock: nuevoStock, disponible };
+    // Esta pestaña ya se actualizó sola arriba — que no se re-renderice de
+    // nuevo cuando el propio UPDATE vuelva por el canal realtime-stock.
+    _skipNextRealtimeStock = true;
     const { error } = await db.from('productos')
       .update({ prod_stock: nuevoStock, prod_disponible: disponible, prod_updated_at: new Date().toISOString() })
       .eq('plat_id', platId);
@@ -1483,6 +1486,7 @@
     const actual = getStock(platId);
     const nuevoStock = actual.stock + cantidad;
     _stock[platId] = { stock: nuevoStock, disponible: true };
+    _skipNextRealtimeStock = true;
     const { error } = await db.from('productos')
       .update({ prod_stock: nuevoStock, prod_disponible: true, prod_updated_at: new Date().toISOString() })
       .eq('plat_id', platId);
@@ -1504,6 +1508,9 @@
   async function insertarGasto({ descripcion, monto, fecha, hora }) {
     const session = ModuloAutenticacion.getSession();
     try {
+      // Evita el refresco redundante cuando este mismo INSERT vuelva por
+      // el canal realtime-gastos — la caché local ya se actualiza abajo.
+      _skipNextRealtimeGastos = true;
       // Requiere sesión de cajero/administrador vigente — ver sql/hardening-rls.sql.
       const { data, error } = await db.rpc('registrar_gasto', {
         p_token:       session?.token ?? null,
@@ -1533,6 +1540,7 @@
     const session = ModuloAutenticacion.getSession();
     const gastoPrevio = _gastos.find(g => g.id === gastoId) ?? null;
     _gastos = _gastos.filter(g => g.id !== gastoId);
+    _skipNextRealtimeGastos = true;
     const { error } = await db.rpc('eliminar_gasto_staff', { p_token: session?.token ?? null, p_gasto_id: gastoId });
     if (error) {
       console.error('Supabase eliminar_gasto_staff (RPC):', error);
@@ -2093,6 +2101,7 @@
   async function crearCategoriaConColor(catNombre, color) {
     const { error } = await db.from('categorias').insert({ cat_nombre: catNombre, cat_color: color });
     if (error) { console.error('crearCategoriaConColor:', error); return false; }
+    _skipNextRealtimePlatos = true;
     _categoriasColores[catNombre] = color;
     return true;
   }
@@ -2178,10 +2187,17 @@
       if (error || !nuevo) { console.error('Supabase insert plato:', error); return false; }
       platId = nuevo.plat_id;
     }
+    // Recién ahora, con el write en `platos` confirmado, evitamos el
+    // refresco redundante de que ese mismo cambio vuelva por realtime-platos
+    // (si se pusiera antes y el insert/update fallara, quedaría en true sin
+    // ningún evento real que la consuma, saltándose por error el próximo
+    // cambio de otra persona).
+    _skipNextRealtimePlatos = true;
 
     // Stock
     const stockInicial = item.stock_inicial ?? 20;
     if (!_stock[platId]) {
+      _skipNextRealtimeStock = true;
       const { error: stockError } = await db.from('productos')
         .insert({ plat_id: platId, prod_stock: stockInicial, prod_disponible: stockInicial > 0 });
       if (stockError) {
@@ -2236,6 +2252,11 @@
       console.error('Supabase delete plato:', error);
       return error.code === '23503' ? 'en_uso' : false;
     }
+    // Recién AHORA sabemos que el DELETE sí ocurrió — si esto se pusiera
+    // antes del delete, un intento fallido (ej. "en_uso") dejaría la
+    // bandera en true sin ningún evento real que la consuma, y saltaría
+    // por error el próximo cambio de `platos` de otra persona.
+    _skipNextRealtimePlatos = true;
     _menuItems = _menuItems.filter(m => m.id !== id);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
     return true;
@@ -2437,6 +2458,7 @@
       for (const newItem of nuevosItems) {
         if (!itemsOriginales.find(x => x.id === newItem.id)) actualizarStock(newItem.id, newItem.cantidad);
       }
+      _skipNextRealtime = true;
       actualizarPedido(pedidoId, nuevosItems);
       window._modoEdicion = null;
       LogicaCarrito.vaciarCarrito();
@@ -2615,6 +2637,7 @@
           itemsActuales.push({ ...nuevoItem });
         }
       });
+      _skipNextRealtime = true;
       actualizarPedido(pedidoExistente.id, itemsActuales);
       items.forEach(i => actualizarStock(i.id, i.cantidad));
       LogicaCarrito.vaciarCarrito();
@@ -3694,6 +3717,9 @@
   });
 
   let _skipNextRealtime = false;
+  let _skipNextRealtimeStock = false;
+  let _skipNextRealtimeGastos = false;
+  let _skipNextRealtimePlatos = false;
 
   function _iniciarRealtime() {
     const _renderMenu = (rol) => {
@@ -3735,13 +3761,24 @@
 
     db.channel('realtime-gastos')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'gastos' }, async () => {
+        if (_skipNextRealtimeGastos) { _skipNextRealtimeGastos = false; return; }
         await recargarGastos();
         window.VistaCajero?.renderGastos?.();
       })
       .subscribe();
 
-    db.channel('realtime-stock')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, async () => {
+    // Enviar un pedido (o anularlo) escribe en `productos` una vez POR CADA
+    // ítem — sin agrupar esos eventos, un pedido de 3 platos disparaba 3
+    // refrescos completos de la pantalla, seguidos casi de inmediato uno
+    // del otro ("se recarga varias veces" que reportaban los meseros).
+    // Se agrupan igual que en realtime-pedidos, y _skipNextRealtimeStock
+    // salta el refresco cuando el cambio de stock lo hizo esta misma
+    // pestaña (que ya se actualizó sola) y no otro dispositivo.
+    let _stockRefrescarTimer = null;
+    const _refrescarStockDebounced = () => {
+      clearTimeout(_stockRefrescarTimer);
+      _stockRefrescarTimer = setTimeout(async () => {
+        if (_skipNextRealtimeStock) { _skipNextRealtimeStock = false; return; }
         await Promise.all([recargarCaja(), recargarStock()]);
         const _listaEl = document.getElementById('stock-lista');
         const _catsAbiertas = _listaEl
@@ -3756,7 +3793,10 @@
           title.nextElementSibling?.classList.remove('hidden');
         });
         _renderMenu(ModuloAutenticacion.getSession()?.rol);
-      })
+      }, 400);
+    };
+    db.channel('realtime-stock')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, _refrescarStockDebounced)
       .subscribe();
 
     // Sin esto, un plato creado/editado en una pestaña (ej. panel admin)
@@ -3767,6 +3807,7 @@
     const _refrescarPlatosDebounced = () => {
       clearTimeout(_platosRefrescarTimer);
       _platosRefrescarTimer = setTimeout(async () => {
+        if (_skipNextRealtimePlatos) { _skipNextRealtimePlatos = false; return; }
         await inicializarDB();
         _renderMenu(ModuloAutenticacion.getSession()?.rol);
         window.VistaAdmin?.renderAdminView();
