@@ -54,7 +54,11 @@ window.VistaAdmin = (function () {
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
 
-  const _CATS_ORDER = ['Desayunos','Entradas','Almuerzos','Postres','Bocaditos','Bebidas Calientes','Bebidas Frías','Platos Fuertes'];
+  // Catálogo estándar del negocio (coincide con _CAT_PREFIX en index.html) —
+  // se ofrece siempre en el selector de categoría del formulario de producto,
+  // aunque todavía no haya ningún plato guardado con ellas (ej. recién
+  // después de vaciar la base de datos para producción).
+  const _CATS_ORDER = ['Desayunos','Entradas','Almuerzos','Platos Fuertes','Sopas','Bocaditos','Bebidas Calientes','Bebidas Frías','Postres'];
   const _IMG_FALLBACK = "this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
   function _renderAdminCard(p) {
@@ -643,11 +647,16 @@ window.VistaAdmin = (function () {
 
     document.getElementById('prod-form-title').textContent = p ? 'Editar Producto' : 'Agregar Producto';
     document.getElementById('pf-nombre').value       = p?.nombre      ?? '';
-    // Categorías existentes en un <select> — el admin elige una o abre
-    // "+ Agregar categoría nueva…" para escribir el nombre a mano;
-    // guardarMenuItemDB crea la categoría en Supabase si no existe todavía.
+    // Categorías en un <select> — siempre se ofrece el catálogo estándar
+    // del negocio (_CATS_ORDER) aunque todavía no haya platos guardados con
+    // ellas, más cualquier categoría personalizada que ya se haya creado;
+    // el admin también puede abrir "+ Agregar categoría nueva…" para
+    // escribir un nombre distinto (guardarMenuItemDB la crea en Supabase).
     const catSelect = document.getElementById('pf-categoria');
-    const categoriasExistentes = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))].sort();
+    const catsPersonalizadas = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))]
+      .filter(c => !_CATS_ORDER.includes(c))
+      .sort();
+    const categoriasExistentes = [..._CATS_ORDER, ...catsPersonalizadas];
     if (catSelect) {
       catSelect.innerHTML = '<option value="">Elige una categoría…</option>'
         + categoriasExistentes.map(c => `<option value="${SC.escapeHtml(c)}">${SC.escapeHtml(c)}</option>`).join('')

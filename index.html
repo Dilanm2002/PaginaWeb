@@ -1675,6 +1675,13 @@
       return null;
     }
 
+    // La UI ya se actualiza abajo con la caché local — sin este flag, el
+    // UPDATE en `pedidos` que acabamos de hacer llega también por el canal
+    // realtime-pedidos y dispara un refrescar() completo (x2: inmediato +
+    // el segundo render a los 700ms) encima del que ya hicimos, causando
+    // el "parpadeo" de la pantalla al cobrar.
+    _skipNextRealtime = true;
+
     // Actualizar caché local
     const entrada = {
       ...cobrado,
@@ -1711,6 +1718,10 @@
       toast(resultado?.msg ?? 'Error al anular pedido', 'error');
       return false;
     }
+
+    // Mismo motivo que en cobrarPedido: evita el refrescar() redundante
+    // que dispararía el propio UPDATE de `pedidos` vía realtime-pedidos.
+    _skipNextRealtime = true;
 
     // El pedido ya quedó anulado server-side (fuente de verdad); si reponer
     // el stock falla no debe dejar la UI desincronizada mostrándolo como
