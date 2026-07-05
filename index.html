@@ -785,9 +785,12 @@
             </div>
             <div class="prod-form-group">
               <label for="pf-categoria">Categoría</label>
-              <input type="text" id="pf-categoria" list="pf-categoria-datalist" maxlength="40"
-                placeholder="Elige una o escribe una nueva" aria-describedby="pf-categoria-error">
-              <datalist id="pf-categoria-datalist"></datalist>
+              <select id="pf-categoria" aria-describedby="pf-categoria-error">
+                <option value="">Elige una categoría…</option>
+                <option value="__nueva__">+ Agregar categoría nueva…</option>
+              </select>
+              <input type="text" id="pf-categoria-nueva" maxlength="40" style="display:none;margin-top:.5rem;"
+                placeholder="Nombre de la nueva categoría">
               <span id="pf-categoria-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
@@ -2075,7 +2078,12 @@
 
     const [imagenFinal, catId, ingIds] = await Promise.all([
       item.imagen?.startsWith('data:image')
-        ? subirImagenStorage(item.imagen, item.id || 'nuevo')
+        // Antes se usaba el literal 'nuevo' como nombre de archivo para
+        // platos sin id todavía (aún no insertados) — dos platos nuevos
+        // subidos en sesiones distintas terminaban compartiendo el mismo
+        // path de Storage ("menu/nuevo.jpg") y el último upload sobrescribía
+        // la imagen del otro, aunque sus filas en `platos` fueran distintas.
+        ? subirImagenStorage(item.imagen, item.id || `nuevo-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
         : Promise.resolve(item.imagen ?? ''), // '' en vez de null: nada debe pedir la URL literal "null"
       _obtenerOCrearCategoria(item.categoria),
       Promise.all(nombresIngUnicos.map(_obtenerOCrearIngrediente))
@@ -3681,6 +3689,24 @@
         });
         _renderMenu(ModuloAutenticacion.getSession()?.rol);
       })
+      .subscribe();
+
+    // Sin esto, un plato creado/editado en una pestaña (ej. panel admin)
+    // nunca aparecía en otras pestañas/dispositivos ya abiertos (ej. el menú
+    // de un cliente) hasta que esa pestaña se recargaba manualmente — la
+    // caché local `_menuItems` de cada pestaña solo se actualizaba a sí misma.
+    let _platosRefrescarTimer = null;
+    const _refrescarPlatosDebounced = () => {
+      clearTimeout(_platosRefrescarTimer);
+      _platosRefrescarTimer = setTimeout(async () => {
+        await inicializarDB();
+        _renderMenu(ModuloAutenticacion.getSession()?.rol);
+        window.VistaAdmin?.renderAdminView();
+      }, 400);
+    };
+    db.channel('realtime-platos')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'platos' }, _refrescarPlatosDebounced)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'plato_ingredientes' }, _refrescarPlatosDebounced)
       .subscribe();
 
     // NOTA: no existe un canal postgres_changes para la tabla `usuarios` —

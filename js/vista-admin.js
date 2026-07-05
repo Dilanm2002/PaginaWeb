@@ -643,14 +643,19 @@ window.VistaAdmin = (function () {
 
     document.getElementById('prod-form-title').textContent = p ? 'Editar Producto' : 'Agregar Producto';
     document.getElementById('pf-nombre').value       = p?.nombre      ?? '';
-    // Categorías existentes como sugerencias (datalist) — el admin puede
-    // elegir una o escribir una nueva; guardarMenuItemDB ya la crea sola.
-    const catDatalist = document.getElementById('pf-categoria-datalist');
-    if (catDatalist) {
-      const categoriasExistentes = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))].sort();
-      catDatalist.innerHTML = categoriasExistentes.map(c => `<option value="${SC.escapeHtml(c)}"></option>`).join('');
+    // Categorías existentes en un <select> — el admin elige una o abre
+    // "+ Agregar categoría nueva…" para escribir el nombre a mano;
+    // guardarMenuItemDB crea la categoría en Supabase si no existe todavía.
+    const catSelect = document.getElementById('pf-categoria');
+    const categoriasExistentes = [...new Set(SC.getAllProductosMergeados().map(x => x.categoria).filter(Boolean))].sort();
+    if (catSelect) {
+      catSelect.innerHTML = '<option value="">Elige una categoría…</option>'
+        + categoriasExistentes.map(c => `<option value="${SC.escapeHtml(c)}">${SC.escapeHtml(c)}</option>`).join('')
+        + '<option value="__nueva__">+ Agregar categoría nueva…</option>';
+      catSelect.value = (p?.categoria && categoriasExistentes.includes(p.categoria)) ? p.categoria : '';
     }
-    document.getElementById('pf-categoria').value    = p?.categoria   ?? '';
+    const catNueva = document.getElementById('pf-categoria-nueva');
+    if (catNueva) { catNueva.value = ''; catNueva.style.display = 'none'; }
     document.getElementById('pf-precio').value       = p?.precio != null ? (+p.precio).toFixed(2) : '';
     document.getElementById('pf-descripcion').value  = p?.descripcion ?? '';
     document.getElementById('pf-tag').value               = p?.tag            ?? '';
@@ -747,6 +752,8 @@ window.VistaAdmin = (function () {
     document.body.style.overflow = '';
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
+    const catNueva = document.getElementById('pf-categoria-nueva');
+    if (catNueva) { catNueva.value = ''; catNueva.style.display = 'none'; }
     _mostrarErrorNombre('');
     _mostrarErrorCategoria('');
     _mostrarErrorPrecio('');
@@ -857,7 +864,32 @@ window.VistaAdmin = (function () {
   }
 
   const _mostrarErrorNombre      = msg => _mostrarError('pf-nombre',      'pf-nombre-error',      msg);
-  const _mostrarErrorCategoria   = msg => _mostrarError('pf-categoria',   'pf-categoria-error',   msg);
+  // La categoría vive en dos campos (select + input "nueva"), así que el
+  // borde de error va en el que esté visible/activo en cada momento.
+  function _mostrarErrorCategoria(msg) {
+    const sel   = document.getElementById('pf-categoria');
+    const nueva = document.getElementById('pf-categoria-nueva');
+    const err   = document.getElementById('pf-categoria-error');
+    if (!sel || !err) return;
+    const activo = sel.value === '__nueva__' ? nueva : sel;
+    [sel, nueva].forEach(el => { if (el) el.style.borderColor = ''; });
+    if (msg) {
+      if (activo) activo.style.borderColor = '#dc2626';
+      err.textContent = msg;
+      err.style.display = 'block';
+    } else {
+      err.textContent = '';
+      err.style.display = 'none';
+    }
+  }
+  // Valor efectivo de categoría: el nombre elegido, o lo escrito en
+  // "nueva categoría" cuando el select está en esa opción.
+  function _leerCategoriaForm() {
+    const sel = document.getElementById('pf-categoria');
+    if (!sel) return '';
+    if (sel.value === '__nueva__') return document.getElementById('pf-categoria-nueva')?.value.trim() ?? '';
+    return sel.value.trim();
+  }
   const _mostrarErrorPrecio      = msg => _mostrarError('pf-precio',      'pf-precio-error',      msg);
   const _mostrarErrorDescripcion = msg => _mostrarError('pf-descripcion', 'pf-descripcion-error', msg);
   const _mostrarErrorIngredientes= msg => _mostrarError('pf-ingredientes','pf-ingredientes-error', msg);
@@ -894,7 +926,20 @@ window.VistaAdmin = (function () {
     pfStock.addEventListener('blur',  () => _mostrarErrorStock(_validarStock(pfStock.value)));
 
     const pfCategoria = document.getElementById('pf-categoria');
-    pfCategoria.addEventListener('blur', () => _mostrarErrorCategoria(pfCategoria.value.trim() ? '' : 'Elige o escribe una categoría.'));
+    const pfCategoriaNueva = document.getElementById('pf-categoria-nueva');
+    pfCategoria.addEventListener('change', () => {
+      const esNueva = pfCategoria.value === '__nueva__';
+      pfCategoriaNueva.style.display = esNueva ? '' : 'none';
+      if (esNueva) pfCategoriaNueva.focus();
+      else pfCategoriaNueva.value = '';
+      _mostrarErrorCategoria('');
+    });
+    pfCategoria.addEventListener('blur', () => {
+      if (pfCategoria.value === '__nueva__') return; // se valida con el input de abajo
+      _mostrarErrorCategoria(_leerCategoriaForm() ? '' : 'Elige o escribe una categoría.');
+    });
+    pfCategoriaNueva.addEventListener('blur',  () => _mostrarErrorCategoria(_leerCategoriaForm() ? '' : 'Escribe el nombre de la categoría.'));
+    pfCategoriaNueva.addEventListener('input', () => { if (pfCategoriaNueva.value.trim()) _mostrarErrorCategoria(''); });
 
     const pfDesc = document.getElementById('pf-descripcion');
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
@@ -915,7 +960,7 @@ window.VistaAdmin = (function () {
     document.getElementById('btn-prod-save').addEventListener('click', async () => {
       const SC     = window.SC;
       const nombre        = document.getElementById('pf-nombre').value.trim();
-      const categoria     = document.getElementById('pf-categoria').value.trim();
+      const categoria     = _leerCategoriaForm();
       const precioRaw     = document.getElementById('pf-precio').value;
       const precio        = Math.round(parseFloat(precioRaw) * 100) / 100;
       const descripcion   = document.getElementById('pf-descripcion').value.trim();
@@ -926,7 +971,7 @@ window.VistaAdmin = (function () {
       const errPrecio = _validarPrecio(precioRaw);
       const errIng    = _validarIngredientes(ingredientesRaw);
       const errStock  = _validarStock(stockRaw);
-      const errCategoria = categoria ? '' : 'Elige o escribe una categoría.';
+      const errCategoria = categoria ? '' : (document.getElementById('pf-categoria').value === '__nueva__' ? 'Escribe el nombre de la categoría.' : 'Elige o escribe una categoría.');
 
       _mostrarErrorNombre(errNombre);
       _mostrarErrorCategoria(errCategoria);
@@ -936,7 +981,12 @@ window.VistaAdmin = (function () {
       _mostrarErrorStock(errStock);
 
       if (errNombre)    { document.getElementById('pf-nombre').focus(); return; }
-      if (errCategoria) { document.getElementById('pf-categoria').focus(); return; }
+      if (errCategoria) {
+        (document.getElementById('pf-categoria').value === '__nueva__'
+          ? document.getElementById('pf-categoria-nueva')
+          : document.getElementById('pf-categoria')).focus();
+        return;
+      }
       if (errPrecio)    { document.getElementById('pf-precio').focus(); return; }
       if (!descripcion) { document.getElementById('pf-descripcion').focus(); return; }
       if (errIng)       { document.getElementById('pf-ingredientes').focus(); return; }

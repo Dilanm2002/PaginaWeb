@@ -572,6 +572,11 @@ window.VistaMenu = (function () {
         });
         _agregarConExclusiones(prod, exclusiones);
         pop?.classList.remove('visible');
+        // Reinicia las casillas a "incluido" — así, si el mesero vuelve a
+        // abrir el popover para pedir el mismo plato con OTRAS exclusiones
+        // (ej. dos Scacciatas, cada una sin un ingrediente distinto), no
+        // arrastra la selección de la orden anterior.
+        pop?.querySelectorAll('.mesero-excl-check').forEach(cb => { cb.checked = true; });
         return;
       }
 
