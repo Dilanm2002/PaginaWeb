@@ -1558,6 +1558,8 @@
       font-size: .8rem; cursor: pointer; user-select: none;
     }
     .mesero-ing-check input { width: 15px; height: 15px; accent-color: var(--cinnamon); cursor: pointer; flex-shrink: 0; }
+    .mesero-ing-check small { color: var(--cinnamon-lt); font-weight: 600; }
+    .mesero-ing-pop__precio { font-weight: 800; font-size: .85rem; text-align: right; margin-bottom: .4rem; color: var(--cinnamon-lt); }
     .mesero-ing-pop__add {
       width: 100%; border: none; border-radius: var(--radius-sm);
       background: var(--cinnamon); color: #fff; font-weight: 700;

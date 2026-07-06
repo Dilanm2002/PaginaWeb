@@ -45,7 +45,10 @@ window.VistaMenu = (function () {
       if (totalEnPedido >= s.stock) { SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error'); return false; }
       const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === key);
       if (existente) existente.cantidad += 1;
-      else ped.items.push({ id: prod.id, nombre: prod.nombre, precio: prod.precio, cantidad: 1, exclusiones });
+      else {
+        const precio = LogicaCarrito.calcularPrecioConExclusiones(prod, exclusiones);
+        ped.items.push({ id: prod.id, nombre: prod.nombre, precio, cantidad: 1, exclusiones });
+      }
       SC.actualizarStock(prod.id, 1);
       renderMesasActivas();
       syncQtys();
@@ -242,8 +245,8 @@ window.VistaMenu = (function () {
     const ingChips = puedeExcluir
       ? ingsConId.map(ing =>
           `<label class="ing-chip">
-              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
-              <span class="ing-chip__label">${ing.nombre}</span>
+              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" data-descuento="${ing.descuento || 0}" checked>
+              <span class="ing-chip__label">${ing.nombre}${ing.descuento > 0 ? ` <small>(-$${ing.descuento.toFixed(2)})</small>` : ''}</span>
             </label>`
         ).join('')
       : '';
@@ -276,7 +279,7 @@ window.VistaMenu = (function () {
           }
         ` : ''}
         <div class="modal-footer">
-          <div class="modal-price">$${p.precio.toFixed(2)} <small>USD</small></div>
+          <div class="modal-price" id="modal-price-display">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
             <button class="btn-modal-close" id="btn-cerrar-modal">Cerrar</button>
             <button class="btn-modal-add" data-id="${p.id}" ${agotado ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
@@ -291,14 +294,29 @@ window.VistaMenu = (function () {
     document.body.style.overflow = 'hidden';
     document.documentElement.style.overflow = 'hidden';
 
-    document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
-    document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
-    modalBox.querySelector('.btn-modal-add').onclick = () => {
+    const _leerExclusionesModal = () => {
       const exclusiones = [];
       modalBox.querySelectorAll('.ing-check:not(:checked)').forEach(cb => {
         exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
       });
-      _agregarConExclusiones(p, exclusiones);
+      return exclusiones;
+    };
+    // Si algún ingrediente excluido tiene precio propio (ej. la sopa de un
+    // almuerzo), el total baja al desmarcarlo — se actualiza en vivo.
+    if (puedeExcluir) {
+      modalBox.querySelectorAll('.ing-check').forEach(cb => {
+        cb.addEventListener('change', () => {
+          const precioAjustado = LogicaCarrito.calcularPrecioConExclusiones(p, _leerExclusionesModal());
+          const precioEl = document.getElementById('modal-price-display');
+          if (precioEl) precioEl.innerHTML = `$${precioAjustado.toFixed(2)} <small>USD</small>`;
+        });
+      });
+    }
+
+    document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
+    document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
+    modalBox.querySelector('.btn-modal-add').onclick = () => {
+      _agregarConExclusiones(p, _leerExclusionesModal());
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -522,10 +540,11 @@ window.VistaMenu = (function () {
                     <div class="mesero-ing-pop__chips">
                       ${p.ingredientes.filter(i => i && i.id).map(i => `
                         <label class="mesero-ing-check">
-                          <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" checked>
-                          ${i.nombre}
+                          <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" data-descuento="${i.descuento || 0}" checked>
+                          ${i.nombre}${i.descuento > 0 ? ` <small>(-$${i.descuento.toFixed(2)})</small>` : ''}
                         </label>`).join('')}
                     </div>
+                    <div class="mesero-ing-pop__precio" id="mpop-precio-${p.id}">$${p.precio.toFixed(2)}</div>
                     <button class="mesero-ing-pop__add" data-id="${p.id}" type="button">+ Agregar</button>
                   ` : `
                     <strong>Ingredientes</strong>
@@ -565,6 +584,24 @@ window.VistaMenu = (function () {
 
     syncQtys();
 
+    // Si algún ingrediente excluido tiene precio propio (ej. la sopa de un
+    // almuerzo), el total del popover baja al desmarcarlo — se ve en vivo.
+    grid.addEventListener('change', e => {
+      const cb = e.target.closest('.mesero-excl-check');
+      if (!cb) return;
+      const pop = cb.closest('.mesero-ing-pop');
+      const prodId = pop?.id.replace('mpop-', '');
+      const prod = prodId && SC.getProductosMergeados().find(x => x.id === prodId);
+      if (!prod) return;
+      const exclusiones = [];
+      pop.querySelectorAll('.mesero-excl-check:not(:checked)').forEach(c => {
+        exclusiones.push({ id: c.dataset.ingId, nombre: c.dataset.ingNombre });
+      });
+      const precioAjustado = LogicaCarrito.calcularPrecioConExclusiones(prod, exclusiones);
+      const precioEl = document.getElementById(`mpop-precio-${prod.id}`);
+      if (precioEl) precioEl.textContent = `$${precioAjustado.toFixed(2)}`;
+    });
+
     grid.onclick = e => {
       // Botón "+ Agregar" dentro del popover de exclusión — agrega con las
       // casillas que queden desmarcadas y cierra el popover.
@@ -585,6 +622,8 @@ window.VistaMenu = (function () {
         // (ej. dos Scacciatas, cada una sin un ingrediente distinto), no
         // arrastra la selección de la orden anterior.
         pop?.querySelectorAll('.mesero-excl-check').forEach(cb => { cb.checked = true; });
+        const precioEl = document.getElementById(`mpop-precio-${prod.id}`);
+        if (precioEl) precioEl.textContent = `$${prod.precio.toFixed(2)}`;
         return;
       }
 

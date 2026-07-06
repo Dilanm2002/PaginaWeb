@@ -679,7 +679,10 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-destacado').checked       = p?.destacado      ?? false;
     document.getElementById('pf-permite-excluir').checked = p?.permiteExcluir ?? false;
     document.getElementById('pf-stock').value        = p ? SC.getStock(p.id).stock : '';
-    const ings = Array.isArray(p?.ingredientes) ? p.ingredientes.map(i => typeof i === 'string' ? i : i.nombre).join(', ') : '';
+    const ings = Array.isArray(p?.ingredientes) ? p.ingredientes.map(i => {
+      if (typeof i === 'string') return i;
+      return i.descuento > 0 ? `${i.nombre}:${i.descuento}` : i.nombre;
+    }).join(', ') : '';
     document.getElementById('pf-ingredientes').value = ings;
     document.getElementById('pf-imagen').value       = '';
 
@@ -854,11 +857,29 @@ window.VistaAdmin = (function () {
     return '';
   }
 
+  // "Arroz, Pollo, Sopa:0.50" — un ingrediente puede llevar ":monto" para
+  // marcarlo como componente con precio propio (ej. la sopa de un almuerzo):
+  // al excluirlo en el pedido, ese monto se resta del precio del plato.
+  // Sin ":monto" el ingrediente es solo informativo, como antes.
+  function _parsearIngredientesConDescuento(valor) {
+    return valor.split(',').map(s => s.trim()).filter(Boolean).map(entry => {
+      const idx = entry.indexOf(':');
+      if (idx === -1) return { nombre: entry, descuento: 0, raw: entry };
+      const nombre  = entry.slice(0, idx).trim();
+      const descRaw = entry.slice(idx + 1).trim();
+      return { nombre, descuento: parseFloat(descRaw), raw: entry, descRaw };
+    });
+  }
+
   function _validarIngredientes(valor) {
     const v = valor.trim();
     if (!v) return 'Los ingredientes son obligatorios.';
-    const partes = v.split(',').map(s => s.trim()).filter(Boolean);
+    const partes = _parsearIngredientesConDescuento(v);
     if (!partes.length) return 'Ingresa al menos un ingrediente.';
+    const sinNombre = partes.find(p => !p.nombre);
+    if (sinNombre) return `Falta el nombre del ingrediente en "${sinNombre.raw}".`;
+    const invalido = partes.find(p => p.descRaw !== undefined && (isNaN(p.descuento) || p.descuento < 0));
+    if (invalido) return `El descuento de "${invalido.nombre}" no es válido. Usa el formato "Nombre:0.50".`;
     return '';
   }
 
@@ -1132,7 +1153,8 @@ window.VistaAdmin = (function () {
 
       const id            = _prodFormEditId ?? null;
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
-      const ingredientes  = ingredientesRaw.split(',').map(s => s.trim()).filter(Boolean);
+      const ingredientes  = _parsearIngredientesConDescuento(ingredientesRaw)
+        .map(({ nombre, descuento }) => ({ nombre, descuento: descuento > 0 ? descuento : 0 }));
 
       const item = {
         id,

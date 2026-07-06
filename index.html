@@ -1340,8 +1340,9 @@
       activo:          r.plat_activo !== false,
       createdAt:       r.plat_created_at ?? null,
       ingredientes: (r.plato_ingredientes || []).map(pi => ({
-        id:     pi.ingredientes?.ing_id,
-        nombre: pi.ingredientes?.ing_nombre
+        id:        pi.ingredientes?.ing_id,
+        nombre:    pi.ingredientes?.ing_nombre,
+        descuento: parseFloat(pi.pi_descuento) || 0
       })).filter(pi => pi.id && pi.nombre)
     };
   }
@@ -1357,7 +1358,7 @@
           plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
-          plato_ingredientes(ingredientes(ing_id, ing_nombre))
+          plato_ingredientes(pi_descuento, ingredientes(ing_id, ing_nombre))
         `),
         // Se pide aparte (no solo el join de arriba) porque el join solo trae
         // categorías que YA tienen algún plato — el selector de categoría del
@@ -2135,13 +2136,17 @@
     // Subir imagen, resolver categoría y resolver/crear ingredientes en
     // paralelo — ninguna de las tres depende de las otras, y antes corrían
     // una tras otra (además de los ingredientes, que iban uno por uno).
-    const nombresIngUnicos = Array.isArray(item.ingredientes) && item.ingredientes.length > 0
-      ? [...new Set(
-          item.ingredientes
-            .map(ingRaw => (typeof ingRaw === 'string' ? ingRaw.trim() : ingRaw.nombre))
-            .filter(Boolean)
-        )]
-      : [];
+    // Un ingrediente puede venir con `descuento` (ej. "Sopa" de un almuerzo):
+    // al excluirlo en el pedido, ese monto se resta del precio del plato.
+    // Se guarda por nombre porque el mismo ingrediente puede valer distinto
+    // según en qué plato esté (la sopa de un combo vs. la de otro).
+    const descuentosPorNombre = new Map();
+    (Array.isArray(item.ingredientes) ? item.ingredientes : []).forEach(ingRaw => {
+      const nombre    = (typeof ingRaw === 'string' ? ingRaw : ingRaw?.nombre)?.trim();
+      const descuento = typeof ingRaw === 'string' ? 0 : (parseFloat(ingRaw?.descuento) || 0);
+      if (nombre) descuentosPorNombre.set(nombre, descuento);
+    });
+    const nombresIngUnicos = [...descuentosPorNombre.keys()];
 
     const [imagenFinal, catId, ingIds] = await Promise.all([
       item.imagen?.startsWith('data:image')
@@ -2221,8 +2226,9 @@
       const filas = [];
       nombresIngUnicos.forEach((nombre, i) => {
         if (ingIds[i]) {
-          filas.push({ plat_id: platId, ing_id: ingIds[i] });
-          ingredientesConId.push({ id: ingIds[i], nombre });
+          const descuento = descuentosPorNombre.get(nombre) || 0;
+          filas.push({ plat_id: platId, ing_id: ingIds[i], pi_descuento: descuento });
+          ingredientesConId.push({ id: ingIds[i], nombre, descuento });
         }
       });
       if (filas.length) {

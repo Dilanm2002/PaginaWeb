@@ -37,6 +37,26 @@ window.LogicaCarrito = (function () {
       .join('|');
 
   /**
+   * Precio final de un producto según las exclusiones elegidas. La mayoría
+   * de ingredientes son solo informativos (no cambian el precio), pero
+   * algunos son "componentes con precio propio" (ej. la sopa de un
+   * almuerzo) — excluirlos resta su descuento del precio del combo.
+   * @param {Object} producto — debe tener .precio y .ingredientes ([{id, nombre, descuento}]).
+   * @param {Array} exclusiones — ingredientes excluidos ({id, nombre} o string).
+   * @returns {number} Precio ajustado (nunca negativo), redondeado a 2 decimales.
+   */
+  const calcularPrecioConExclusiones = (producto, exclusiones = []) => {
+    const ingredientes = Array.isArray(producto?.ingredientes) ? producto.ingredientes : [];
+    const descuento = (exclusiones || []).reduce((suma, excl) => {
+      const exclId     = typeof excl === 'string' ? null : excl?.id;
+      const exclNombre = typeof excl === 'string' ? excl : excl?.nombre;
+      const ing = ingredientes.find(i => (exclId && i.id === exclId) || (exclNombre && i.nombre === exclNombre));
+      return suma + (ing?.descuento || 0);
+    }, 0);
+    return Math.max(0, Math.round((producto.precio - descuento) * 100) / 100);
+  };
+
+  /**
    * Agrega un producto al carrito. Si ya existe una línea con el mismo id
    * Y las mismas exclusiones, incrementa su cantidad; si las exclusiones
    * difieren (p.ej. mismo plato, una vez normal y otra "sin arroz"), crea
@@ -51,7 +71,8 @@ window.LogicaCarrito = (function () {
     if (idx >= 0) {
       items[idx].cantidad += 1;
     } else {
-      const { id, nombre, precio, imagen } = producto;
+      const { id, nombre, imagen } = producto;
+      const precio = calcularPrecioConExclusiones(producto, exclusiones);
       const lineId = id + (key ? '::' + key : '');
       items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, lineId });
     }
@@ -116,6 +137,7 @@ window.LogicaCarrito = (function () {
     eliminarItem,
     cambiarCantidad,
     vaciarCarrito,
-    calcularTotales
+    calcularTotales,
+    calcularPrecioConExclusiones
   };
 })();
