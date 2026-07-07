@@ -194,7 +194,7 @@ window.VistaAdmin = (function () {
   async function _actualizarBadgePedidosActivos() {
     const hoy = _fechaLocalISO();
     const { data } = await window.db.from('pedidos').select('ped_id')
-      .gte('ped_fecha', hoy).not('ped_estado', 'in', '("cancelado","cobrado")');
+      .gte('ped_fecha', hoy).not('ped_estado', 'in', '("anulado","cobrado")');
     const badge = document.getElementById('adm-ped-badge');
     const n = data?.length ?? 0;
     if (badge) { badge.textContent = n; badge.style.display = n > 0 ? '' : 'none'; }
@@ -221,7 +221,7 @@ window.VistaAdmin = (function () {
       .from('pedidos')
       .select(PED_SEL)
       .gte('ped_fecha', hoy)
-      .not('ped_estado', 'in', '("cancelado","cobrado")')
+      .not('ped_estado', 'in', '("anulado","cobrado")')
       .order('ped_created_at', { ascending: true });
 
     if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem;padding:1rem 0">Error al cargar pedidos.</p>'; return; }
