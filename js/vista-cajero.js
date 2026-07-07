@@ -11,6 +11,13 @@ window.VistaCajero = (function () {
   let _ultimoCobro = null; // { pedido, factNumero, metodoPagoNombre, montoPagado, cambio }
   let _correoNotaCtx = null; // { pedido, factNumero, metodoPagoNombre, fechaCobro }
 
+  // Mismo helper que usa vista-menu.js — el color de categoría se aplica
+  // como variable CSS inline (--cat-c), no por nombre fijo en el CSS.
+  const _colorEstilo = cat => {
+    const color = window.SC?.getCategoriasColores?.()[cat];
+    return color ? ` style="--cat-c:${color}"` : '';
+  };
+
   const METODO_NOMBRE = {
     met001: 'Efectivo',
     met002: 'Tarjeta de crédito',
@@ -280,7 +287,7 @@ window.VistaCajero = (function () {
 
       return `
         <div class="mesero-cat-section">
-          <div class="mesero-cat-title collapsed" data-cat="${cat}" role="button" tabindex="0" aria-expanded="false">
+          <div class="mesero-cat-title collapsed" data-cat="${cat}"${_colorEstilo(cat)} role="button" tabindex="0" aria-expanded="false">
             ${cat}
             <span class="mesero-cat-chevron">▾</span>
           </div>

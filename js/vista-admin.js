@@ -859,6 +859,15 @@ window.VistaAdmin = (function () {
     return '';
   }
 
+  // Estándar de nombres de categoría: primera letra de cada palabra en
+  // mayúscula, el resto en minúscula (ej. "SOPAS" o "bebidas calientes"
+  // quedan como "Sopas" / "Bebidas Calientes") — igual que las 9 estándar.
+  function _normalizarNombreCategoria(nombre) {
+    return nombre.trim().split(/\s+/).filter(Boolean)
+      .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
+      .join(' ');
+  }
+
   function _parsearNombresIngredientes(valor) {
     return valor.split(',').map(s => s.trim()).filter(Boolean);
   }
@@ -979,7 +988,7 @@ window.VistaAdmin = (function () {
     const nombreInp = document.getElementById('cat-modal-nombre');
     const nombreErr = document.getElementById('cat-modal-nombre-error');
     const colorErr  = document.getElementById('cat-modal-color-error');
-    const nombre    = nombreInp?.value.trim() ?? '';
+    const nombre    = _normalizarNombreCategoria(nombreInp?.value ?? '');
 
     const yaExiste = [...sel.options].some(o => o.value !== '__nueva__' && o.value.toLowerCase() === nombre.toLowerCase());
     let err = '';
