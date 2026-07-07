@@ -1713,8 +1713,9 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por')
-      .eq('ped_fecha', fechaSel);
+      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero)')
+      .eq('ped_fecha', fechaSel)
+      .order('ped_hora', { ascending: true });
 
     const todos         = todosHoy ?? [];
     const cobrados      = todos.filter(p => p.ped_estado === 'cobrado');
@@ -1732,51 +1733,38 @@ window.VistaAdmin = (function () {
     // vía la RPC listar_usuarios() (SECURITY DEFINER), igual que en el resto del panel.
     const usuariosCache = window.ModuloAutenticacion.leerUsuarios();
     const ROL_LABEL_CUADRE = { cajero: 'Caja', mesero: 'Mesero', usuario: 'Cliente', administrador: 'Admin', invitado: 'Invitado' };
-    const porMesero = {};
-    todos.forEach(p => {
-      const key = p.usu_id ?? '__invitado__';
-      const u   = p.usu_id ? usuariosCache.find(u => u.id === p.usu_id) : null;
-      const nombre = p.usu_id ? (u?.nombre ?? p.usu_id) : 'Invitado';
-      const rol    = p.usu_id ? (u?.rol ?? 'usuario') : 'invitado';
-      if (!porMesero[key]) porMesero[key] = { nombre, rol, creados: 0, cobrados: 0, anulados: 0 };
-      porMesero[key].creados++;
-      if (p.ped_estado === 'cobrado') porMesero[key].cobrados++;
-      if (p.ped_estado === 'anulado') porMesero[key].anulados++;
-    });
+    const _nombreDe = usuId => {
+      if (!usuId) return null;
+      const u = usuariosCache.find(u => u.id === usuId);
+      return u ? { nombre: u.nombre, rol: u.rol } : { nombre: usuId, rol: 'usuario' };
+    };
+    const _pill = (usuId, fallbackRol) => {
+      const info = _nombreDe(usuId);
+      if (!info) return '—';
+      const rol = info.rol ?? fallbackRol;
+      return `<span class="rol-pill ${rol}">${ROL_LABEL_CUADRE[rol] ?? rol}</span> ${SC?.escapeHtml(info.nombre) ?? info.nombre}`;
+    };
 
-    const filasMesero = Object.values(porMesero).map(m => {
-      const diff = m.creados - m.cobrados - m.anulados;
+    // Una fila por pedido — todo su recorrido a la vista, sin tener que
+    // cruzar dos tablas distintas: quién lo creó, en qué quedó, y quién de
+    // caja lo cobró o anuló (nunca el mismo que lo creó, salvo que sea
+    // cajero/admin tomando su propio pedido).
+    const filasPedidos = todos.map(p => {
+      const creador = p.usu_id ? _pill(p.usu_id, 'usuario') : `<span class="rol-pill invitado">Invitado</span>`;
+      const mesaTxt = p.mes_id && p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
+      const estadoTxt = p.ped_estado === 'cobrado'
+        ? '<span style="color:#16a34a;font-weight:700">✓ Cobrado</span>'
+        : p.ped_estado === 'anulado'
+          ? '<span style="color:#dc2626;font-weight:700">✕ Anulado</span>'
+          : '<span style="color:var(--cinnamon);font-weight:700">⏳ Pendiente</span>';
       return `<tr>
-        <td><span class="rol-pill ${m.rol}">${ROL_LABEL_CUADRE[m.rol] ?? m.rol}</span> ${SC?.escapeHtml(m.nombre) ?? m.nombre}</td>
-        <td style="text-align:center">${m.creados}</td>
-        <td style="text-align:center;color:${diff === 0 ? '#16a34a' : 'var(--cinnamon)'}">${m.cobrados}</td>
-        <td style="text-align:center;color:var(--text-muted)">${m.anulados || '—'}</td>
-        <td style="text-align:center;font-weight:700;color:${diff > 0 ? '#dc2626' : '#16a34a'}">
-          ${diff > 0 ? `+${diff} pendiente${diff !== 1 ? 's' : ''}` : '✓ Cuadrado'}
-        </td>
+        <td>${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
+        <td>${creador}</td>
+        <td style="text-align:center">${estadoTxt}</td>
+        <td>${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
+        <td>${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
       </tr>`;
     }).join('');
-
-    // La tabla de arriba es "pedidos creados por cada mesero/cliente y en
-    // qué terminaron" — no dice QUIÉN los cobró o anuló (eso siempre es
-    // cajero/admin, nunca el mesero). Esta segunda tabla es esa otra
-    // dimensión: quién de caja procesó cada cobro/anulación, aparte.
-    const porCajero = {};
-    todos.forEach(p => {
-      const procesarComo = (usuId, campo) => {
-        if (!usuId) return;
-        const u = usuariosCache.find(u => u.id === usuId);
-        if (!porCajero[usuId]) porCajero[usuId] = { nombre: u?.nombre ?? usuId, cobrados: 0, anulados: 0 };
-        porCajero[usuId][campo]++;
-      };
-      if (p.ped_estado === 'cobrado') procesarComo(p.ped_cobrado_por, 'cobrados');
-      if (p.ped_estado === 'anulado') procesarComo(p.ped_anulado_por, 'anulados');
-    });
-    const filasCajero = Object.values(porCajero).map(c => `<tr>
-        <td>${SC?.escapeHtml(c.nombre) ?? c.nombre}</td>
-        <td style="text-align:center;color:#16a34a">${c.cobrados || '—'}</td>
-        <td style="text-align:center;color:var(--text-muted)">${c.anulados || '—'}</td>
-      </tr>`).join('');
 
     cuadreEl.innerHTML = `
       <div class="cuadre-header">
@@ -1808,24 +1796,14 @@ window.VistaAdmin = (function () {
       ${todos.length ? `
       <table class="adm-tabla" style="margin-top:1rem">
         <thead><tr>
-          <th>Pedidos creados por</th>
-          <th style="text-align:center">Pedidos creados</th>
-          <th style="text-align:center">Terminaron cobrados</th>
-          <th style="text-align:center">Terminaron anulados</th>
+          <th>Pedido</th>
+          <th>Creado por</th>
           <th style="text-align:center">Estado</th>
+          <th>Cobrado por</th>
+          <th>Anulado por</th>
         </tr></thead>
-        <tbody>${filasMesero}</tbody>
+        <tbody>${filasPedidos}</tbody>
       </table>
-      ${filasCajero ? `
-      <p style="margin:1.25rem 0 .4rem;font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Procesado por caja</p>
-      <table class="adm-tabla">
-        <thead><tr>
-          <th>Cajero / Admin</th>
-          <th style="text-align:center">Cobró</th>
-          <th style="text-align:center">Anuló</th>
-        </tr></thead>
-        <tbody>${filasCajero}</tbody>
-      </table>` : ''}
       ` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}`;
   }
 

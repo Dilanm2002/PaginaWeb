@@ -1566,6 +1566,14 @@
       db.from('productos').select('plat_id, prod_stock, prod_disponible').in('plat_id', items.map(i => i.id))
     ]);
 
+    // Si se pidió una mesa (no "para llevar") pero la búsqueda no encontró
+    // ninguna fila para ese número, el pedido NO debe crearse en silencio
+    // sin mesa asociada — eso dejaba pedidos huérfanos mostrando "Mesa null".
+    if (!paraLlevar && mesa && !mesaData?.mes_id) {
+      toast(`No se encontró la mesa ${mesa}. Intenta de nuevo.`, 'error');
+      return null;
+    }
+
     // Limpiar pedido pendiente previo en orden (FK: exclusiones → detalles → pedido)
     async function _limpiarPeds(query) {
       const { data: peds } = await query;
@@ -2416,11 +2424,15 @@
       mesaAsignadaDiv.style.display = '';
       mesaAsignadaNum.textContent   = pedidoPrevio.mesa;
     } else {
-      // Pedido nuevo libre → mostrar toggle
+      // Pedido nuevo libre → mostrar toggle. campoMesa respeta lo que
+      // _setTipo(todosParaLlevar) ya decidió arriba — si se auto-seleccionó
+      // "para llevar", el campo de mesa debe seguir oculto, no volver a
+      // mostrarse aquí (eso hacía que se viera el campo de mesa aunque el
+      // pedido ya estuviera en modo "para llevar").
       if (tipoToggle) tipoToggle.style.display = '';
       mesaInput.value    = '';
       mesaInput.readOnly = false;
-      campoMesa.style.display       = '';
+      campoMesa.style.display       = todosParaLlevar ? 'none' : '';
       mesaAsignadaDiv.style.display = 'none';
     }
 
