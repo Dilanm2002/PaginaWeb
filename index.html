@@ -3810,7 +3810,15 @@
       }
     };
 
+    // Solo un pedido NUEVO (INSERT) dispara actualizarStock() en segundo
+    // plano dentro de enviarACaja — cobrar/anular solo cambian el estado
+    // del pedido y nunca tocan stock, así que no necesitan el segundo
+    // render tardío. Se acumula por si varios eventos INSERT/UPDATE llegan
+    // juntos y se agrupan en un solo refrescar().
+    let _refrescarHuboInsert = false;
     const refrescar = async () => {
+      const huboInsert = _refrescarHuboInsert;
+      _refrescarHuboInsert = false;
       if (_skipNextRealtime) { _skipNextRealtime = false; return; }
       await Promise.all([recargarCaja(), recargarStock()]);
       window.VistaCajero?.renderCajeroView();
@@ -3819,18 +3827,22 @@
       if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
       const _rolR = ModuloAutenticacion.getSession()?.rol;
       _renderMenu(_rolR);
-      // Segundo render a los 700ms: captura actualizarStock() que commitea después del INSERT de pedidos
-      setTimeout(async () => {
-        await recargarStock();
-        _renderMenu(ModuloAutenticacion.getSession()?.rol);
-      }, 700);
+      // Segundo render a los 700ms: solo si hubo un pedido nuevo — captura
+      // actualizarStock() que commitea después del INSERT de pedidos.
+      if (huboInsert) {
+        setTimeout(async () => {
+          await recargarStock();
+          _renderMenu(ModuloAutenticacion.getSession()?.rol);
+        }, 700);
+      }
     };
 
     // Varios cambios en `pedidos` pueden llegar casi juntos (p.ej. borrar el
     // pendiente viejo + insertar el nuevo al enviar un pedido) — agrupamos
     // esos eventos en un solo refrescar() para no encolar refrescos pesados.
     let _refrescarTimer = null;
-    const refrescarDebounced = () => {
+    const refrescarDebounced = (payload) => {
+      if (payload?.eventType === 'INSERT') _refrescarHuboInsert = true;
       clearTimeout(_refrescarTimer);
       _refrescarTimer = setTimeout(refrescar, 400);
     };
