@@ -45,22 +45,27 @@ window.LogicaCarrito = (function () {
   const _lineKey = (exclusiones = [], paraLlevar = false) =>
     _exclKey(exclusiones) + (paraLlevar ? '::llevar' : '');
 
+  // Regla de negocio fija: un almuerzo (sopa + segundo) vale menos si el
+  // cliente pide solo el segundo, sin la sopa. No es configurable por
+  // producto — aplica automáticamente a cualquier plato de categoría
+  // "Almuerzos" cuando se excluye un ingrediente cuyo nombre contenga
+  // "sopa" (sin importar mayúsculas/acentos, ej. "Sopa del día").
+  const _DESCUENTO_SOPA_ALMUERZO = 0.50;
+  const _esSopa = nombre => /sopa/i.test(
+    (nombre || '').normalize('NFD').replace(/[̀-ͯ]/g, '')
+  );
+
   /**
-   * Precio final de un producto según las exclusiones elegidas. La mayoría
-   * de ingredientes son solo informativos (no cambian el precio), pero
-   * algunos son "componentes con precio propio" (ej. la sopa de un
-   * almuerzo) — excluirlos resta su descuento del precio del combo.
-   * @param {Object} producto — debe tener .precio y .ingredientes ([{id, nombre, descuento}]).
+   * Precio final de un producto según las exclusiones elegidas.
+   * @param {Object} producto — debe tener .precio y .categoria.
    * @param {Array} exclusiones — ingredientes excluidos ({id, nombre} o string).
    * @returns {number} Precio ajustado (nunca negativo), redondeado a 2 decimales.
    */
   const calcularPrecioConExclusiones = (producto, exclusiones = []) => {
-    const ingredientes = Array.isArray(producto?.ingredientes) ? producto.ingredientes : [];
+    const esAlmuerzo = producto?.categoria === 'Almuerzos';
     const descuento = (exclusiones || []).reduce((suma, excl) => {
-      const exclId     = typeof excl === 'string' ? null : excl?.id;
-      const exclNombre = typeof excl === 'string' ? excl : excl?.nombre;
-      const ing = ingredientes.find(i => (exclId && i.id === exclId) || (exclNombre && i.nombre === exclNombre));
-      return suma + (ing?.descuento || 0);
+      const nombre = typeof excl === 'string' ? excl : excl?.nombre;
+      return suma + (esAlmuerzo && _esSopa(nombre) ? _DESCUENTO_SOPA_ALMUERZO : 0);
     }, 0);
     return Math.max(0, Math.round((producto.precio - descuento) * 100) / 100);
   };

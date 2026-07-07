@@ -94,61 +94,55 @@ describe('agregarItem', () => {
 
 // ── calcularPrecioConExclusiones ──────────────────────────────
 // Caso real del cliente: un almuerzo de $3.50 con sopa incluida — si
-// piden solo el segundo (sin sopa), la sopa vale $0.50 y el precio
-// final debe bajar a $3.00.
+// piden solo el segundo (sin sopa), el precio baja a $3.00. Es una regla
+// fija del negocio (no configurable por producto): solo aplica a la
+// categoría "Almuerzos" cuando se excluye un ingrediente con "sopa" en
+// el nombre — no depende de datos guardados por plato/ingrediente.
 describe('calcularPrecioConExclusiones', () => {
-  const almuerzo = {
-    precio: 3.50,
-    ingredientes: [
-      { id: 'ing1', nombre: 'Sopa', descuento: 0.50 },
-      { id: 'ing2', nombre: 'Segundo', descuento: 0 },
-      { id: 'ing3', nombre: 'Jugo', descuento: 0 },
-    ],
-  }
+  const almuerzo = { precio: 3.50, categoria: 'Almuerzos' }
 
   it('sin exclusiones, cobra el precio completo', () => {
     expect(window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, [])).toBe(3.50)
   })
 
-  it('excluir un ingrediente sin descuento no cambia el precio', () => {
+  it('excluir un ingrediente que no es la sopa no cambia el precio', () => {
     const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, [{ id: 'ing3', nombre: 'Jugo' }])
     expect(precio).toBe(3.50)
   })
 
-  it('excluir la sopa (componente con precio) resta su descuento', () => {
-    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, [{ id: 'ing1', nombre: 'Sopa' }])
+  it('excluir la sopa de un almuerzo resta $0.50', () => {
+    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, [{ id: 'ing1', nombre: 'Sopa del día' }])
     expect(precio).toBe(3.00)
   })
 
-  it('excluir varios componentes con precio resta todos los descuentos', () => {
-    const conDosComponentes = {
-      precio: 4.00,
-      ingredientes: [
-        { id: 'ing1', nombre: 'Sopa', descuento: 0.50 },
-        { id: 'ing4', nombre: 'Postre', descuento: 0.75 },
-      ],
-    }
-    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(conDosComponentes, [
-      { id: 'ing1', nombre: 'Sopa' },
-      { id: 'ing4', nombre: 'Postre' },
-    ])
-    expect(precio).toBe(2.75)
+  it('reconoce variantes del nombre (mayúsculas, acentos, "sopa" como parte del nombre)', () => {
+    const variantes = ['sopa', 'SOPA', 'Sopa criolla', 'sopa del día']
+    variantes.forEach(nombre => {
+      const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, [{ nombre }])
+      expect(precio).toBe(3.00)
+    })
   })
 
-  it('nunca da un precio negativo aunque los descuentos superen el precio base', () => {
-    const barato = { precio: 0.30, ingredientes: [{ id: 'ing1', nombre: 'Sopa', descuento: 0.50 }] }
-    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(barato, [{ id: 'ing1', nombre: 'Sopa' }])
+  it('la regla NO aplica fuera de la categoría "Almuerzos"', () => {
+    const noAlmuerzo = { precio: 3.50, categoria: 'Entradas' }
+    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(noAlmuerzo, [{ nombre: 'Sopa del día' }])
+    expect(precio).toBe(3.50)
+  })
+
+  it('nunca da un precio negativo aunque el descuento supere el precio base', () => {
+    const barato = { precio: 0.30, categoria: 'Almuerzos' }
+    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(barato, [{ nombre: 'Sopa' }])
     expect(precio).toBe(0)
   })
 
   it('funciona también si la exclusión llega como string (sin id)', () => {
-    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, ['Sopa'])
+    const precio = window.LogicaCarrito.calcularPrecioConExclusiones(almuerzo, ['Sopa del día'])
     expect(precio).toBe(3.00)
   })
 
   it('agregarItem guarda el precio ya ajustado en la línea del carrito', () => {
     const producto = { ...almuerzo, id: 'alm1', nombre: 'Almuerzo', imagen: '' }
-    const items = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Sopa' }])
+    const items = window.LogicaCarrito.agregarItem(producto, [{ id: 'ing1', nombre: 'Sopa del día' }])
     expect(items[0].precio).toBe(3.00)
   })
 })

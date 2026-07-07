@@ -682,21 +682,6 @@ window.VistaAdmin = (function () {
     const ingsArr = Array.isArray(p?.ingredientes) ? p.ingredientes : [];
     const ings = ingsArr.map(i => typeof i === 'string' ? i : i.nombre).join(', ');
     document.getElementById('pf-ingredientes').value = ings;
-    // Ingrediente con descuento (si el plato ya tiene uno guardado, ej. la
-    // sopa de un almuerzo) — se preselecciona en el selector aparte.
-    const conDescuento = ingsArr.find(i => typeof i !== 'string' && i.descuento > 0);
-    _actualizarSelectorDescuento();
-    const selDescuento = document.getElementById('pf-ing-descuento');
-    const montoDescuento = document.getElementById('pf-ing-descuento-monto');
-    if (conDescuento) {
-      selDescuento.value = conDescuento.nombre;
-      montoDescuento.value = conDescuento.descuento.toFixed(2);
-      montoDescuento.style.display = '';
-    } else {
-      selDescuento.value = '';
-      montoDescuento.value = '';
-      montoDescuento.style.display = 'none';
-    }
     document.getElementById('pf-imagen').value       = '';
 
     const imgActual      = document.getElementById('pf-img-actual');
@@ -870,9 +855,6 @@ window.VistaAdmin = (function () {
     return '';
   }
 
-  // Los ingredientes son texto plano, sin números — el descuento (si aplica,
-  // ej. la sopa de un almuerzo) se elige aparte en el selector "pf-ing-descuento",
-  // no se mezcla con el nombre.
   function _parsearNombresIngredientes(valor) {
     return valor.split(',').map(s => s.trim()).filter(Boolean);
   }
@@ -882,20 +864,6 @@ window.VistaAdmin = (function () {
     if (!v) return 'Los ingredientes son obligatorios.';
     if (!_parsearNombresIngredientes(v).length) return 'Ingresa al menos un ingrediente.';
     return '';
-  }
-
-  // Repuebla el selector "¿algún ingrediente baja el precio?" con los
-  // nombres que el admin acaba de escribir, conservando cuál tenía elegido.
-  function _actualizarSelectorDescuento() {
-    const sel   = document.getElementById('pf-ing-descuento');
-    const monto = document.getElementById('pf-ing-descuento-monto');
-    if (!sel) return;
-    const previo = sel.value;
-    const nombres = _parsearNombresIngredientes(document.getElementById('pf-ingredientes').value);
-    sel.innerHTML = '<option value="">— Ninguno —</option>'
-      + nombres.map(n => `<option value="${window.SC.escapeHtml(n)}">${window.SC.escapeHtml(n)}</option>`).join('');
-    sel.value = nombres.includes(previo) ? previo : '';
-    if (monto) monto.style.display = sel.value ? '' : 'none';
   }
 
   function _mostrarError(inputId, errorId, msg) {
@@ -1100,17 +1068,8 @@ window.VistaAdmin = (function () {
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
 
     const pfIng = document.getElementById('pf-ingredientes');
-    pfIng.addEventListener('blur',  () => { _mostrarErrorIngredientes(_validarIngredientes(pfIng.value)); _actualizarSelectorDescuento(); });
-    pfIng.addEventListener('input', () => {
-      if (pfIng.value) _mostrarErrorIngredientes(_validarIngredientes(pfIng.value));
-      _actualizarSelectorDescuento();
-    });
-    document.getElementById('pf-ing-descuento').addEventListener('change', () => {
-      const montoEl = document.getElementById('pf-ing-descuento-monto');
-      const sel = document.getElementById('pf-ing-descuento');
-      montoEl.style.display = sel.value ? '' : 'none';
-      if (!sel.value) montoEl.value = '';
-    });
+    pfIng.addEventListener('blur',  () => _mostrarErrorIngredientes(_validarIngredientes(pfIng.value)));
+    pfIng.addEventListener('input', () => { if (pfIng.value) _mostrarErrorIngredientes(_validarIngredientes(pfIng.value)); });
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
@@ -1184,13 +1143,7 @@ window.VistaAdmin = (function () {
 
       const id            = _prodFormEditId ?? null;
       const stockInicial  = parseInt(document.getElementById('pf-stock').value) || 20;
-      // El ingrediente con descuento (si hay uno elegido, ej. la sopa de un
-      // almuerzo) se define aparte del texto de ingredientes — no se mezcla
-      // el nombre con el monto.
-      const ingConDescuento = document.getElementById('pf-ing-descuento').value;
-      const montoDescuento  = parseFloat(document.getElementById('pf-ing-descuento-monto').value) || 0;
-      const ingredientes    = _parsearNombresIngredientes(ingredientesRaw)
-        .map(nombre => ({ nombre, descuento: nombre === ingConDescuento ? montoDescuento : 0 }));
+      const ingredientes  = _parsearNombresIngredientes(ingredientesRaw);
 
       const item = {
         id,

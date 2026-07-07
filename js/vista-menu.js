@@ -245,7 +245,7 @@ window.VistaMenu = (function () {
     const ingChips = puedeExcluir
       ? ingsConId.map(ing =>
           `<label class="ing-chip">
-              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" data-descuento="${ing.descuento || 0}" checked>
+              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
               <span class="ing-chip__label">${ing.nombre}</span>
             </label>`
         ).join('')
@@ -540,7 +540,7 @@ window.VistaMenu = (function () {
                     <div class="mesero-ing-pop__chips">
                       ${p.ingredientes.filter(i => i && i.id).map(i => `
                         <label class="mesero-ing-check">
-                          <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" data-descuento="${i.descuento || 0}" checked>
+                          <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" checked>
                           ${i.nombre}
                         </label>`).join('')}
                     </div>

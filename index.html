@@ -803,17 +803,8 @@
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-ingredientes">Ingredientes (separados por coma)</label>
-              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error">
+              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error" autocomplete="off">
               <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
-            </div>
-            <div class="prod-form-group prod-form-full" id="pf-descuento-wrap">
-              <label for="pf-ing-descuento">¿Algún ingrediente baja el precio si se excluye? <small style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(ej. la sopa de un almuerzo)</small></label>
-              <div style="display:flex;gap:.6rem;">
-                <select id="pf-ing-descuento" style="flex:2;">
-                  <option value="">— Ninguno —</option>
-                </select>
-                <input type="number" id="pf-ing-descuento-monto" placeholder="0.50" min="0" step="0.01" style="flex:1;display:none;">
-              </div>
             </div>
             <div class="prod-form-group">
               <label for="pf-tag">Etiqueta</label>
@@ -1352,9 +1343,8 @@
       activo:          r.plat_activo !== false,
       createdAt:       r.plat_created_at ?? null,
       ingredientes: (r.plato_ingredientes || []).map(pi => ({
-        id:        pi.ingredientes?.ing_id,
-        nombre:    pi.ingredientes?.ing_nombre,
-        descuento: parseFloat(pi.pi_descuento) || 0
+        id:     pi.ingredientes?.ing_id,
+        nombre: pi.ingredientes?.ing_nombre
       })).filter(pi => pi.id && pi.nombre)
     };
   }
@@ -1370,7 +1360,7 @@
           plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
-          plato_ingredientes(pi_descuento, ingredientes(ing_id, ing_nombre))
+          plato_ingredientes(ingredientes(ing_id, ing_nombre))
         `),
         // Se pide aparte (no solo el join de arriba) porque el join solo trae
         // categorías que YA tienen algún plato — el selector de categoría del
@@ -2159,17 +2149,13 @@
     // Subir imagen, resolver categoría y resolver/crear ingredientes en
     // paralelo — ninguna de las tres depende de las otras, y antes corrían
     // una tras otra (además de los ingredientes, que iban uno por uno).
-    // Un ingrediente puede venir con `descuento` (ej. "Sopa" de un almuerzo):
-    // al excluirlo en el pedido, ese monto se resta del precio del plato.
-    // Se guarda por nombre porque el mismo ingrediente puede valer distinto
-    // según en qué plato esté (la sopa de un combo vs. la de otro).
-    const descuentosPorNombre = new Map();
-    (Array.isArray(item.ingredientes) ? item.ingredientes : []).forEach(ingRaw => {
-      const nombre    = (typeof ingRaw === 'string' ? ingRaw : ingRaw?.nombre)?.trim();
-      const descuento = typeof ingRaw === 'string' ? 0 : (parseFloat(ingRaw?.descuento) || 0);
-      if (nombre) descuentosPorNombre.set(nombre, descuento);
-    });
-    const nombresIngUnicos = [...descuentosPorNombre.keys()];
+    const nombresIngUnicos = Array.isArray(item.ingredientes) && item.ingredientes.length > 0
+      ? [...new Set(
+          item.ingredientes
+            .map(ingRaw => (typeof ingRaw === 'string' ? ingRaw.trim() : ingRaw.nombre))
+            .filter(Boolean)
+        )]
+      : [];
 
     const [imagenFinal, catId, ingIds] = await Promise.all([
       item.imagen?.startsWith('data:image')
@@ -2249,9 +2235,8 @@
       const filas = [];
       nombresIngUnicos.forEach((nombre, i) => {
         if (ingIds[i]) {
-          const descuento = descuentosPorNombre.get(nombre) || 0;
-          filas.push({ plat_id: platId, ing_id: ingIds[i], pi_descuento: descuento });
-          ingredientesConId.push({ id: ingIds[i], nombre, descuento });
+          filas.push({ plat_id: platId, ing_id: ingIds[i] });
+          ingredientesConId.push({ id: ingIds[i], nombre });
         }
       });
       if (filas.length) {
@@ -2370,8 +2355,11 @@
     const mesaAsignadaNum = document.getElementById('mesa-asignada-num');
     const tipoToggle      = document.getElementById('mesa-tipo-toggle');
 
-    // Resetear toggle a "Mesa"
-    _setTipo(false);
+    // Si TODOS los ítems del carrito ya se marcaron "para llevar" (con el
+    // toggle de cada línea), no tiene sentido pedir número de mesa — se
+    // arranca directo en modo "Para llevar" en vez de resetear a "Mesa".
+    const todosParaLlevar = items.length > 0 && items.every(i => i.paraLlevar);
+    _setTipo(todosParaLlevar);
 
     // Cambiar título y botón según modo
     const modalHead = document.querySelector('#mesa-modal-backdrop .mesa-modal-head h2');
@@ -2434,10 +2422,14 @@
         }
       };
     }
-    // Pre-llenar campo nombre para llevar con nombre de sesión si existe
+    // Pre-llenar el nombre solo cuando quien pide es el propio cliente
+    // registrado (session.rol === 'usuario') — para "invitado" el nombre de
+    // sesión es literalmente la palabra "Invitado", y para mesero/cajero/
+    // admin sería SU nombre de staff, no el del cliente al que atienden.
+    // En esos casos se deja vacío para que se vea la marca de agua ("Ej: ...").
     const llevarInput = document.getElementById('llevar-nombre');
     if (llevarInput) {
-      llevarInput.value = session?.nombre ?? '';
+      llevarInput.value = session?.rol === 'usuario' ? (session.nombre ?? '') : '';
       llevarInput.style.borderColor = '';
       llevarInput.oninput = () => {
         if (llevarInput.value.trim()) {
