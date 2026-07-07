@@ -216,6 +216,10 @@ window.VistaMenu = (function () {
         if (!prod) return;
         const s = SC.getStock(prod.id);
         if (!s.disponible || s.stock <= 0) return;
+        // Si el plato permite excluir ingredientes, "Ordenar" no debe
+        // agregarlo directo — hay que abrir el modal para que el cliente
+        // elija qué excluir antes de mandarlo a caja.
+        if (_puedeExcluirIngredientes(prod)) { abrirModalProducto(prod); return; }
         const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === prod.id);
         if (enCarrito && enCarrito.cantidad >= s.stock) return;
         LogicaCarrito.agregarItem(prod); SC.renderCarrito();
