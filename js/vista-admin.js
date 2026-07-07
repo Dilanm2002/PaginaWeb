@@ -924,12 +924,16 @@ window.VistaAdmin = (function () {
     }
   }
 
-  // Paleta ofrecida al crear una categoría nueva — incluye los 7 colores
-  // que ya venían fijos por nombre (Desayunos, Entradas, etc.) más 5 tonos
-  // adicionales dentro de la misma gama cálida, para dar variedad real.
+  // Paleta ofrecida al crear una categoría nueva. Los primeros 9 colores ya
+  // están asignados de fábrica a las 9 categorías estándar del negocio
+  // (Desayunos, Entradas, Almuerzos, Platos Fuertes, Sopas, Bocaditos,
+  // Bebidas Calientes, Bebidas Frías, Postres) — por eso siempre van a
+  // aparecer "en uso". El resto queda libre para categorías personalizadas;
+  // se deja una paleta amplia para que nunca se quede sin colores nuevos.
   const _PALETA_CATEGORIAS = [
-    '#C4890A', '#B8720A', '#7A2215', '#9B4520', '#A0751A', '#6B3A1F', '#2E7A5B',
-    '#8B4F9F', '#1F6F78', '#5B7A3A', '#B8455C', '#4A5A6B',
+    '#C4890A', '#B8720A', '#7A2215', '#8B4F9F', '#1F6F78', '#A0751A', '#6B3A1F', '#2E7A5B', '#9B4520',
+    '#5B7A3A', '#B8455C', '#4A5A6B', '#C25B3D', '#D4A017', '#7C9C6B', '#A63A50',
+    '#3D5A80', '#E0A96D', '#5C4033', '#8C7853', '#4E6E58', '#9C5A8C',
   ];
 
   let _catModalColorSel   = null;
@@ -1097,7 +1101,10 @@ window.VistaAdmin = (function () {
       const SC     = window.SC;
       const nombre        = document.getElementById('pf-nombre').value.trim();
       const categoria     = _leerCategoriaForm();
-      const precioRaw     = document.getElementById('pf-precio').value;
+      // El input es type="number" (el navegador ya normaliza a punto), pero
+      // por si acaso llega una coma (pegado, teclado numérico, etc.) se
+      // normaliza aquí — siempre se procesa con punto internamente.
+      const precioRaw     = document.getElementById('pf-precio').value.replace(',', '.');
       const precio        = Math.round(parseFloat(precioRaw) * 100) / 100;
       const descripcion   = document.getElementById('pf-descripcion').value.trim();
       const ingredientesRaw = document.getElementById('pf-ingredientes').value.trim();
@@ -1181,8 +1188,9 @@ window.VistaAdmin = (function () {
       cerrarFormProducto();
       _renderProductosGrid();
       _renderDashboardStats();
-      const cat = SC.getFiltroSesion();
-      window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(cat));
+      // Reconstruye las pestañas del menú de cliente — si esta categoría
+      // no tenía ningún plato antes, su pestaña no existía todavía.
+      SC.actualizarFiltrosMenu?.();
       SC.toast(`Producto "${nombre}" guardado ✓`, 'success');
     });
 

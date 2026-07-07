@@ -803,10 +803,7 @@
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-ingredientes">Ingredientes (separados por coma)</label>
-              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Sopa:0.50, Jugo" aria-describedby="pf-ingredientes-error pf-ingredientes-hint">
-              <small id="pf-ingredientes-hint" style="display:block;margin-top:.3rem;color:var(--text-muted);font-size:.76rem;">
-                ¿Un ingrediente tiene precio propio (ej. la sopa de un almuerzo)? Ponle ":monto" — ej. "Sopa:0.50" — y al excluirlo se resta ese monto del precio del plato. Sin ":monto" es solo informativo.
-              </small>
+              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error">
               <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
@@ -2285,6 +2282,27 @@
     return true;
   }
 
+  // Reconstruye las pestañas de categoría del menú de cliente (#filter-bar).
+  // Sin esto, la PRIMERA vez que una categoría recibe su primer plato no
+  // aparecía pestaña nueva hasta recargar la página (el grid sí se
+  // actualizaba, pero las pestañas se construyen una sola vez al cargar).
+  // renderFiltros() marca la primera pestaña como activa por defecto, así
+  // que hay que restaurar la que el cliente tenía abierta después.
+  function actualizarFiltrosMenu() {
+    const rol = ModuloAutenticacion.getSession()?.rol;
+    if (rol === 'mesero') return;
+    const cat = ModuloApp.getFiltroSesion();
+    window.VistaMenu?.renderFiltros?.(c => {
+      window.VistaMenu?.actualizarTitulo(c === 'Destacados' ? 'Platos Destacados' : c === 'Todos' ? 'Nuestro Menú' : c);
+      window.VistaMenu?.renderProductos(window.VistaMenu?.getListaByCat(c));
+    });
+    // renderFiltros() solo redibuja los botones; hay que restaurar cuál
+    // estaba activo Y volver a pintar su grid (setFiltroActivo únicamente
+    // cambia el estilo del botón, no el contenido de la lista).
+    window.VistaMenu?.setFiltroActivo?.(cat);
+    window.VistaMenu?.renderProductos?.(window.VistaMenu?.getListaByCat?.(cat));
+  }
+
   const ROL_LABEL = { mesero:'Mesero', usuario:'Cliente', invitado:'Invitado', cajero:'Cajero', administrador:'Admin' };
 
   /* Utilidad XSS: escapar contenido antes de insertar en innerHTML */
@@ -2305,7 +2323,7 @@
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
     cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock,
     guardarMenuItemDB, eliminarMenuItemDB,
-    getCategoriasColores, crearCategoriaConColor,
+    getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,
     IVA, ROL_LABEL,
     getFiltroSesion:     () => ModuloApp.getFiltroSesion(),
@@ -3832,6 +3850,7 @@
       _platosRefrescarTimer = setTimeout(async () => {
         if (_skipNextRealtimePlatos) { _skipNextRealtimePlatos = false; return; }
         await inicializarDB();
+        actualizarFiltrosMenu();
         _renderMenu(ModuloAutenticacion.getSession()?.rol);
         window.VistaAdmin?.renderAdminView();
       }, 400);
