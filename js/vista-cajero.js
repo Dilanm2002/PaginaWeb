@@ -665,8 +665,13 @@ window.VistaCajero = (function () {
     const correoCheckbox   = document.getElementById('pago-enviar-correo');
     const correoLabel      = document.getElementById('pago-enviar-correo-label');
     const correoInput      = document.getElementById('pago-correo-input');
+    // Ojo: pedido.idUsuario también queda seteado cuando quien CREÓ el
+    // pedido fue un mesero/cajero/admin (pidió a nombre de un cliente que
+    // llegó a la mesa) — en ese caso ese id es la cuenta del empleado, no
+    // la del cliente, y no hay que precargar SU correo aquí. Solo cuenta
+    // como "cliente registrado" si el rol de esa cuenta es 'usuario'.
     const usuarioReg = pedido.idUsuario
-      ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario)
+      ? window.ModuloAutenticacion?.leerUsuarios().find(u => u.id === pedido.idUsuario && u.rol === 'usuario')
       : null;
 
     if (usuarioReg?.email) {

@@ -1861,6 +1861,12 @@
   const modalBox        = document.getElementById('product-modal-box');
   const mesaBackdrop    = document.getElementById('mesa-modal-backdrop');
   const mesaInput       = document.getElementById('mesa-input');
+  // type="number" ignora maxlength (limitación del propio HTML) — sin esto
+  // se podía escribir cualquier cantidad de dígitos (ej. "10000000000000")
+  // aunque igual se bloqueara al enviar; esto lo corta mientras se escribe.
+  mesaInput?.addEventListener('input', () => {
+    if (mesaInput.value.length > 2) mesaInput.value = mesaInput.value.slice(0, 2);
+  });
   const mesaPreviewEl   = document.getElementById('mesa-preview');
   const mesaQuienEl     = document.getElementById('mesa-quien-info');
   const campoInvitado   = document.getElementById('campo-nombre-invitado');
