@@ -806,6 +806,15 @@
               <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error">
               <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
+            <div class="prod-form-group prod-form-full" id="pf-descuento-wrap">
+              <label for="pf-ing-descuento">¿Algún ingrediente baja el precio si se excluye? <small style="font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);">(ej. la sopa de un almuerzo)</small></label>
+              <div style="display:flex;gap:.6rem;">
+                <select id="pf-ing-descuento" style="flex:2;">
+                  <option value="">— Ninguno —</option>
+                </select>
+                <input type="number" id="pf-ing-descuento-monto" placeholder="0.50" min="0" step="0.01" style="flex:1;display:none;">
+              </div>
+            </div>
             <div class="prod-form-group">
               <label for="pf-tag">Etiqueta</label>
               <select id="pf-tag">
