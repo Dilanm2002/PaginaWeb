@@ -153,6 +153,60 @@ describe('calcularPrecioConExclusiones', () => {
   })
 })
 
+// ── Mezclar mesa + para llevar en el mismo pedido ─────────────
+// Caso real del cliente: "deme 1 almuerzo para llevar y 1 para servirse"
+// en la misma visita — deben quedar como líneas separadas del mismo pedido.
+describe('paraLlevar por línea', () => {
+  const almuerzo = { id: 'alm1', nombre: 'Almuerzo', precio: 3.50, imagen: '' }
+
+  it('agregarItem acepta paraLlevar y lo guarda en la línea', () => {
+    const items = window.LogicaCarrito.agregarItem(almuerzo, [], true)
+    expect(items[0].paraLlevar).toBe(true)
+  })
+
+  it('mismo producto, uno para la mesa y otro para llevar, crea líneas separadas', () => {
+    window.LogicaCarrito.agregarItem(almuerzo, [], false)
+    const items = window.LogicaCarrito.agregarItem(almuerzo, [], true)
+    expect(items).toHaveLength(2)
+    expect(items[0].paraLlevar).toBe(false)
+    expect(items[0].cantidad).toBe(1)
+    expect(items[1].paraLlevar).toBe(true)
+    expect(items[1].cantidad).toBe(1)
+  })
+
+  it('mismo producto y mismo paraLlevar sí incrementa cantidad', () => {
+    window.LogicaCarrito.agregarItem(almuerzo, [], true)
+    const items = window.LogicaCarrito.agregarItem(almuerzo, [], true)
+    expect(items).toHaveLength(1)
+    expect(items[0].cantidad).toBe(2)
+  })
+
+  it('cambiarParaLlevar marca una línea existente sin tocar las demás', () => {
+    window.LogicaCarrito.agregarItem(almuerzo, [])
+    const previos = window.LogicaCarrito.agregarItem({ id: 'p2', nombre: 'Café', precio: 1, imagen: '' }, [])
+    const linea = previos.find(i => i.id === 'p2')
+    const items = window.LogicaCarrito.cambiarParaLlevar(linea.lineId, true)
+    const item2 = items.find(i => i.id === 'p2')
+    const item1 = items.find(i => i.id === 'alm1')
+    expect(item2.paraLlevar).toBe(true)
+    expect(item1.paraLlevar).toBeFalsy()
+  })
+
+  it('cambiarParaLlevar no mezcla la línea alternada con otra ya existente igual', () => {
+    // Ya hay una línea "para llevar"; si alterno la línea "para la mesa"
+    // a para-llevar, NO debe fusionarse silenciosamente con la primera —
+    // cambiarParaLlevar solo cambia esa línea puntual.
+    window.LogicaCarrito.agregarItem(almuerzo, [], true)  // línea A: para llevar
+    const items0 = window.LogicaCarrito.agregarItem(almuerzo, [], false) // línea B: para la mesa
+    const lineaMesa = items0.find(i => !i.paraLlevar)
+    const items = window.LogicaCarrito.cambiarParaLlevar(lineaMesa.lineId, true)
+    // Ambas líneas ahora son "para llevar" pero siguen siendo dos líneas
+    // independientes (cambiarParaLlevar no re-fusiona con agregarItem).
+    expect(items).toHaveLength(2)
+    expect(items.every(i => i.paraLlevar)).toBe(true)
+  })
+})
+
 // ── eliminarItem ───────────────────────────────────────────────
 describe('eliminarItem', () => {
   it('elimina el ítem con el id indicado', () => {

@@ -37,6 +37,15 @@ window.LogicaCarrito = (function () {
       .join('|');
 
   /**
+   * Clave completa de una línea: exclusiones + si es "para llevar" — un
+   * mismo plato puede pedirse una vez para la mesa y otra para llevar en
+   * el mismo pedido (ej. "un almuerzo para servirse y otro para llevar"),
+   * así que deben quedar en líneas separadas, no mezclarse.
+   */
+  const _lineKey = (exclusiones = [], paraLlevar = false) =>
+    _exclKey(exclusiones) + (paraLlevar ? '::llevar' : '');
+
+  /**
    * Precio final de un producto según las exclusiones elegidas. La mayoría
    * de ingredientes son solo informativos (no cambian el precio), pero
    * algunos son "componentes con precio propio" (ej. la sopa de un
@@ -64,17 +73,37 @@ window.LogicaCarrito = (function () {
    * @param {Object} producto — Debe tener id, nombre, precio, imagen.
    * @returns {Array} Carrito actualizado.
    */
-  const agregarItem = (producto, exclusiones = []) => {
+  const agregarItem = (producto, exclusiones = [], paraLlevar = false) => {
     const items = leerCarrito();
-    const key   = _exclKey(exclusiones);
-    const idx   = items.findIndex(i => i.id === producto.id && _exclKey(i.exclusiones) === key);
+    const key   = _lineKey(exclusiones, paraLlevar);
+    const idx   = items.findIndex(i => i.id === producto.id && _lineKey(i.exclusiones, i.paraLlevar) === key);
     if (idx >= 0) {
       items[idx].cantidad += 1;
     } else {
       const { id, nombre, imagen } = producto;
       const precio = calcularPrecioConExclusiones(producto, exclusiones);
       const lineId = id + (key ? '::' + key : '');
-      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, lineId });
+      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, paraLlevar, lineId });
+    }
+    guardarCarrito(items);
+    return items;
+  };
+
+  /**
+   * Marca/desmarca una línea del carrito como "para llevar" — así se puede
+   * mezclar, en un mismo pedido de mesa, parte para servirse y parte para
+   * empacar por separado.
+   * @param {string} lineId
+   * @param {boolean} paraLlevar
+   * @returns {Array} Carrito actualizado.
+   */
+  const cambiarParaLlevar = (lineId, paraLlevar) => {
+    const items = leerCarrito();
+    const idx   = items.findIndex(i => (i.lineId || i.id) === lineId);
+    if (idx >= 0) {
+      items[idx].paraLlevar = paraLlevar;
+      const key = _lineKey(items[idx].exclusiones, paraLlevar);
+      items[idx].lineId = items[idx].id + (key ? '::' + key : '');
     }
     guardarCarrito(items);
     return items;
@@ -136,6 +165,7 @@ window.LogicaCarrito = (function () {
     agregarItem,
     eliminarItem,
     cambiarCantidad,
+    cambiarParaLlevar,
     vaciarCarrito,
     calcularTotales,
     calcularPrecioConExclusiones

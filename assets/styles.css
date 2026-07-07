@@ -1634,6 +1634,15 @@
     .cart-item__img { width: 58px; height: 58px; object-fit: cover; border-radius: var(--radius-sm); flex-shrink: 0; }
     .cart-item__name  { font-size: .87rem; font-weight: 600; color: var(--brown-dark); }
     .cart-item__price { font-size: .82rem; color: var(--cinnamon); font-weight: 600; margin-top: .2rem; }
+    /* Deja mezclar, en un mismo pedido, platos para la mesa y platos para
+       llevar por separado (ej. un almuerzo para servirse y otro para llevar). */
+    .cart-item__llevar-toggle {
+      display: inline-flex; align-items: center; margin-top: .35rem;
+      font-size: .72rem; font-weight: 700; padding: .2rem .55rem; border-radius: 999px;
+      background: var(--cream-dk); color: var(--text-muted); border: 1px solid var(--border);
+      cursor: pointer; transition: background .15s, color .15s, border-color .15s;
+    }
+    .cart-item__llevar-toggle.active { background: #fef5eb; color: var(--cinnamon); border-color: var(--cinnamon); }
     .cart-item__controls { margin-left: auto; display: flex; flex-direction: row; align-items: center; gap: .45rem; }
 
     .qty-wrap { display: flex; align-items: center; gap: .35rem; }
@@ -1705,6 +1714,7 @@
     .ing-chip input[type="checkbox"]:not(:checked) + .ing-chip__label::before { content: '✕'; color: #b91c1c; }
     .cart-item__excl { font-size: .72rem; color: #b91c1c; margin-top: .1rem; font-style: italic; }
     .cajero-excl { font-size: .72rem; color: #b91c1c; font-weight: 400; font-style: italic; display: block; }
+    .cajero-item-llevar { font-size: .68rem; font-weight: 700; color: var(--cinnamon); background: #fef5eb; border-radius: 999px; padding: .1rem .5rem; margin-left: .35rem; }
     .modal-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); gap: 1rem; }
     .modal-price { font-size: 1.4rem; font-weight: 700; color: var(--cinnamon); }
     .modal-price small { font-size: .72rem; color: var(--text-muted); font-weight: 400; }

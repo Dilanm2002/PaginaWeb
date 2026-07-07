@@ -443,7 +443,7 @@ window.VistaCajero = (function () {
         <div class="cajero-order-items">
           ${items.map((it, idx) => `
             <div class="cajero-order-item">
-              <span class="cajero-order-item__name">${it.nombre}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
+              <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
               <div class="caj-qty">
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
                 <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
@@ -827,7 +827,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </tr></thead>
 <tbody>${items.map((i,idx)=>`<tr>
   <td class="tc">${idx+1}</td>
-  <td>${i.nombre}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
+  <td>${i.nombre}${i.paraLlevar && !pedido.paraLlevar?' <em>(para llevar)</em>':''}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
   <td class="tc">${i.cantidad}</td>
   <td class="tr">$${i.precio.toFixed(2)}</td>
   <td class="tr">$${(i.precio*i.cantidad).toFixed(2)}</td>

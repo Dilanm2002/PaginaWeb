@@ -1291,6 +1291,9 @@
         precio:      parseFloat(d.detped_precio_unit ?? 0),
         cantidad:    d.detped_cantidad ?? 1,
         imagen:      d.platos?.plat_imagen ?? null,
+        // Distinto del `paraLlevar` de todo el pedido — un pedido de mesa
+        // puede tener items sueltos empacados para llevar (ver enviarACaja).
+        paraLlevar:  d.detped_para_llevar === true,
         // {id, nombre} — el id se necesita para poder reinsertar la
         // exclusión si el pedido se edita/repite (ver enviarACaja).
         exclusiones: (d.det_exclusiones || [])
@@ -1313,7 +1316,7 @@
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
     usu_id, mes_id,
     mesas(mes_numero),
-    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre))),
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre))),
     facturas(fact_numero, fact_email, pagos(metodos_pago(metodo_nombre)))
   `;
 
@@ -1622,13 +1625,17 @@
       return null;
     }
 
-    // Insertar detalle_pedidos
+    // Insertar detalle_pedidos — si TODO el pedido es "para llevar" (guest
+    // sin mesa), cada ítem lo hereda; si es un pedido de mesa, cada ítem
+    // respeta su propia marca (para poder mezclar: parte para la mesa,
+    // parte para llevar, en el mismo pedido — ver toggle en el carrito).
     const detalles = items.map(i => ({
       ped_id:             pedData.ped_id,
       plat_id:            i.id,
       detped_cantidad:    i.cantidad,
       detped_precio_unit: i.precio,
-      detped_subtotal:    i.precio * i.cantidad
+      detped_subtotal:    i.precio * i.cantidad,
+      detped_para_llevar: paraLlevar || i.paraLlevar || false
     }));
     const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(detalles).select('detped_id, plat_id');
     if (detError) console.error('Supabase insert detalle_pedidos:', detError);
@@ -1664,7 +1671,7 @@
       fecha:         _isoFechaALocale(fecha),
       createdAt:     new Date().toISOString(),
       estado:        'pendiente',
-      items:         items.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, imagen: i.imagen || null, exclusiones: (i.exclusiones || []).map(e => e.nombre) })),
+      items:         items.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, imagen: i.imagen || null, exclusiones: (i.exclusiones || []).map(e => e.nombre), paraLlevar: paraLlevar || i.paraLlevar || false })),
       total:         totales.total,
       iva:           totales.iva,
       subtotal:      totales.subtotal
@@ -1815,7 +1822,8 @@
           plat_id:            i.id,
           detped_cantidad:    i.cantidad,
           detped_precio_unit: i.precio,
-          detped_subtotal:    i.precio * i.cantidad
+          detped_subtotal:    i.precio * i.cantidad,
+          detped_para_llevar: i.paraLlevar || false
         }))
       );
       const { error } = await db.from('pedidos').update({
@@ -1995,6 +2003,9 @@
             <p class="cart-item__name">${item.nombre}</p>
             ${item.exclusiones?.length ? `<p class="cart-item__excl">sin: ${item.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</p>` : ''}
             <p class="cart-item__price">$${(item.precio * item.cantidad).toFixed(2)}</p>
+            <button class="cart-item__llevar-toggle${item.paraLlevar ? ' active' : ''}" data-action="llevar" data-id="${lineId}" title="Cambiar a ${item.paraLlevar ? 'para la mesa' : 'para llevar'}">
+              ${item.paraLlevar ? '🥡 Para llevar' : '🍽️ Para la mesa'}
+            </button>
           </div>
           <div class="cart-item__controls">
             <div class="qty-wrap" role="group" aria-label="Cantidad de ${item.nombre}">
@@ -2030,6 +2041,9 @@
         } else if (btn.dataset.action === 'dec') {
           const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
           if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad - 1); renderCarrito(); }
+        } else if (btn.dataset.action === 'llevar') {
+          const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
+          if (it) { LogicaCarrito.cambiarParaLlevar(id, !it.paraLlevar); renderCarrito(); }
         }
       };
     }
