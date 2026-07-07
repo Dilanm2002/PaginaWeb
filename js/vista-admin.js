@@ -1713,7 +1713,7 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, usu_id')
+      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por')
       .eq('ped_fecha', fechaSel);
 
     const todos         = todosHoy ?? [];
@@ -1757,6 +1757,27 @@ window.VistaAdmin = (function () {
       </tr>`;
     }).join('');
 
+    // La tabla de arriba es "pedidos creados por cada mesero/cliente y en
+    // qué terminaron" — no dice QUIÉN los cobró o anuló (eso siempre es
+    // cajero/admin, nunca el mesero). Esta segunda tabla es esa otra
+    // dimensión: quién de caja procesó cada cobro/anulación, aparte.
+    const porCajero = {};
+    todos.forEach(p => {
+      const procesarComo = (usuId, campo) => {
+        if (!usuId) return;
+        const u = usuariosCache.find(u => u.id === usuId);
+        if (!porCajero[usuId]) porCajero[usuId] = { nombre: u?.nombre ?? usuId, cobrados: 0, anulados: 0 };
+        porCajero[usuId][campo]++;
+      };
+      if (p.ped_estado === 'cobrado') procesarComo(p.ped_cobrado_por, 'cobrados');
+      if (p.ped_estado === 'anulado') procesarComo(p.ped_anulado_por, 'anulados');
+    });
+    const filasCajero = Object.values(porCajero).map(c => `<tr>
+        <td>${SC?.escapeHtml(c.nombre) ?? c.nombre}</td>
+        <td style="text-align:center;color:#16a34a">${c.cobrados || '—'}</td>
+        <td style="text-align:center;color:var(--text-muted)">${c.anulados || '—'}</td>
+      </tr>`).join('');
+
     cuadreEl.innerHTML = `
       <div class="cuadre-header">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
@@ -1787,14 +1808,25 @@ window.VistaAdmin = (function () {
       ${todos.length ? `
       <table class="adm-tabla" style="margin-top:1rem">
         <thead><tr>
-          <th>Usuario / Mesero</th>
+          <th>Pedidos creados por</th>
           <th style="text-align:center">Pedidos creados</th>
-          <th style="text-align:center">Cobrados</th>
-          <th style="text-align:center">Anulados</th>
+          <th style="text-align:center">Terminaron cobrados</th>
+          <th style="text-align:center">Terminaron anulados</th>
           <th style="text-align:center">Estado</th>
         </tr></thead>
         <tbody>${filasMesero}</tbody>
-      </table>` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}`;
+      </table>
+      ${filasCajero ? `
+      <p style="margin:1.25rem 0 .4rem;font-size:.8rem;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.04em">Procesado por caja</p>
+      <table class="adm-tabla">
+        <thead><tr>
+          <th>Cajero / Admin</th>
+          <th style="text-align:center">Cobró</th>
+          <th style="text-align:center">Anuló</th>
+        </tr></thead>
+        <tbody>${filasCajero}</tbody>
+      </table>` : ''}
+      ` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}`;
   }
 
   async function _renderGastos() {
