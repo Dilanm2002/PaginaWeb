@@ -123,13 +123,17 @@ window.VistaAdmin = (function () {
     return u?.nombre ?? 'Usuario';
   }
   function _pedMesa(p) { return p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar'; }
-  function _pedItemsHtml(SC, det) {
+  // pedidoEsParaLlevar: si el pedido ENTERO ya es para llevar (sin mesa),
+  // no repetimos la etiqueta en cada ítem — solo tiene sentido marcarla
+  // cuando es un pedido de mesa con algún plato empacado por separado.
+  function _pedItemsHtml(SC, det, pedidoEsParaLlevar) {
     return det.map(d => {
       const excl = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
       return `
         <div class="cajero-order-item">
           <span class="cajero-order-item__name">
             ${SC.escapeHtml(d.platos?.plat_nombre ?? '?')}
+            ${d.detped_para_llevar && !pedidoEsParaLlevar ? '<span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}
             ${excl.length ? `<span class="cajero-excl"> sin: ${excl.join(', ')}</span>` : ''}
           </span>
           <span class="caj-qty__val">${d.detped_cantidad}</span>
@@ -208,7 +212,7 @@ window.VistaAdmin = (function () {
       ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
       ped_subtotal, ped_iva, ped_total, ped_created_at, usu_id, mes_id,
       mesas(mes_numero),
-      detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal,
+      detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)))
     `;
 
@@ -255,7 +259,7 @@ window.VistaAdmin = (function () {
             </div>
             <div class="cajero-order-time">🕐 ${_hora(p)}</div>
           </div>
-          <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
+          <div class="cajero-order-items">${_pedItemsHtml(SC, det, !p.mesas?.mes_numero)}</div>
           ${_pedSubtotalsHtml(p)}
           <div class="cajero-order-card__foot" style="justify-content:center">
             <span style="font-size:.8rem;font-weight:600;color:var(--cinnamon);letter-spacing:.04em;text-transform:uppercase;opacity:.75">
@@ -286,7 +290,7 @@ window.VistaAdmin = (function () {
       ped_anulado_en, ped_motivo_anulacion,
       ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
       mesas(mes_numero),
-      detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal,
+      detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre))),
       facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
     `;
@@ -344,7 +348,7 @@ window.VistaAdmin = (function () {
             </div>
             <div class="cajero-order-time">🕐 ${_fechaHora(p)}</div>
           </div>
-          <div class="cajero-order-items">${_pedItemsHtml(SC, det)}</div>
+          <div class="cajero-order-items">${_pedItemsHtml(SC, det, !p.mesas?.mes_numero)}</div>
           ${_pedSubtotalsHtml(p)}
           ${esAnulado && p.ped_motivo_anulacion ? `<p style="font-size:.78rem;color:#991b1b;padding:0 1rem;margin:.25rem 0 0">Motivo: ${SC.escapeHtml(p.ped_motivo_anulacion)}</p>` : ''}
           <div class="cajero-order-card__foot" style="justify-content:space-between;flex-wrap:wrap;gap:.5rem">

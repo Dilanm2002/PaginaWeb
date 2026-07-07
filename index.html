@@ -2038,8 +2038,20 @@
           const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
           if (it) { LogicaCarrito.cambiarCantidad(id, it.cantidad - 1); renderCarrito(); }
         } else if (btn.dataset.action === 'llevar') {
-          const it = LogicaCarrito.leerCarrito().find(i => (i.lineId || i.id) === id);
-          if (it) { LogicaCarrito.cambiarParaLlevar(id, !it.paraLlevar); renderCarrito(); }
+          const itemsAntes = LogicaCarrito.leerCarrito();
+          const idx = itemsAntes.findIndex(i => (i.lineId || i.id) === id);
+          if (idx < 0) return;
+          const itemsAct = LogicaCarrito.cambiarParaLlevar(id, !itemsAntes[idx].paraLlevar);
+          const actualizado = itemsAct[idx];
+          // Actualiza solo este botón y los data-id de su misma fila — un
+          // renderCarrito() completo reconstruye TODAS las <img>, lo que se
+          // veía como que la imagen de cada plato "se recargaba y rompía"
+          // un instante con cada clic.
+          const fila = btn.closest('.cart-item');
+          fila?.querySelectorAll('[data-id]').forEach(el => { el.dataset.id = actualizado.lineId; });
+          btn.classList.toggle('active', actualizado.paraLlevar);
+          btn.textContent = actualizado.paraLlevar ? '🥡 Para llevar' : '🍽️ Para la mesa';
+          btn.title = `Cambiar a ${actualizado.paraLlevar ? 'para la mesa' : 'para llevar'}`;
         }
       };
     }
@@ -2357,9 +2369,17 @@
 
     // Si TODOS los ítems del carrito ya se marcaron "para llevar" (con el
     // toggle de cada línea), no tiene sentido pedir número de mesa — se
-    // arranca directo en modo "Para llevar" en vez de resetear a "Mesa".
+    // arranca directo en modo "Para llevar" en vez de resetear a "Mesa", y
+    // se bloquea la opción "Mesa" (no se puede ocupar una mesa para un
+    // pedido que es 100% para llevar).
     const todosParaLlevar = items.length > 0 && items.every(i => i.paraLlevar);
     _setTipo(todosParaLlevar);
+    if (_btnTipoMesa) {
+      _btnTipoMesa.disabled = todosParaLlevar;
+      _btnTipoMesa.title = todosParaLlevar
+        ? 'Ya marcaste todos los platos del carrito como "para llevar" — desmarca alguno para poder usar una mesa.'
+        : '';
+    }
 
     // Cambiar título y botón según modo
     const modalHead = document.querySelector('#mesa-modal-backdrop .mesa-modal-head h2');

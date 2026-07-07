@@ -1714,7 +1714,12 @@
     .ing-chip input[type="checkbox"]:not(:checked) + .ing-chip__label::before { content: '✕'; color: #b91c1c; }
     .cart-item__excl { font-size: .72rem; color: #b91c1c; margin-top: .1rem; font-style: italic; }
     .cajero-excl { font-size: .72rem; color: #b91c1c; font-weight: 400; font-style: italic; display: block; }
-    .cajero-item-llevar { font-size: .68rem; font-weight: 700; color: var(--cinnamon); background: #fef5eb; border-radius: 999px; padding: .1rem .5rem; margin-left: .35rem; }
+    .cajero-item-llevar {
+      display: inline-flex; align-items: center; font-size: .68rem; font-weight: 700;
+      color: var(--cinnamon); background: #fef5eb; border: 1px solid #f6d9b8;
+      border-radius: 999px; padding: .1rem .55rem; margin: .25rem .35rem 0 0;
+      vertical-align: middle;
+    }
     .modal-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); gap: 1rem; }
     .modal-price { font-size: 1.4rem; font-weight: 700; color: var(--cinnamon); }
     .modal-price small { font-size: .72rem; color: var(--text-muted); font-weight: 400; }
@@ -1774,6 +1779,7 @@
       color: #fff;
       box-shadow: 0 2px 8px rgba(200,86,26,.35);
     }
+    .mesa-tipo-btn:disabled { opacity: .35; cursor: not-allowed; }
     .mesa-tipo-btn:not(.active):hover {
       background: rgba(200,86,26,.08);
       color: var(--brown-dark);
