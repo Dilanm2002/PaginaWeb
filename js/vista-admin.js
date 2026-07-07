@@ -2364,7 +2364,7 @@ window.VistaAdmin = (function () {
   }
 
   return {
-    renderAdminView, abrirFormProducto, cerrarFormProducto, init, cambiarModulo: _cambiarModulo,
+    renderAdminView, renderAdminPedidos, abrirFormProducto, cerrarFormProducto, init, cambiarModulo: _cambiarModulo,
     // Expuestas para pruebas unitarias (tests/vista-admin.test.js) — funciones puras, sin efectos.
     _fechaLocalISO, _lunesDeSemana, _fechaConOffset, _labelDiaOffset, _rangoSemanaLaboral
   };

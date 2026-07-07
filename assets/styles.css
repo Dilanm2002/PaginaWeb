@@ -814,9 +814,9 @@
     .stock-btn--neg:hover { background: #fee2e2; border-color: #fca5a5; color: #dc2626; }
     .stock-btn--pos:hover { background: var(--cinnamon); border-color: var(--cinnamon); color: #fff; }
     .stock-btn--set {
-      background: var(--brown-dark); border-color: var(--brown-dark); color: #fff; padding: .3rem .7rem;
+      background: var(--cinnamon); border-color: var(--cinnamon); color: #fff; padding: .3rem .7rem;
     }
-    .stock-btn--set:hover { background: var(--brown-mid); border-color: var(--brown-mid); }
+    .stock-btn--set:hover { background: var(--cinnamon-lt); border-color: var(--cinnamon-lt); }
 
     /* ════════════════════════════════════════
        VISTA ADMINISTRADOR

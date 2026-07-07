@@ -486,7 +486,7 @@ window.VistaCajero = (function () {
         if (motivo === false) return; // canceló
         btnAnular.disabled = true;
         const ok = await SC.anularPedido(pedido.id, motivo);
-        if (ok) renderCajeroView();
+        if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
         else btnAnular.disabled = false;
         return;
       }
@@ -500,6 +500,7 @@ window.VistaCajero = (function () {
         ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);
         renderCajeroView();
+        window.VistaAdmin?.renderAdminPedidos?.();
         return;
       }
       const btnQty = e.target.closest('.caj-qty__btn');
@@ -522,6 +523,7 @@ window.VistaCajero = (function () {
           ped.items.splice(idx, 1);
           SC.actualizarPedido(pid, ped.items);
           renderCajeroView();
+          window.VistaAdmin?.renderAdminPedidos?.();
           return;
         }
         SC.actualizarPedido(pid, ped.items);
@@ -998,6 +1000,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         if (resultado) {
           _ultimoCobro = { pedido: resultado.pedido, factNumero: resultado.factNumero, metodoPagoNombre, montoPagado, cambio };
           renderCajeroView();
+          window.VistaAdmin?.renderAdminPedidos?.();
           abrirPostCobro(resultado.pedido, resultado.factNumero, metodoPagoNombre, montoPagado, cambio);
           if (email) enviarNotaVentaPorCorreo(resultado.pedido, resultado.factNumero, metodoPagoNombre, null, email);
         } else {
