@@ -803,7 +803,10 @@
             </div>
             <div class="prod-form-group prod-form-full">
               <label for="pf-ingredientes">Ingredientes (separados por coma)</label>
-              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error">
+              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Sopa:0.50, Jugo" aria-describedby="pf-ingredientes-error pf-ingredientes-hint">
+              <small id="pf-ingredientes-hint" style="display:block;margin-top:.3rem;color:var(--text-muted);font-size:.76rem;">
+                ¿Un ingrediente tiene precio propio (ej. la sopa de un almuerzo)? Ponle ":monto" — ej. "Sopa:0.50" — y al excluirlo se resta ese monto del precio del plato. Sin ":monto" es solo informativo.
+              </small>
               <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">

@@ -246,7 +246,7 @@ window.VistaMenu = (function () {
       ? ingsConId.map(ing =>
           `<label class="ing-chip">
               <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" data-descuento="${ing.descuento || 0}" checked>
-              <span class="ing-chip__label">${ing.nombre}${ing.descuento > 0 ? ` <small>(-$${ing.descuento.toFixed(2)})</small>` : ''}</span>
+              <span class="ing-chip__label">${ing.nombre}</span>
             </label>`
         ).join('')
       : '';
@@ -541,7 +541,7 @@ window.VistaMenu = (function () {
                       ${p.ingredientes.filter(i => i && i.id).map(i => `
                         <label class="mesero-ing-check">
                           <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" data-descuento="${i.descuento || 0}" checked>
-                          ${i.nombre}${i.descuento > 0 ? ` <small>(-$${i.descuento.toFixed(2)})</small>` : ''}
+                          ${i.nombre}
                         </label>`).join('')}
                     </div>
                     <div class="mesero-ing-pop__precio" id="mpop-precio-${p.id}">$${p.precio.toFixed(2)}</div>
