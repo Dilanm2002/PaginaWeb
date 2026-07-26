@@ -558,10 +558,12 @@ window.VistaAdmin = (function () {
       btn.addEventListener('click', async () => {
         const fecha = document.getElementById('md-fecha')?.value;
         if (!fecha) { SC?.toast('Elige una fecha.', 'error'); return; }
+        const valores = _MD_CAMPOS.map(c => document.getElementById(c.input)?.value.trim() ?? '');
+        if (!valores.some(Boolean)) { SC?.toast('Completa al menos un plato antes de guardar.', 'error'); return; }
         const productos = SC?.getAllProductosMergeados?.() ?? [];
         const payload = { mendia_fecha: fecha };
-        _MD_CAMPOS.forEach(c => {
-          const valor = document.getElementById(c.input)?.value.trim() ?? '';
+        _MD_CAMPOS.forEach((c, i) => {
+          const valor = valores[i];
           const producto = valor ? productos.find(p => p.nombre.toLowerCase() === valor.toLowerCase()) : null;
           payload[c.idCol]    = producto ? producto.id : null;
           // Mismo estándar de nombres que productos/categorías/ingredientes:
