@@ -3677,6 +3677,13 @@
     color: var(--text); background: #fff; min-width: 170px;
   }
   .md-editor input:focus, .md-editor select:focus { outline: none; border-color: var(--cinnamon); }
+  .md-btn-cancelar {
+    display: inline-flex; align-items: center;
+    padding: .58rem 1.2rem; background: #fff; color: var(--text-muted);
+    border: 1.5px solid var(--border); border-radius: 10px;
+    font-size: .83rem; font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  .md-btn-cancelar:hover { border-color: #dc2626; color: #dc2626; }
 
   .md-semana-lista { display: flex; flex-direction: column; gap: .6rem; }
   .md-semana-item {

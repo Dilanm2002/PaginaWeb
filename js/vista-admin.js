@@ -576,6 +576,18 @@ window.VistaAdmin = (function () {
         if (fecha === _fechaLocalISO()) _renderDashboardMenuDia();
       });
     }
+    const btnCancelar = document.getElementById('btn-cancelar-menudia');
+    if (btnCancelar && !btnCancelar._mdBound) {
+      btnCancelar._mdBound = true;
+      btnCancelar.addEventListener('click', async () => {
+        // "Cancelar" descarta lo escrito sin guardar y vuelve a traer lo
+        // que de verdad está guardado para esa fecha (o la deja vacía si
+        // esa fecha nunca se guardó).
+        const fecha = document.getElementById('md-fecha')?.value;
+        await _md_cargarFecha(fecha);
+        SC?.toast('Cambios descartados', 'success');
+      });
+    }
   }
 
   // Lista de los próximos 14 días que ya tienen algo planificado — clic en
