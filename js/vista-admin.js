@@ -508,6 +508,7 @@ window.VistaAdmin = (function () {
 
   async function _renderMenuDia() {
     _md_poblarDatalists();
+    _md_toggleCancelar(false);
     const fechaInput = document.getElementById('md-fecha');
     if (fechaInput && !fechaInput.value) fechaInput.value = _fechaLocalISO();
     await _md_cargarFecha(fechaInput?.value);
@@ -572,6 +573,7 @@ window.VistaAdmin = (function () {
         btn.disabled = false;
         if (error) { console.error('Supabase menu_dia upsert:', error); SC?.toast('Error al guardar el menú.', 'error'); return; }
         SC?.toast('Menú del día guardado ✓', 'success');
+        _md_toggleCancelar(false);
         await _md_renderProximos();
         if (fecha === _fechaLocalISO()) _renderDashboardMenuDia();
       });
@@ -584,9 +586,17 @@ window.VistaAdmin = (function () {
         // volver a lo ya guardado, basta con tocar "Editar" de nuevo en el
         // registro de abajo.
         _MD_CAMPOS.forEach(c => { const inp = document.getElementById(c.input); if (inp) inp.value = ''; });
+        _md_toggleCancelar(false);
         SC?.toast('Campos vacíos', 'success');
       });
     }
+  }
+
+  // "Cancelar" solo tiene sentido mientras se está editando algo que se
+  // cargó con el botón "Editar" — el resto del tiempo queda oculto.
+  function _md_toggleCancelar(mostrar) {
+    const btn = document.getElementById('btn-cancelar-menudia');
+    if (btn) btn.style.display = mostrar ? '' : 'none';
   }
 
   // Lista de los próximos 14 días que ya tienen algo planificado — clic en
@@ -605,23 +615,26 @@ window.VistaAdmin = (function () {
       .gte('mendia_fecha', _fechaLocalISO(desdeDate)).lte('mendia_fecha', _fechaLocalISO(hastaDate))
       .order('mendia_fecha', { ascending: false });
     if (error || !data?.length) {
-      el.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;padding:.5rem 0">Todavía no hay ningún menú registrado.</p>';
+      el.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);font-size:.85rem;padding:1.25rem;text-align:center">Todavía no hay ningún menú registrado.</td></tr>';
       return;
     }
     el.innerHTML = data.map(d => {
       const esHoy = d.mendia_fecha === hoyISO;
-      const fechaLbl = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' });
-      const resumen = _MD_CAMPOS.map(c => `${c.icon} ${SC.escapeHtml(_md_nombreCampo(d, c) ?? 'sin definir')}`).join(' · ');
-      return `<div class="md-semana-item${esHoy ? ' md-semana-item--hoy' : ''}" data-fecha="${d.mendia_fecha}">
-        <div class="md-semana-item__main">
-          <span class="md-semana-item__fecha">${SC.escapeHtml(fechaLbl)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</span>
-          <span class="md-semana-item__platos">${resumen}</span>
-        </div>
-        <div class="md-semana-item__acciones">
-          <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️ Editar</button>
+      const diaSemana = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long' });
+      const diaMes    = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+      const celdaPlato = c => {
+        const nombre = _md_nombreCampo(d, c);
+        return nombre ? `<td>${SC.escapeHtml(nombre)}</td>` : `<td class="md-td-vacio">Sin definir</td>`;
+      };
+      return `<tr class="md-fila${esHoy ? ' md-fila--hoy' : ''}" data-fecha="${d.mendia_fecha}">
+        <td class="md-td-dia">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
+        <td class="md-td-fecha">${SC.escapeHtml(diaMes)}</td>
+        ${_MD_CAMPOS.map(celdaPlato).join('')}
+        <td class="md-td-acciones">
+          <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
           <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
-        </div>
-      </div>`;
+        </td>
+      </tr>`;
     }).join('');
     el.querySelectorAll('.md-semana-item__edit').forEach(btn => {
       btn.addEventListener('click', async () => {
@@ -639,6 +652,7 @@ window.VistaAdmin = (function () {
         void editorBox?.offsetWidth; // reinicia la animación si se clickea varias veces seguidas
         editorBox?.classList.add('md-editor--flash');
         document.getElementById('md-sopa')?.focus();
+        _md_toggleCancelar(true);
         SC?.toast('Menú cargado — edítalo y presiona Guardar', 'success');
       });
     });

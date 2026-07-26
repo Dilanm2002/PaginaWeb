@@ -3685,50 +3685,45 @@
   }
   .md-btn-cancelar:hover { border-color: #dc2626; color: #dc2626; }
 
-  .md-semana-lista { display: flex; flex-direction: column; gap: .6rem; }
-  .md-semana-item {
-    display: flex; align-items: stretch; gap: 0;
-    background: #fff; border: 1px solid rgba(224,201,176,.6);
-    border-radius: var(--radius-sm); overflow: hidden;
-    transition: border-color .15s, box-shadow .15s;
-  }
-  .md-semana-item:hover { border-color: var(--cinnamon); box-shadow: 0 2px 10px rgba(200,86,26,.1); }
-  .md-semana-item__main {
-    flex: 1; display: flex; flex-direction: column; gap: .25rem; text-align: left;
-    padding: .75rem 1rem; min-width: 0;
-  }
-  .md-semana-item__fecha { font-weight: 700; color: var(--brown-dark); font-size: .88rem; text-transform: capitalize; }
-  .md-semana-item__platos { font-size: .82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .md-semana-item__acciones {
-    flex-shrink: 0; display: flex; align-items: center; gap: .5rem;
-    padding: 0 .85rem; border-left: 1px solid rgba(224,201,176,.6);
-  }
-  .md-semana-item__edit {
-    background: rgba(200,86,26,.09); color: var(--cinnamon);
-    border: 1px solid rgba(200,86,26,.18); border-radius: 999px;
-    font-size: .8rem; font-weight: 700; padding: .4rem .9rem;
-    cursor: pointer; white-space: nowrap; transition: all .15s;
-  }
-  .md-semana-item__edit:hover { background: var(--cinnamon); color: #fff; border-color: var(--cinnamon); }
-  .md-semana-item__del {
-    width: 34px; height: 34px; flex-shrink: 0;
-    background: rgba(220,38,38,.08); color: #dc2626;
-    border: 1px solid rgba(220,38,38,.16); border-radius: 50%;
-    font-size: .9rem; cursor: pointer; transition: all .15s;
-    display: flex; align-items: center; justify-content: center;
-  }
-  .md-semana-item__del:hover { background: #dc2626; filter: brightness(1.1); }
-  .md-semana-item--hoy { border-color: var(--cinnamon); background: #fff8f0; }
-  .md-semana-item__badge {
-    display: inline-block; background: var(--cinnamon); color: #fff;
-    font-size: .62rem; font-weight: 800; letter-spacing: .06em;
-    padding: .1rem .45rem; border-radius: 999px; margin-left: .4rem;
-    text-transform: uppercase; vertical-align: middle;
-  }
   .md-registro-titulo {
     font-size: .95rem; font-weight: 800; color: var(--brown-dark);
     margin: 1.75rem 0 .85rem;
   }
+  .md-tabla-wrap {
+    background: #fff; border: 1px solid rgba(224,201,176,.6);
+    border-radius: var(--radius); overflow-x: auto;
+    box-shadow: 0 2px 12px rgba(59,26,8,.06);
+  }
+  .md-tabla { min-width: 640px; }
+  .md-tabla thead th:last-child { width: 84px; }
+  .md-fila { transition: background .12s; }
+  .md-fila--hoy { background: #fff8f0 !important; }
+  .md-fila--hoy:hover { background: #fef0e0 !important; }
+  .md-td-dia { font-weight: 700; color: var(--brown-dark); text-transform: capitalize; white-space: nowrap; }
+  .md-td-fecha { color: var(--text-muted); white-space: nowrap; }
+  .md-td-vacio { color: var(--text-muted); font-style: italic; }
+  .md-td-acciones { white-space: nowrap; text-align: right; }
+  .md-semana-item__badge {
+    display: inline-block; background: var(--cinnamon); color: #fff;
+    font-size: .6rem; font-weight: 800; letter-spacing: .06em;
+    padding: .1rem .4rem; border-radius: 999px; margin-left: .3rem;
+    text-transform: uppercase; vertical-align: middle;
+  }
+  .md-semana-item__edit, .md-semana-item__del {
+    width: 30px; height: 30px; border-radius: 50%;
+    font-size: .85rem; cursor: pointer; transition: all .15s;
+    display: inline-flex; align-items: center; justify-content: center;
+  }
+  .md-semana-item__edit {
+    background: rgba(200,86,26,.09); color: var(--cinnamon);
+    border: 1px solid rgba(200,86,26,.18); margin-right: .35rem;
+  }
+  .md-semana-item__edit:hover { background: var(--cinnamon); color: #fff; border-color: var(--cinnamon); }
+  .md-semana-item__del {
+    background: rgba(220,38,38,.08); color: #dc2626;
+    border: 1px solid rgba(220,38,38,.16);
+  }
+  .md-semana-item__del:hover { background: #dc2626; color: #fff; }
 
   /* ── Menú del día de hoy (tarjeta del dashboard) ── */
   .dash-menudia-titulo {

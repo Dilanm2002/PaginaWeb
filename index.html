@@ -674,11 +674,26 @@
                 <datalist id="md-jugo-datalist"></datalist>
               </div>
               <button class="adm-btn-primary" id="btn-guardar-menudia">Guardar</button>
-              <button class="md-btn-cancelar" id="btn-cancelar-menudia" type="button">Cancelar</button>
+              <button class="md-btn-cancelar" id="btn-cancelar-menudia" type="button" style="display:none">Cancelar</button>
             </div>
             <p style="font-size:.78rem;color:var(--text-muted);margin:-.8rem 0 1rem">Puedes elegir un plato ya existente del catálogo o escribir uno nuevo que no esté en el menú.</p>
             <h3 class="md-registro-titulo">Registro de menús — últimos y próximos 14 días</h3>
-            <div id="md-semana-lista" class="md-semana-lista"></div>
+            <div class="md-tabla-wrap">
+              <table class="adm-tabla md-tabla">
+                <thead>
+                  <tr>
+                    <th>Día</th>
+                    <th>Fecha</th>
+                    <th>🍲 Sopa</th>
+                    <th>🍽️ Plato fuerte</th>
+                    <th>🥗 Ensalada</th>
+                    <th>🥤 Jugo</th>
+                    <th></th>
+                  </tr>
+                </thead>
+                <tbody id="md-semana-lista"></tbody>
+              </table>
+            </div>
           </section>
 
           <!-- MÓDULO: Empleados -->
