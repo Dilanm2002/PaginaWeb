@@ -2188,7 +2188,49 @@ window.VistaAdmin = (function () {
         </tr></thead>
         <tbody>${filasPedidos}</tbody>
       </table>
-      ` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}`;
+      ` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}
+      <div id="cierre-caja-estado" style="margin-top:1.25rem"></div>`;
+
+    await _renderCierreCajaEstado(fechaSel, labelDia, SC);
+  }
+
+  // Solo lectura — el admin puede VER si ya se cerró la caja de ese día y
+  // con qué diferencia, pero cerrarla (la acción) es tarea del cajero,
+  // desde su propio panel.
+  const _CC_SELECT = 'cierre_fondo_inicial, cierre_efectivo_ventas, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
+
+  async function _renderCierreCajaEstado(fechaSel, labelDia, SC) {
+    const el = document.getElementById('cierre-caja-estado');
+    if (!el) return;
+    const { data: c, error } = await window.db.from('cierres_caja').select(_CC_SELECT).eq('cierre_fecha', fechaSel).maybeSingle();
+    if (error) { console.error('Supabase cierres_caja select:', error); el.innerHTML = ''; return; }
+
+    if (!c) {
+      el.innerHTML = `
+        <div class="cierre-caja cierre-caja--pendiente">
+          <div class="cierre-caja__header">💰 Cierre de caja — ${SC?.escapeHtml(labelDia) ?? labelDia}</div>
+          <p class="cierre-caja__meta" style="margin-bottom:0">Todavía no se ha cerrado la caja de este día — lo hace el cajero desde su panel.</p>
+        </div>`;
+      return;
+    }
+
+    const users = window.ModuloAutenticacion?.leerUsuarios() ?? [];
+    const nombreQuien = users.find(u => u.id === c.cierre_usu_id)?.nombre ?? 'Alguien';
+    const dif = parseFloat(c.cierre_diferencia) || 0;
+    const difFmt = dif > 0 ? `+$${dif.toFixed(2)}` : dif < 0 ? `-$${Math.abs(dif).toFixed(2)}` : '$0.00';
+    const hora = new Date(c.cierre_created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+    el.innerHTML = `
+      <div class="cierre-caja cierre-caja--cerrado">
+        <div class="cierre-caja__header">💰 Cierre de caja — ${SC?.escapeHtml(labelDia) ?? labelDia} <span class="cierre-caja__badge">CERRADO</span></div>
+        <div class="cierre-caja__resumen">
+          <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
+          <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
+          <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
+          <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
+          <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
+        </div>
+        <div class="cierre-caja__meta">Cerrado por ${SC?.escapeHtml(nombreQuien) ?? nombreQuien} a las ${hora}${c.cierre_notas ? ` — "${SC?.escapeHtml(c.cierre_notas) ?? c.cierre_notas}"` : ''}</div>
+      </div>`;
   }
 
   async function _renderGastos() {

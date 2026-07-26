@@ -37,6 +37,14 @@ window.VistaCajero = (function () {
     return d.toLocaleDateString('es-EC', { year:'numeric', month:'2-digit', day:'2-digit' });
   }
 
+  // Formato ISO (YYYY-MM-DD) — el que necesita la columna DATE en Supabase,
+  // distinto del formato local (_getFecha) que se usa para comparar contra
+  // el historial en memoria.
+  function _fechaISOHoy() {
+    const d = new Date();
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  }
+
   function _getLabelFecha(offset) {
     if (offset === 0)  return 'Hoy';
     if (offset === -1) return 'Ayer';
@@ -585,6 +593,7 @@ window.VistaCajero = (function () {
 
     if (!cobrados.length) {
       wrap.innerHTML = `<p style="color:var(--text-muted);font-size:.88rem;padding:.5rem 0">Aún no hay pedidos cobrados hoy.</p>`;
+      _renderCierreCajaBox();
       return;
     }
 
@@ -640,6 +649,118 @@ window.VistaCajero = (function () {
         if (!h) return;
         abrirModalCorreoNota(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn, h.factEmail || '');
       };
+    });
+
+    _renderCierreCajaBox();
+  }
+
+  /* ─────────────────────────────────────────────────────
+     CIERRE DE CAJA — conteo físico de efectivo al final del día.
+     Solo trabaja sobre "hoy" (este panel no navega a días anteriores,
+     eso lo hace el admin desde Reportes).
+  ───────────────────────────────────────────────────── */
+  const _CC_SELECT = 'cierre_id, cierre_fecha, cierre_fondo_inicial, cierre_efectivo_ventas, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
+  const _CC_MAX = 5000; // tope razonable para un negocio de este tamaño — evita números absurdos ("2.13e+25")
+
+  async function _renderCierreCajaBox() {
+    const box = document.getElementById('cierre-caja-box');
+    if (!box) return;
+    const SC = window.SC;
+    const fechaISO = _fechaISOHoy();
+    const hoy = _getFecha(0);
+    const efectivoVentas = SC.leerHistorial()
+      .filter(h => h.fecha === hoy && (h.metodoPagoNombre || 'Efectivo') === 'Efectivo')
+      .reduce((s, h) => s + (h.total || 0), 0);
+
+    const [{ data: actual }, { data: ultimo }] = await Promise.all([
+      window.db.from('cierres_caja').select(_CC_SELECT).eq('cierre_fecha', fechaISO).maybeSingle(),
+      window.db.from('cierres_caja').select('cierre_fondo_inicial').order('cierre_fecha', { ascending: false }).limit(1).maybeSingle()
+    ]);
+
+    if (actual) {
+      _cc_renderCerrado(box, actual);
+    } else {
+      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '');
+    }
+  }
+
+  function _cc_renderCerrado(box, c) {
+    const SC = window.SC;
+    const users = window.ModuloAutenticacion?.leerUsuarios() ?? [];
+    const nombreQuien = users.find(u => u.id === c.cierre_usu_id)?.nombre ?? 'Alguien';
+    const dif = parseFloat(c.cierre_diferencia) || 0;
+    const difFmt = dif > 0 ? `+$${dif.toFixed(2)}` : dif < 0 ? `-$${Math.abs(dif).toFixed(2)}` : '$0.00';
+    const hora = new Date(c.cierre_created_at).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+    box.innerHTML = `
+      <div class="cierre-caja cierre-caja--cerrado">
+        <div class="cierre-caja__header">💰 Cierre de caja — Hoy <span class="cierre-caja__badge">CERRADO</span></div>
+        <div class="cierre-caja__resumen">
+          <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
+          <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
+          <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
+          <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
+          <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
+        </div>
+        <div class="cierre-caja__meta">Cerrado por ${SC.escapeHtml(nombreQuien)} a las ${hora}${c.cierre_notas ? ` — "${SC.escapeHtml(c.cierre_notas)}"` : ''}</div>
+        <button class="cierre-caja__editar" id="btn-editar-cierre" type="button">Editar cierre</button>
+      </div>`;
+    document.getElementById('btn-editar-cierre')?.addEventListener('click', () => {
+      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c);
+    });
+  }
+
+  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio) {
+    const SC = window.SC;
+    const fondoInicial  = cierrePrevio ? cierrePrevio.cierre_fondo_inicial : fondoDefault;
+    const contadoPrevio = cierrePrevio ? cierrePrevio.cierre_efectivo_contado : '';
+    const notasPrevias  = cierrePrevio ? (cierrePrevio.cierre_notas ?? '') : '';
+    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas;
+    box.innerHTML = `
+      <div class="cierre-caja">
+        <div class="cierre-caja__header">💰 Cierre de caja — Hoy</div>
+        <div class="cierre-caja__form">
+          <div class="cierre-caja__campo">
+            <label for="cc-fondo">Fondo inicial</label>
+            <input type="number" id="cc-fondo" step="0.01" min="0" max="${_CC_MAX}" value="${fondoInicial}">
+          </div>
+          <div class="cierre-caja__campo">
+            <label>Efectivo esperado</label>
+            <div class="cierre-caja__esperado" id="cc-esperado">$${esperadoInicial.toFixed(2)}</div>
+          </div>
+          <div class="cierre-caja__campo">
+            <label for="cc-contado">Efectivo contado</label>
+            <input type="number" id="cc-contado" step="0.01" min="0" max="${_CC_MAX}" placeholder="0.00" value="${contadoPrevio}">
+          </div>
+          <button class="adm-btn-primary" id="btn-cerrar-caja" type="button">Cerrar caja</button>
+        </div>
+        <input type="text" id="cc-notas" class="cierre-caja__notas" placeholder="Notas (opcional) — ej. explicación de una diferencia" maxlength="200" value="${SC.escapeHtml(notasPrevias)}">
+      </div>`;
+
+    const fondoInput = document.getElementById('cc-fondo');
+    const esperadoEl = document.getElementById('cc-esperado');
+    fondoInput?.addEventListener('input', () => {
+      const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
+      const esperado = valor + efectivoVentas;
+      if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
+    });
+
+    const btn = document.getElementById('btn-cerrar-caja');
+    btn?.addEventListener('click', async () => {
+      const fondo   = parseFloat(document.getElementById('cc-fondo')?.value);
+      const contado = parseFloat(document.getElementById('cc-contado')?.value);
+      const notas   = document.getElementById('cc-notas')?.value.trim() || null;
+      if (isNaN(fondo) || fondo < 0)          { SC?.toast('Ingresa el fondo inicial.', 'error'); return; }
+      if (isNaN(contado) || contado < 0)      { SC?.toast('Ingresa cuánto contaste en efectivo.', 'error'); return; }
+      if (fondo > _CC_MAX || contado > _CC_MAX) { SC?.toast(`Ese monto es demasiado grande — máximo $${_CC_MAX}.`, 'error'); return; }
+      btn.disabled = true;
+      const token = window.ModuloAutenticacion?.getSession?.()?.token ?? null;
+      const { data, error } = await window.db.rpc('cerrar_caja', {
+        p_token: token, p_fecha: fechaISO, p_fondo_inicial: fondo, p_efectivo_contado: contado, p_notas: notas
+      });
+      btn.disabled = false;
+      if (error || !data) { console.error('Supabase cerrar_caja:', error); SC?.toast('Error al cerrar la caja.', 'error'); return; }
+      SC?.toast('Caja cerrada ✓', 'success');
+      _cc_renderCerrado(box, data);
     });
   }
 

@@ -2894,6 +2894,60 @@
   .cuadre-metodo-pill strong { color: var(--pill-c, var(--brown-dark)); font-size: .98rem; font-weight: 800; }
   .cuadre-metodo-pill small  { color: var(--text-muted); font-size: .74rem; font-weight: 500; }
 
+  /* ── Cierre de caja (conteo físico de efectivo) ── */
+  .cierre-caja {
+    background: #fff; border: 1.5px solid rgba(224,201,176,.6);
+    border-radius: var(--radius); padding: 1.1rem 1.3rem;
+  }
+  .cierre-caja--pendiente { border-style: dashed; }
+  .cierre-caja--pendiente .cierre-caja__header { margin-bottom: .5rem; }
+  .cierre-caja__header {
+    display: flex; align-items: center; gap: .5rem;
+    font-size: .95rem; font-weight: 800; color: var(--brown-dark); margin-bottom: 1rem;
+  }
+  .cierre-caja__badge {
+    background: #16a34a; color: #fff; font-size: .62rem; font-weight: 800;
+    letter-spacing: .06em; padding: .15rem .5rem; border-radius: 999px;
+  }
+  .cierre-caja__form { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 1rem; }
+  .cierre-caja__campo { display: flex; flex-direction: column; gap: .35rem; }
+  .cierre-caja__campo label {
+    font-size: .72rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .06em; color: var(--text-muted);
+  }
+  .cierre-caja__campo input {
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: .55rem .7rem; font-size: .9rem; width: 140px;
+  }
+  .cierre-caja__campo input:focus { outline: none; border-color: var(--cinnamon); }
+  .cierre-caja__esperado {
+    font-size: 1.1rem; font-weight: 800; color: var(--brown-dark);
+    padding: .55rem 0; min-width: 100px;
+  }
+  .cierre-caja__notas {
+    display: block; width: 100%; margin-top: .85rem;
+    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    padding: .55rem .7rem; font-size: .85rem; font-family: 'Inter', sans-serif;
+  }
+  .cierre-caja__notas:focus { outline: none; border-color: var(--cinnamon); }
+  .cierre-caja__resumen {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(120px,1fr));
+    gap: 1rem; margin-bottom: .75rem;
+  }
+  .cierre-caja__resumen > div { display: flex; flex-direction: column; gap: .25rem; }
+  .cierre-caja__resumen span {
+    font-size: .68rem; font-weight: 700; text-transform: uppercase;
+    letter-spacing: .05em; color: var(--text-muted);
+  }
+  .cierre-caja__resumen strong { font-size: 1.05rem; color: var(--brown-dark); }
+  .cierre-caja__meta { font-size: .8rem; color: var(--text-muted); margin-bottom: .75rem; }
+  .cierre-caja__editar {
+    background: transparent; border: 1.5px solid var(--border); color: var(--text-muted);
+    border-radius: var(--radius-sm); padding: .45rem 1rem; font-size: .82rem;
+    font-weight: 600; cursor: pointer; transition: all .15s;
+  }
+  .cierre-caja__editar:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
+
   /* Resumen / tabla */
   .resumen-dia { margin-top: 0; }
   .resumen-kpis { display: flex; gap: 1rem; flex-wrap: wrap; margin: .5rem 0 1.25rem; }
