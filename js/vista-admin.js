@@ -16,6 +16,21 @@ window.VistaAdmin = (function () {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // SC.leerGastos() guarda la fecha ya formateada como texto local
+  // (DD/MM/YYYY, ver _mapGasto en index.html) — se convierte a ISO para
+  // poder compararla contra el rango desdeStr/hastaStr de Reportes.
+  function _gastoFechaISO(fechaLocale) {
+    const [d, m, y] = (fechaLocale || '').split('/');
+    return (d && m && y) ? `${y}-${m}-${d}` : '';
+  }
+  function _totalGastosRango(desdeStr, hastaStr) {
+    const gastos = window.SC?.leerGastos?.() ?? [];
+    return gastos.reduce((s, g) => {
+      const iso = _gastoFechaISO(g.fecha);
+      return (iso && iso >= desdeStr && iso <= hastaStr) ? s + (g.monto || 0) : s;
+    }, 0);
+  }
+
   // Lunes de la semana calendario que contiene `d` (negocio opera lun-vie).
   function _lunesDeSemana(d) {
     const dow  = d.getDay(); // 0=Dom .. 6=Sáb
@@ -52,6 +67,7 @@ window.VistaAdmin = (function () {
   let _prodFormEditId    = null;
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
+  let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
   let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
 
   // Catálogo estándar del negocio (coincide con _CAT_PREFIX en index.html) —
@@ -93,6 +109,7 @@ window.VistaAdmin = (function () {
     productos: 'Catálogo de Productos',
     pedidos:   'Pedidos activos',
     stock:     'Gestión de Stock',
+    menudia:   'Menú del Día',
     empleados: 'Empleados',
     clientes:  'Clientes',
     reportes:  'Reportes de Ventas',
@@ -122,6 +139,17 @@ window.VistaAdmin = (function () {
     const u = users.find(u => u.id === p.usu_id);
     return u?.nombre ?? 'Usuario';
   }
+  // Cliente que el mesero/cajero identificó al crear el pedido (de mesa a
+  // su nombre, o para llevar a nombre de quién lo retira) — distinto de
+  // _pedNombre, que ahí es la cuenta del empleado. Los pedidos "para
+  // llevar" guardan `PL:<nombre>` en ped_nombre_invitado (ver _rowAPedido
+  // en index.html) — se le quita el prefijo en vez de mostrarlo tal cual.
+  function _pedClienteNombre(p) {
+    const esParaLlevar = p.ped_nombre_invitado === 'Para llevar' || p.ped_nombre_invitado?.startsWith('PL:');
+    if (!p.usu_id) return null;
+    if (esParaLlevar) return p.ped_nombre_invitado?.startsWith('PL:') ? p.ped_nombre_invitado.slice(3) : null;
+    return p.ped_nombre_invitado || null;
+  }
   function _pedMesa(p) { return p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar'; }
   // pedidoEsParaLlevar: si el pedido ENTERO ya es para llevar (sin mesa),
   // no repetimos la etiqueta en cada ítem — solo tiene sentido marcarla
@@ -129,11 +157,13 @@ window.VistaAdmin = (function () {
   function _pedItemsHtml(SC, det, pedidoEsParaLlevar) {
     return det.map(d => {
       const excl = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
+      const opciones = (d.det_opciones_elegidas ?? []).filter(o => o.opcion_nombre).map(o => o.grupo_nombre ? `${o.grupo_nombre}: ${o.opcion_nombre}` : o.opcion_nombre);
       return `
         <div class="cajero-order-item">
           <span class="cajero-order-item__name">
             ${SC.escapeHtml(d.platos?.plat_nombre ?? '?')}
             ${d.detped_para_llevar && !pedidoEsParaLlevar ? '<span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}
+            ${opciones.length ? `<span class="cajero-excl"> ${opciones.join(', ')}</span>` : ''}
             ${excl.length ? `<span class="cajero-excl"> sin: ${excl.join(', ')}</span>` : ''}
           </span>
           <span class="caj-qty__val">${d.detped_cantidad}</span>
@@ -213,7 +243,7 @@ window.VistaAdmin = (function () {
       ped_subtotal, ped_iva, ped_total, ped_created_at, usu_id, mes_id,
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
-        platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)))
+        platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre))
     `;
 
     const hoy = _fechaLocalISO();
@@ -247,6 +277,7 @@ window.VistaAdmin = (function () {
       const det  = p.detalle_pedidos ?? [];
       const rol  = _pedRolNombre(users, p);
       const nombre = _pedNombre(users, p);
+      const clienteNombre = _pedClienteNombre(p);
       return `
         <div class="cajero-order-card" data-pid="${p.ped_id}">
           <div class="cajero-order-card__head">
@@ -256,6 +287,7 @@ window.VistaAdmin = (function () {
                 <span class="rol-pill ${rol}">${_ROL_LABEL_PED[rol] ?? rol}</span>
                 <span>${SC.escapeHtml(nombre)}</span>
               </div>
+              ${clienteNombre ? `<div class="cajero-order-cliente">👤 Pedido de: <strong>${SC.escapeHtml(clienteNombre)}</strong></div>` : ''}
             </div>
             <div class="cajero-order-time">🕐 ${_hora(p)}</div>
           </div>
@@ -291,7 +323,7 @@ window.VistaAdmin = (function () {
       ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
-        platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre))),
+        platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre)),
       facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
     `;
 
@@ -335,6 +367,7 @@ window.VistaAdmin = (function () {
       const det  = p.detalle_pedidos ?? [];
       const rol  = _pedRolNombre(users, p);
       const nombre = _pedNombre(users, p);
+      const clienteNombre = _pedClienteNombre(p);
       const esAnulado = p.ped_estado === 'anulado';
       return `
         <div class="cajero-order-card" data-pid="${p.ped_id}" style="${esAnulado ? 'opacity:.75' : ''}">
@@ -345,6 +378,7 @@ window.VistaAdmin = (function () {
                 <span class="rol-pill ${rol}">${_ROL_LABEL_PED[rol] ?? rol}</span>
                 <span>${SC.escapeHtml(nombre)}</span>
               </div>
+              ${clienteNombre ? `<div class="cajero-order-cliente">👤 Pedido de: <strong>${SC.escapeHtml(clienteNombre)}</strong></div>` : ''}
             </div>
             <div class="cajero-order-time">🕐 ${_fechaHora(p)}</div>
           </div>
@@ -418,6 +452,7 @@ window.VistaAdmin = (function () {
     else if (nombre === 'mensajes')  renderMensajes();
     else if (nombre === 'reportes')  renderReportes('hoy');
     else if (nombre === 'gastos')    _renderGastos();
+    else if (nombre === 'menudia')   _renderMenuDia();
     else if (nombre === 'dashboard') _renderDashboardStats();
   }
 
@@ -447,6 +482,160 @@ window.VistaAdmin = (function () {
       const badgePed = document.getElementById('adm-ped-badge');
       if (badgePed) { badgePed.textContent = pendientes; badgePed.style.display = pendientes > 0 ? '' : 'none'; }
     } catch (_) {}
+    _renderDashboardMenuDia();
+  }
+
+  // ── Menú del Día ──────────────────────────────────────────────
+  // Cada campo admite un plato del catálogo (col _id, FK a platos) O un
+  // nombre libre que no existe como producto (col _texto) — el admin
+  // puede escribir cualquier cosa en el input; si coincide con un plato
+  // ya existente se guarda como referencia, si no, como texto suelto.
+  const _MD_CAMPOS = [
+    { input: 'md-sopa',         datalist: 'md-sopa-datalist',         idCol: 'mendia_sopa_id',         textoCol: 'mendia_sopa_texto',         icon: '🍲', lbl: 'Sopa' },
+    // Filtrado por categoría "Almuerzos" — en el catálogo real los platos
+    // fuertes (Almuerzo #1, #4, #5...) están en esa categoría, no en
+    // "Platos Fuertes" (esa existe pero no tiene productos asignados).
+    // Igual se puede escribir cualquier otra cosa a mano si no está aquí.
+    { input: 'md-plato-fuerte', datalist: 'md-plato-fuerte-datalist', idCol: 'mendia_plato_fuerte_id', textoCol: 'mendia_plato_fuerte_texto', icon: '🍽️', lbl: 'Plato fuerte', categoria: 'Almuerzos' },
+    { input: 'md-ensalada',     datalist: 'md-ensalada-datalist',     idCol: 'mendia_ensalada_id',     textoCol: 'mendia_ensalada_texto',     icon: '🥗', lbl: 'Ensalada' },
+    { input: 'md-jugo',         datalist: 'md-jugo-datalist',         idCol: 'mendia_jugo_id',         textoCol: 'mendia_jugo_texto',         icon: '🥤', lbl: 'Jugo' }
+  ];
+  const _MD_SELECT = 'mendia_fecha, ' + _MD_CAMPOS.map(c => `${c.idCol}, ${c.textoCol}`).join(', ');
+  const _md_nombreProducto = id => window.SC?.getAllProductosMergeados?.()?.find(p => p.id === id)?.nombre ?? null;
+  // Nombre a mostrar de un campo ya guardado: el texto libre si lo tiene,
+  // si no el nombre actual del producto referenciado (por si lo renombran).
+  const _md_nombreCampo = (row, c) => row?.[c.textoCol] || _md_nombreProducto(row?.[c.idCol]) || null;
+
+  async function _renderMenuDia() {
+    _md_poblarDatalists();
+    const fechaInput = document.getElementById('md-fecha');
+    if (fechaInput && !fechaInput.value) fechaInput.value = _fechaLocalISO();
+    await _md_cargarFecha(fechaInput?.value);
+    await _md_renderProximos();
+    _md_initHandlers();
+  }
+
+  function _md_poblarDatalists() {
+    const SC = window.SC;
+    const todos = (SC?.getAllProductosMergeados?.() ?? [])
+      .filter(p => p.activo !== false)
+      .sort((a, b) => a.nombre.localeCompare(b.nombre));
+    _MD_CAMPOS.forEach(({ datalist, categoria }) => {
+      const dl = document.getElementById(datalist);
+      if (!dl) return;
+      const productos = categoria
+        ? todos.filter(p => (p.categoria ?? '').toLowerCase() === categoria.toLowerCase())
+        : todos;
+      dl.innerHTML = productos.map(p => `<option value="${SC.escapeHtml(p.nombre)}">`).join('');
+    });
+  }
+
+  async function _md_cargarFecha(fechaISO) {
+    if (!fechaISO) return;
+    const { data, error } = await window.db.from('menu_dia').select(_MD_SELECT).eq('mendia_fecha', fechaISO).maybeSingle();
+    if (error) console.error('Supabase menu_dia select:', error);
+    _MD_CAMPOS.forEach(c => {
+      const inp = document.getElementById(c.input);
+      if (inp) inp.value = _md_nombreCampo(data, c) ?? '';
+    });
+  }
+
+  function _md_initHandlers() {
+    const SC = window.SC;
+    const fechaInput = document.getElementById('md-fecha');
+    if (fechaInput && !fechaInput._mdBound) {
+      fechaInput._mdBound = true;
+      fechaInput.addEventListener('change', () => _md_cargarFecha(fechaInput.value));
+    }
+    const btn = document.getElementById('btn-guardar-menudia');
+    if (btn && !btn._mdBound) {
+      btn._mdBound = true;
+      btn.addEventListener('click', async () => {
+        const fecha = document.getElementById('md-fecha')?.value;
+        if (!fecha) { SC?.toast('Elige una fecha.', 'error'); return; }
+        const productos = SC?.getAllProductosMergeados?.() ?? [];
+        const payload = { mendia_fecha: fecha };
+        _MD_CAMPOS.forEach(c => {
+          const valor = document.getElementById(c.input)?.value.trim() ?? '';
+          const producto = valor ? productos.find(p => p.nombre.toLowerCase() === valor.toLowerCase()) : null;
+          payload[c.idCol]    = producto ? producto.id : null;
+          // Mismo estándar de nombres que productos/categorías/ingredientes:
+          // primera letra de cada palabra en mayúscula.
+          payload[c.textoCol] = (valor && !producto) ? _normalizarTitleCase(valor) : null;
+        });
+        btn.disabled = true;
+        const { error } = await window.db.from('menu_dia').upsert(payload, { onConflict: 'mendia_fecha' });
+        btn.disabled = false;
+        if (error) { console.error('Supabase menu_dia upsert:', error); SC?.toast('Error al guardar el menú.', 'error'); return; }
+        SC?.toast('Menú del día guardado ✓', 'success');
+        await _md_renderProximos();
+        if (fecha === _fechaLocalISO()) _renderDashboardMenuDia();
+      });
+    }
+  }
+
+  // Lista de los próximos 14 días que ya tienen algo planificado — clic en
+  // cualquiera carga esa fecha en el editor de arriba para modificarla.
+  // Funciona como un registro: incluye los últimos 14 días (lo que ya se
+  // sirvió) y los próximos 14 (lo planificado), con hoy marcado aparte.
+  async function _md_renderProximos() {
+    const el = document.getElementById('md-semana-lista');
+    if (!el) return;
+    const SC = window.SC;
+    const hoyISO = _fechaLocalISO();
+    const hoy = new Date();
+    const desdeDate = new Date(hoy); desdeDate.setDate(desdeDate.getDate() - 13);
+    const hastaDate  = new Date(hoy); hastaDate.setDate(hastaDate.getDate() + 13);
+    const { data, error } = await window.db.from('menu_dia').select(_MD_SELECT)
+      .gte('mendia_fecha', _fechaLocalISO(desdeDate)).lte('mendia_fecha', _fechaLocalISO(hastaDate))
+      .order('mendia_fecha', { ascending: false });
+    if (error || !data?.length) {
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:.85rem;padding:.5rem 0">Todavía no hay ningún menú registrado.</p>';
+      return;
+    }
+    el.innerHTML = data.map(d => {
+      const esHoy = d.mendia_fecha === hoyISO;
+      const fechaLbl = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' });
+      const resumen = _MD_CAMPOS.map(c => `${c.icon} ${SC.escapeHtml(_md_nombreCampo(d, c) ?? 'sin definir')}`).join(' · ');
+      return `<button class="md-semana-item${esHoy ? ' md-semana-item--hoy' : ''}" data-fecha="${d.mendia_fecha}" type="button">
+        <span class="md-semana-item__fecha">${SC.escapeHtml(fechaLbl)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</span>
+        <span class="md-semana-item__platos">${resumen}</span>
+      </button>`;
+    }).join('');
+    el.querySelectorAll('.md-semana-item').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fechaInput = document.getElementById('md-fecha');
+        if (fechaInput) { fechaInput.value = btn.dataset.fecha; _md_cargarFecha(btn.dataset.fecha); }
+      });
+    });
+  }
+
+  async function _renderDashboardMenuDia() {
+    const el = document.getElementById('dash-menudia-hoy');
+    if (!el) return;
+    const SC = window.SC;
+    const hoy = _fechaLocalISO();
+    const { data } = await window.db.from('menu_dia').select(_MD_SELECT).eq('mendia_fecha', hoy).maybeSingle();
+    const hayAlgo = data && _MD_CAMPOS.some(c => _md_nombreCampo(data, c));
+    if (!hayAlgo) {
+      el.innerHTML = `
+        <div class="dash-menudia-empty">
+          <div class="dash-menudia-empty__icon">🍽️</div>
+          <p class="dash-menudia-empty__titulo">Próximamente</p>
+          <p class="dash-menudia-empty__msg">Todavía no se ha registrado el menú de hoy.</p>
+          <button type="button" id="btn-ir-menudia" class="adm-btn-primary">Registrarlo</button>
+        </div>`;
+      document.getElementById('btn-ir-menudia')?.addEventListener('click', () => _cambiarModulo('menudia'));
+      return;
+    }
+    el.innerHTML = `<div class="dash-menudia-grid">${_MD_CAMPOS.map(c => {
+      const nombre = _md_nombreCampo(data, c);
+      return `<div class="dash-menudia-card">
+        <div class="dash-menudia-card__icon">${c.icon}</div>
+        <div class="dash-menudia-card__lbl">${c.lbl}</div>
+        <div class="dash-menudia-card__nombre">${nombre ? SC.escapeHtml(nombre) : '<span style="color:var(--text-muted);font-style:italic">Sin definir</span>'}</div>
+      </div>`;
+    }).join('')}</div>`;
   }
 
   function _renderProductosGrid() {
@@ -688,6 +877,13 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-ingredientes').value = ings;
     document.getElementById('pf-imagen').value       = '';
 
+    const gruposLista = document.getElementById('pf-grupos-lista');
+    if (gruposLista) gruposLista.innerHTML = '';
+    const gruposExistentes = Array.isArray(p?.gruposOpciones) ? p.gruposOpciones : [];
+    gruposExistentes.forEach(g => _agregarFilaGrupoOpcion(g.nombre, (g.opciones ?? []).map(o => o.nombre).join(', ')));
+    const gruposErr = document.getElementById('pf-grupos-error');
+    if (gruposErr) gruposErr.style.display = 'none';
+
     const imgActual      = document.getElementById('pf-img-actual');
     const imgPlaceholder = document.getElementById('pf-img-placeholder');
     if (p?.imagen) {
@@ -859,17 +1055,18 @@ window.VistaAdmin = (function () {
     return '';
   }
 
-  // Estándar de nombres de categoría: primera letra de cada palabra en
-  // mayúscula, el resto en minúscula (ej. "SOPAS" o "bebidas calientes"
-  // quedan como "Sopas" / "Bebidas Calientes") — igual que las 9 estándar.
-  function _normalizarNombreCategoria(nombre) {
+  // Estándar de nombres (categorías y platos): primera letra de cada
+  // palabra en mayúscula, el resto en minúscula (ej. "SOPAS" o "bebidas
+  // calientes" quedan como "Sopas" / "Bebidas Calientes") — sin importar
+  // cómo lo escriba el administrador.
+  function _normalizarTitleCase(nombre) {
     return nombre.trim().split(/\s+/).filter(Boolean)
       .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
       .join(' ');
   }
 
   function _parsearNombresIngredientes(valor) {
-    return valor.split(',').map(s => s.trim()).filter(Boolean);
+    return valor.split(',').map(s => s.trim()).filter(Boolean).map(_normalizarTitleCase);
   }
 
   function _validarIngredientes(valor) {
@@ -877,6 +1074,45 @@ window.VistaAdmin = (function () {
     if (!v) return 'Los ingredientes son obligatorios.';
     if (!_parsearNombresIngredientes(v).length) return 'Ingresa al menos un ingrediente.';
     return '';
+  }
+
+  // ── Grupos de opciones ("elige 1 de N") en el form de producto ──
+  function _filaGrupoOpcionHtml(nombre, opcionesStr) {
+    return `
+      <div class="grupo-op-row">
+        <input type="text" class="grupo-op-titulo" placeholder='Ej: Elige tu bebida' value="${window.SC.escapeHtml(nombre)}">
+        <input type="text" class="grupo-op-opciones" placeholder="Ej: Café, Leche, Agua Aromática" value="${window.SC.escapeHtml(opcionesStr)}">
+        <button type="button" class="grupo-op-quitar" title="Quitar grupo" aria-label="Quitar grupo">✕</button>
+      </div>`;
+  }
+  function _agregarFilaGrupoOpcion(nombre = '', opcionesStr = '') {
+    const lista = document.getElementById('pf-grupos-lista');
+    if (!lista) return;
+    lista.insertAdjacentHTML('beforeend', _filaGrupoOpcionHtml(nombre, opcionesStr));
+  }
+  function _initGruposOpcionesForm() {
+    document.getElementById('btn-agregar-grupo')?.addEventListener('click', () => _agregarFilaGrupoOpcion());
+    document.getElementById('pf-grupos-lista')?.addEventListener('click', e => {
+      const btn = e.target.closest('.grupo-op-quitar');
+      if (btn) btn.closest('.grupo-op-row')?.remove();
+    });
+  }
+  // Lee las filas del DOM y arma [{nombre, opciones:[...]}], ignorando
+  // filas vacías. Devuelve también un mensaje de error si algún grupo
+  // tiene título pero menos de 2 opciones (no tendría sentido "elegir 1").
+  function _leerGruposOpcionesForm() {
+    const filas = [...document.querySelectorAll('#pf-grupos-lista .grupo-op-row')];
+    const grupos = [];
+    for (const fila of filas) {
+      const nombre  = fila.querySelector('.grupo-op-titulo')?.value.trim() ?? '';
+      const opciones = (fila.querySelector('.grupo-op-opciones')?.value ?? '')
+        .split(',').map(s => s.trim()).filter(Boolean);
+      if (!nombre && !opciones.length) continue; // fila vacía, se ignora
+      if (!nombre)            return { error: 'Falta el título de un grupo de opciones.' };
+      if (opciones.length < 2) return { error: `El grupo "${nombre}" necesita al menos 2 opciones.` };
+      grupos.push({ nombre, opciones });
+    }
+    return { grupos };
   }
 
   function _mostrarError(inputId, errorId, msg) {
@@ -988,7 +1224,7 @@ window.VistaAdmin = (function () {
     const nombreInp = document.getElementById('cat-modal-nombre');
     const nombreErr = document.getElementById('cat-modal-nombre-error');
     const colorErr  = document.getElementById('cat-modal-color-error');
-    const nombre    = _normalizarNombreCategoria(nombreInp?.value ?? '');
+    const nombre    = _normalizarTitleCase(nombreInp?.value ?? '');
 
     const yaExiste = [...sel.options].some(o => o.value !== '__nueva__' && o.value.toLowerCase() === nombre.toLowerCase());
     let err = '';
@@ -1044,6 +1280,24 @@ window.VistaAdmin = (function () {
 
   function init() {
     _setupDragDrop();
+    _initGruposOpcionesForm();
+
+    // Cocinero es un rol exclusivo — no se combina con Cajero/Mesero
+    // (ver ef-rol-hint en el formulario). Se hace cumplir acá mismo,
+    // desmarcando lo que corresponda cuando se elige uno del otro grupo.
+    document.getElementById('ef-rol-group')?.addEventListener('change', e => {
+      const cb = e.target;
+      if (!cb.matches('input[type="checkbox"]')) return;
+      const cocinero = document.getElementById('ef-rol-rol005');
+      const cajero   = document.getElementById('ef-rol-rol002');
+      const mesero   = document.getElementById('ef-rol-rol003');
+      if (cb === cocinero && cocinero.checked) {
+        cajero.checked = false;
+        mesero.checked = false;
+      } else if ((cb === cajero || cb === mesero) && cb.checked) {
+        cocinero.checked = false;
+      }
+    });
 
     const pfNombre = document.getElementById('pf-nombre');
     pfNombre.addEventListener('input', () => _mostrarErrorNombre(_validarNombre(pfNombre.value)));
@@ -1095,7 +1349,7 @@ window.VistaAdmin = (function () {
 
     document.getElementById('btn-prod-save').addEventListener('click', async () => {
       const SC     = window.SC;
-      const nombre        = document.getElementById('pf-nombre').value.trim();
+      const nombre        = _normalizarTitleCase(document.getElementById('pf-nombre').value);
       const categoria     = _leerCategoriaForm();
       // El input es type="number" (el navegador ya normaliza a punto), pero
       // por si acaso llega una coma (pegado, teclado numérico, etc.) se
@@ -1111,6 +1365,7 @@ window.VistaAdmin = (function () {
       const errIng    = _validarIngredientes(ingredientesRaw);
       const errStock  = _validarStock(stockRaw);
       const errCategoria = categoria ? '' : 'Elige o escribe una categoría.';
+      const { grupos: gruposOpciones, error: errGrupos } = _leerGruposOpcionesForm();
 
       _mostrarErrorNombre(errNombre);
       _mostrarErrorCategoria(errCategoria);
@@ -1118,6 +1373,8 @@ window.VistaAdmin = (function () {
       _mostrarErrorDescripcion(!descripcion ? 'La descripción es obligatoria.' : '');
       _mostrarErrorIngredientes(errIng);
       _mostrarErrorStock(errStock);
+      const gruposErrEl = document.getElementById('pf-grupos-error');
+      if (gruposErrEl) { gruposErrEl.textContent = errGrupos ?? ''; gruposErrEl.style.display = errGrupos ? 'block' : 'none'; }
 
       if (errNombre)    { document.getElementById('pf-nombre').focus(); return; }
       if (errCategoria) { document.getElementById('pf-categoria').focus(); return; }
@@ -1125,6 +1382,7 @@ window.VistaAdmin = (function () {
       if (!descripcion) { document.getElementById('pf-descripcion').focus(); return; }
       if (errIng)       { document.getElementById('pf-ingredientes').focus(); return; }
       if (errStock)     { document.getElementById('pf-stock').focus(); return; }
+      if (errGrupos)    return;
 
       /* Verificar nombre duplicado — primero local, luego en Supabase */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
@@ -1170,7 +1428,8 @@ window.VistaAdmin = (function () {
         activo:         document.getElementById('pf-visible').checked,
         destacado:      document.getElementById('pf-destacado').checked,
         permiteExcluir: document.getElementById('pf-permite-excluir').checked,
-        stock_inicial: stockInicial
+        stock_inicial: stockInicial,
+        gruposOpciones
       };
 
       const ok = await SC.guardarMenuItemDB(item);
@@ -1206,16 +1465,19 @@ window.VistaAdmin = (function () {
     const btnExportar = document.getElementById('btn-exportar-reporte');
     if (btnExportar) btnExportar.disabled = true;
 
-    // Carga Plotly dinámicamente la primera vez que se abre Reportes
-    if (!window.Plotly) {
-      await new Promise((resolve, reject) => {
-        const s = document.createElement('script');
-        s.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.min.js';
-        s.onload = resolve;
-        s.onerror = reject;
-        document.head.appendChild(s);
-      });
-    }
+    const _miGen = ++_reportesGen;
+
+    // Carga Plotly dinámicamente la primera vez que se abre Reportes. Se
+    // dispara en paralelo con la consulta a la BD (no se espera aquí) para
+    // que los KPIs y la tabla —que no dependen de Plotly— no se queden
+    // esperando la descarga de la librería de gráficas (~1.2MB).
+    const _plotlyListo = window.Plotly ? Promise.resolve() : new Promise((resolve, reject) => {
+      const s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/npm/plotly.js-dist@2.35.2/plotly.min.js';
+      s.onload = resolve;
+      s.onerror = reject;
+      document.head.appendChild(s);
+    });
 
     document.querySelectorAll('#rep-periodo-tabs .rep-tab').forEach(t => {
       const active = t.dataset.period === periodo;
@@ -1294,9 +1556,11 @@ window.VistaAdmin = (function () {
     const dataAnulados = errAnul ? [] : (anulados ?? []);
 
     // ── KPIs ──────────────────────────────────────────────────────
-    const totalVentas = data.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
-    const numPedidos  = data.length;
-    const promedio    = numPedidos ? totalVentas / numPedidos : 0;
+    const totalVentas  = data.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0);
+    const numPedidos   = data.length;
+    const promedio     = numPedidos ? totalVentas / numPedidos : 0;
+    const totalGastos  = _totalGastosRango(desdeStr, hastaStr);
+    const gananciaNeta = totalVentas - totalGastos;
 
     kpisEl.innerHTML = `
       <div class="reportes-kpi rep-kpi--ventas">
@@ -1304,27 +1568,30 @@ window.VistaAdmin = (function () {
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>
         </div>
         <div class="reportes-kpi__val">$${totalVentas.toFixed(2)}</div>
-        <div class="reportes-kpi__lbl">Total vendido (${periodoLabel})</div>
+        <div class="reportes-kpi__lbl">Ingresos (${periodoLabel})</div>
       </div>
-      <div class="reportes-kpi rep-kpi--pedidos">
-        <div class="rep-kpi__icon-wrap rep-kpi__icon-wrap--pedidos">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      <div class="reportes-kpi rep-kpi--gastos">
+        <div class="rep-kpi__icon-wrap rep-kpi__icon-wrap--gastos">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
         </div>
-        <div class="reportes-kpi__val">${numPedidos}</div>
-        <div class="reportes-kpi__lbl">Pedidos cobrados</div>
+        <div class="reportes-kpi__val">$${totalGastos.toFixed(2)}</div>
+        <div class="reportes-kpi__lbl">Gastos (${periodoLabel})</div>
       </div>
       <div class="reportes-kpi rep-kpi--promedio">
         <div class="rep-kpi__icon-wrap rep-kpi__icon-wrap--promedio">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
         </div>
-        <div class="reportes-kpi__val">$${promedio.toFixed(2)}</div>
-        <div class="reportes-kpi__lbl">Promedio / pedido</div>
+        <div class="reportes-kpi__val" style="color:${gananciaNeta >= 0 ? '#16a34a' : '#dc2626'}">$${gananciaNeta.toFixed(2)}</div>
+        <div class="reportes-kpi__lbl">Ganancia neta (${periodoLabel})</div>
       </div>`;
 
-    if (!window.Plotly) return;
+    // El dibujo de las gráficas necesita Plotly, pero los datos que
+    // calculan (y que también usa la tabla/Excel de abajo) no — así que
+    // esos cálculos siguen sin esperar la descarga de la librería. Si
+    // Plotly ya está listo se dibuja de una; si no, se dibuja apenas
+    // termine de cargar, sin bloquear el resto de esta función.
     const divVentas = document.getElementById('chart-ventas-dia');
     const divTop    = document.getElementById('chart-top-productos');
-    if (!divVentas || !divTop) return;
 
     const _layout = {
       paper_bgcolor: 'transparent',
@@ -1378,23 +1645,27 @@ window.VistaAdmin = (function () {
     const _tickvals = xLabels.filter((_, i) => i % _tickStep === 0);
     const _ticktext = _tickvals;
 
-    window.Plotly.react(divVentas, [{
-      type: 'bar',
-      x:    xLabels,
-      y:    yValues,
-      marker: {
-        color:        yValues.map(v => v > 0 ? 'rgba(200,86,26,.85)' : 'rgba(200,86,26,.2)'),
-        line:         { color: '#a84515', width: 1 },
-        cornerradius: 6
-      },
-      hovertemplate: '<b>%{x}</b><br>Ventas: <b>$%{y:.2f}</b><extra></extra>'
-    }], {
-      ..._layout,
-      yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false },
-      xaxis: _tickStep > 1
-        ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40 }
-        : { showgrid: false }
-    }, _config);
+    function _dibujarChartVentas() {
+      if (!window.Plotly || !divVentas) return;
+      window.Plotly.react(divVentas, [{
+        type: 'bar',
+        x:    xLabels,
+        y:    yValues,
+        marker: {
+          color:        yValues.map(v => v > 0 ? 'rgba(200,86,26,.85)' : 'rgba(200,86,26,.2)'),
+          line:         { color: '#a84515', width: 1 },
+          cornerradius: 6
+        },
+        hovertemplate: '<b>%{x}</b><br>Ventas: <b>$%{y:.2f}</b><extra></extra>'
+      }], {
+        ..._layout,
+        yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false },
+        xaxis: _tickStep > 1
+          ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40 }
+          : { showgrid: false }
+      }, _config);
+    }
+    _dibujarChartVentas();
 
     // ── Gráfica 2: top 5 productos ────────────────────────────────
     // conteo: solo unidades (para la gráfica). ventasPorProducto: unidades
@@ -1419,23 +1690,35 @@ window.VistaAdmin = (function () {
     // se calcula para dejar como máximo ~6 marcas en el eje.
     const _dtickTop  = Math.max(1, Math.ceil(maxTop / 6));
 
-    window.Plotly.react(divTop, [{
-      type:          'bar',
-      orientation:   'h',
-      x:             topCants.length  ? topCants   : [0],
-      y:             topNombres.length? topNombres : ['Sin datos'],
-      marker: {
-        color:        'rgba(59,26,8,.75)',
-        line:         { color: '#3B1A08', width: 1 },
-        cornerradius: 4
-      },
-      hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><extra></extra>'
-    }], {
-      ..._layout,
-      margin: { t: 10, r: 20, b: 30, l: 130 },
-      xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
-      yaxis: { showgrid: false, automargin: true }
-    }, _config);
+    function _dibujarChartTop() {
+      if (!window.Plotly || !divTop) return;
+      window.Plotly.react(divTop, [{
+        type:          'bar',
+        orientation:   'h',
+        x:             topCants.length  ? topCants   : [0],
+        y:             topNombres.length? topNombres : ['Sin datos'],
+        marker: {
+          color:        'rgba(59,26,8,.75)',
+          line:         { color: '#3B1A08', width: 1 },
+          cornerradius: 4
+        },
+        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><extra></extra>'
+      }], {
+        ..._layout,
+        margin: { t: 10, r: 20, b: 30, l: 130 },
+        xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
+        yaxis: { showgrid: false, automargin: true }
+      }, _config);
+    }
+    _dibujarChartTop();
+
+    // Si Plotly todavía no había terminado de descargarse, dibujar las
+    // gráficas apenas esté listo (no bloquea KPIs/tabla, que ya se ven).
+    _plotlyListo.then(() => {
+      if (_miGen !== _reportesGen) return; // el usuario ya cambió de pestaña/día
+      _dibujarChartVentas();
+      _dibujarChartTop();
+    }).catch(() => {});
 
     // ── Mini KPIs y tabla ─────────────────────────────────────────
     const kpisHoyEl = document.getElementById('resumen-kpis');
@@ -1471,6 +1754,9 @@ window.VistaAdmin = (function () {
       porMetodo[m].total    += parseFloat(p.ped_total) || 0;
       porMetodo[m].cantidad += 1;
     });
+    // ped_id → método de pago, para mostrarlo también en la tabla del
+    // Control de Caja (mismo `data` que ya trae el join a facturas/pagos).
+    const metodoPorPedido = new Map(data.map(p => [p.ped_id, _metodoDe(p)]));
 
     // Cache del reporte actual — lo usa _exportarReporteExcel() para no
     // tener que re-consultar Supabase al exportar.
@@ -1488,7 +1774,7 @@ window.VistaAdmin = (function () {
     if (!data.length) {
       tablaEl.innerHTML = '<p style="text-align:center;color:#888;font-size:.85rem;padding:2rem 0;font-style:italic">No hay pedidos cobrados en este período.</p>';
       // Igual renderizar cuadre de caja aunque no haya cobrados
-      await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC);
+      await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC, porMetodo, metodoPorPedido);
       return;
     }
 
@@ -1512,7 +1798,7 @@ window.VistaAdmin = (function () {
         </tbody>
       </table>`;
 
-    await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC);
+    await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC, porMetodo, metodoPorPedido);
   }
 
   // Exporta el reporte actualmente visible (KPIs + detalle de pedidos +
@@ -1706,7 +1992,12 @@ window.VistaAdmin = (function () {
     }
   }
 
-  async function _renderCuadreCaja(periodo, fechaSel, labelDia, SC) {
+  // Orden fijo en que se muestran los métodos de pago en el cuadre de
+  // caja — efectivo primero (es lo único que hay que contar físicamente),
+  // luego transferencia, luego tarjetas.
+  const _ORDEN_METODOS_CUADRE = ['Efectivo', 'Transferencia', 'Tarjeta de crédito', 'Tarjeta de débito'];
+
+  async function _renderCuadreCaja(periodo, fechaSel, labelDia, SC, porMetodo, metodoPorPedido) {
     const cuadreEl = document.getElementById('rep-cuadre-wrap');
     if (!cuadreEl) return;
     if (periodo !== 'hoy') { cuadreEl.innerHTML = ''; return; }
@@ -1749,6 +2040,7 @@ window.VistaAdmin = (function () {
     // cruzar dos tablas distintas: quién lo creó, en qué quedó, y quién de
     // caja lo cobró o anuló (nunca el mismo que lo creó, salvo que sea
     // cajero/admin tomando su propio pedido).
+    const _METODO_COLOR_CUADRE = { 'Efectivo': '#16a34a', 'Transferencia': '#5b7fa6', 'Tarjeta de crédito': 'var(--brown-dark)', 'Tarjeta de débito': 'var(--brown-dark)' };
     const filasPedidos = todos.map(p => {
       const creador = p.usu_id ? _pill(p.usu_id, 'usuario') : `<span class="rol-pill invitado">Invitado</span>`;
       const mesaTxt = p.mes_id && p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
@@ -1757,11 +2049,16 @@ window.VistaAdmin = (function () {
         : p.ped_estado === 'anulado'
           ? '<span style="color:#dc2626;font-weight:700">✕ Anulado</span>'
           : '<span style="color:var(--cinnamon);font-weight:700">⏳ Pendiente</span>';
+      const metodo = metodoPorPedido?.get(p.ped_id);
+      const metodoTxt = p.ped_estado === 'cobrado' && metodo
+        ? `<strong style="color:${_METODO_COLOR_CUADRE[metodo] ?? 'var(--text-muted)'}">${SC?.escapeHtml(metodo) ?? metodo}</strong>`
+        : '—';
       return `<tr>
         <td>${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
         <td>${creador}</td>
         <td style="text-align:center">${estadoTxt}</td>
         <td>${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
+        <td>${metodoTxt}</td>
         <td>${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
       </tr>`;
     }).join('');
@@ -1793,6 +2090,24 @@ window.VistaAdmin = (function () {
           <div class="cuadre-kpi__lbl">Diferencia</div>
         </div>
       </div>
+      ${(() => {
+        const pm = porMetodo ?? {};
+        // Tarjeta crédito/débito se combinan en un solo "Tarjetas" — el
+        // admin solo necesita distinguir efectivo (que cuenta a mano) de
+        // transferencia; el detalle completo sigue en el Excel exportado.
+        const tarjetas = { total: (pm['Tarjeta de crédito']?.total || 0) + (pm['Tarjeta de débito']?.total || 0),
+                           cantidad: (pm['Tarjeta de crédito']?.cantidad || 0) + (pm['Tarjeta de débito']?.cantidad || 0) };
+        const otros = Object.entries(pm).filter(([m]) => !_ORDEN_METODOS_CUADRE.includes(m));
+        const pills = [
+          { lbl: 'Efectivo en caja', color: '#16a34a', ...pm['Efectivo'] },
+          { lbl: 'Transferencia',    color: '#5b7fa6', ...pm['Transferencia'] },
+          { lbl: 'Tarjetas',         color: 'var(--brown-dark)', ...tarjetas },
+          ...otros.map(([m, info]) => ({ lbl: SC?.escapeHtml(m) ?? m, color: 'var(--text-muted)', ...info }))
+        ];
+        return `<div class="cuadre-metodos-strip">
+          ${pills.map(p => `<span class="cuadre-metodo-pill" style="--pill-c:${p.color}">${p.lbl}: <strong>$${(p.total || 0).toFixed(2)}</strong> <small>(${p.cantidad || 0})</small></span>`).join('')}
+        </div>`;
+      })()}
       ${todos.length ? `
       <table class="adm-tabla" style="margin-top:1rem">
         <thead><tr>
@@ -1800,6 +2115,7 @@ window.VistaAdmin = (function () {
           <th>Creado por</th>
           <th style="text-align:center">Estado</th>
           <th>Cobrado por</th>
+          <th>Método de pago</th>
           <th>Anulado por</th>
         </tr></thead>
         <tbody>${filasPedidos}</tbody>
@@ -1810,22 +2126,79 @@ window.VistaAdmin = (function () {
   async function _renderGastos() {
     await window.SC?.recargarGastos?.();
     window.VistaCajero?.renderGastos?.();
+    _poblarSelectCategoriaGasto();
     _initBtnGasto();
   }
 
+  // preferirId: categoría a dejar seleccionada tras repoblar (ej. la que
+  // se acaba de crear) — si no se pasa, intenta conservar la actual.
+  function _poblarSelectCategoriaGasto(preferirId) {
+    const sel = document.getElementById('gasto-categoria');
+    if (!sel) return;
+    const SC   = window.SC;
+    const cats = SC?.leerCategoriasGasto?.() ?? [];
+    const valorPrevio = preferirId ?? sel.value;
+    sel.innerHTML = '<option value="">Sin categoría</option>'
+      + cats.map(c => `<option value="${c.id}">${SC?.escapeHtml(c.nombre) ?? c.nombre}</option>`).join('')
+      + '<option value="__nueva__">+ Nueva categoría…</option>';
+    sel.value = (valorPrevio && [...sel.options].some(o => o.value === valorPrevio)) ? valorPrevio : '';
+  }
+
   function _initBtnGasto() {
+    const SC  = window.SC;
     const btn = document.getElementById('btn-add-gasto');
+    const sel = document.getElementById('gasto-categoria');
+    const catFila   = document.getElementById('gastos-nueva-cat-fila');
+    const catInput  = document.getElementById('gasto-cat-nueva-nombre');
+    const btnCatOk  = document.getElementById('btn-confirmar-cat-gasto');
+    const btnCatCanc = document.getElementById('btn-cancelar-cat-gasto');
+
+    if (sel && !sel._gastoCatBound) {
+      sel._gastoCatBound = true;
+      sel.addEventListener('change', () => {
+        if (!catFila) return;
+        if (sel.value === '__nueva__') {
+          catFila.style.display = '';
+          if (catInput) { catInput.value = ''; catInput.focus(); }
+        } else {
+          catFila.style.display = 'none';
+        }
+      });
+    }
+    if (btnCatOk && !btnCatOk._bound) {
+      btnCatOk._bound = true;
+      btnCatOk.addEventListener('click', async () => {
+        const nombre = catInput?.value.trim();
+        if (!nombre) { SC?.toast('Escribe el nombre de la categoría.', 'error'); return; }
+        btnCatOk.disabled = true;
+        const nueva = await SC?.crearCategoriaGasto?.(nombre);
+        btnCatOk.disabled = false;
+        if (!nueva) { SC?.toast('Error al crear la categoría.', 'error'); return; }
+        _poblarSelectCategoriaGasto(nueva.id);
+        if (catFila) catFila.style.display = 'none';
+        SC?.toast(`Categoría "${nueva.nombre}" creada ✓`, 'success');
+      });
+    }
+    if (btnCatCanc && !btnCatCanc._bound) {
+      btnCatCanc._bound = true;
+      btnCatCanc.addEventListener('click', () => {
+        if (catFila) catFila.style.display = 'none';
+        if (sel) sel.value = '';
+      });
+    }
+
     if (!btn || btn._gastoBound) return;
     btn._gastoBound = true;
     btn.addEventListener('click', async () => {
       const desc  = document.getElementById('gasto-desc')?.value.trim();
       const monto = parseFloat(document.getElementById('gasto-monto')?.value);
-      if (!desc)       { window.SC?.toast('Escribe una descripción.', 'error'); return; }
-      if (!monto || monto <= 0) { window.SC?.toast('Ingresa un monto válido.', 'error'); return; }
+      const categoriaId = document.getElementById('gasto-categoria')?.value;
+      if (!desc)       { SC?.toast('Escribe una descripción.', 'error'); return; }
+      if (!monto || monto <= 0) { SC?.toast('Ingresa un monto válido.', 'error'); return; }
+      if (categoriaId === '__nueva__') { SC?.toast('Confirma la categoría nueva primero.', 'error'); return; }
       btn.disabled = true;
-      const SC = window.SC;
       // Reutiliza SC.insertarGasto (ya pasa por la RPC registrar_gasto, exige sesión de staff)
-      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto });
+      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto, categoriaId: categoriaId || null });
       btn.disabled = false;
       if (!nuevoGasto) return; // el error ya se mostró dentro de insertarGasto
       document.getElementById('gasto-desc').value  = '';
@@ -1862,7 +2235,7 @@ window.VistaAdmin = (function () {
   ]);
 
   function _efClearErrors() {
-    ['nombre','apellido','fecha','telefono','email','usuario','password'].forEach(k => {
+    ['nombre','apellido','rol','fecha','telefono','email','usuario','password'].forEach(k => {
       const el = document.getElementById(`ef-err-${k}`);
       if (el) { el.textContent = ''; el.style.display = 'none'; }
     });
@@ -1885,7 +2258,10 @@ window.VistaAdmin = (function () {
     document.getElementById('emp-form-title').textContent = esEdicion ? 'Editar Empleado' : 'Nuevo Empleado';
     document.getElementById('ef-nombre').value         = emp?.usu_nombre        ?? '';
     document.getElementById('ef-apellido').value       = emp?.usu_apellido      ?? '';
-    document.getElementById('ef-rol').value            = emp?.rol_id            ?? 'rol002';
+    const rolIdsPrevios = emp?.rol_ids ?? ['rol002'];
+    document.getElementById('ef-rol-rol002').checked = rolIdsPrevios.includes('rol002');
+    document.getElementById('ef-rol-rol003').checked = rolIdsPrevios.includes('rol003');
+    document.getElementById('ef-rol-rol005').checked = rolIdsPrevios.includes('rol005');
     document.getElementById('ef-fecha-ingreso').value  = emp?.emp_fecha_ingreso ?? _fechaLocalISO();
     document.getElementById('ef-telefono').value       = emp?.usu_telefono      ?? '';
     document.getElementById('ef-email').value          = emp?.usu_email         ?? '';
@@ -1922,9 +2298,9 @@ window.VistaAdmin = (function () {
 
     const nombre   = document.getElementById('ef-nombre').value.trim();
     const apellido = document.getElementById('ef-apellido').value.trim();
-    const rolEl    = document.getElementById('ef-rol');
-    const rolId    = rolEl.value;
-    const cargo    = rolEl.options[rolEl.selectedIndex].text.trim();
+    const ROL_LABEL = { rol002: 'Cajero', rol003: 'Mesero', rol005: 'Cocinero' };
+    const rolIds = Object.keys(ROL_LABEL).filter(id => document.getElementById(`ef-rol-${id}`)?.checked);
+    const cargo    = rolIds.map(id => ROL_LABEL[id]).join(' + ');
     const fecha    = document.getElementById('ef-fecha-ingreso').value;
     const telefono = document.getElementById('ef-telefono').value.trim();
     const email    = document.getElementById('ef-email').value.trim();
@@ -1948,6 +2324,11 @@ window.VistaAdmin = (function () {
 
     if (apellido && !_EF_SOLO_LETRAS.test(apellido)) {
       _efSetError('apellido', 'Solo letras y espacios, sin números.');
+      valido = false;
+    }
+
+    if (!rolIds.length) {
+      _efSetError('rol', 'Elige al menos un rol.');
       valido = false;
     }
 
@@ -2004,7 +2385,7 @@ window.VistaAdmin = (function () {
       ({ data: res, error: err } = await window.db.rpc('actualizar_empleado', {
         p_emp_id:        _empEditId,
         p_cargo:         cargo,
-        p_rol_id:        rolId,
+        p_rol_ids:       rolIds,
         p_observaciones: obs
       }));
     } else {
@@ -2015,7 +2396,7 @@ window.VistaAdmin = (function () {
         p_telefono:      telefono,
         p_usuario:       usuario,
         p_password:      password,
-        p_rol_id:        rolId,
+        p_rol_ids:       rolIds,
         p_cargo:         cargo,
         p_fecha_ingreso: fecha,
         p_observaciones: obs
@@ -2067,7 +2448,7 @@ window.VistaAdmin = (function () {
                 ${!activo ? '<span class="usu-badge-inactivo">Inactivo</span>' : ''}
               </span>
               <span class="usu-sub">
-                ${e.emp_cargo} · <strong>${e.rol}</strong> · desde ${_fmt(e.emp_fecha_ingreso)}
+                <strong>${e.emp_cargo}</strong> · desde ${_fmt(e.emp_fecha_ingreso)}
               </span>
               ${e.emp_observaciones ? `<span class="emp-obs">${e.emp_observaciones}</span>` : ''}
             </div>
@@ -2157,7 +2538,7 @@ window.VistaAdmin = (function () {
       return;
     }
 
-    const ROLES_EMPLEADO = new Set(['administrador', 'cajero', 'mesero']);
+    const ROLES_EMPLEADO = new Set(['administrador', 'cajero', 'mesero', 'cocinero']);
     const data = rpcData
       .filter(u => !ROLES_EMPLEADO.has((u.rol ?? 'usuario').toLowerCase()))
       .map(u => ({

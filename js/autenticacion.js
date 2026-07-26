@@ -123,11 +123,37 @@ window.ModuloAutenticacion = (function () {
           telefono: u.usu_telefono ?? '',
           usuario:  u.usu_usuario,
           rol:      u.rol_nombre ?? 'usuario',
+          roles:    u.roles ?? [u.rol_nombre ?? 'usuario'],
           token:    u.sesion_token ?? null
         }
       };
     } catch (e) {
       console.error('login error:', e);
+      return { ok: false, msg: 'Error de conexión. Intenta de nuevo.' };
+    }
+  };
+
+  /* ── Cambiar modo de sesión ──────────────────────────────────
+     Para empleados con más de un rol asignado (ej. mesero + cajero):
+     cambia cuál rol está activo en la sesión actual sin re-loguearse,
+     siempre que ese rol le pertenezca (lo valida el RPC server-side).
+  ──────────────────────────────────────────────────────────── */
+  const cambiarModoSesion = async (nuevoRol) => {
+    const session = getSession();
+    if (!session?.token) return { ok: false, msg: 'Sesión inválida.' };
+    try {
+      const { data, error } = await window.db.rpc('cambiar_modo_sesion', {
+        p_token:      session.token,
+        p_rol_nombre: nuevoRol
+      });
+      if (error || !data?.ok) {
+        return { ok: false, msg: data?.msg ?? 'No se pudo cambiar de modo.' };
+      }
+      const nuevaSesion = { ...session, rol: nuevoRol };
+      setSession(nuevaSesion);
+      return { ok: true, session: nuevaSesion };
+    } catch (e) {
+      console.error('cambiarModoSesion error:', e);
       return { ok: false, msg: 'Error de conexión. Intenta de nuevo.' };
     }
   };
@@ -238,5 +264,5 @@ window.ModuloAutenticacion = (function () {
     }
   };
 
-  return { cargarUsuarios, leerUsuarios, getSession, setSession, clearSession, login, registrar, loginConGoogle, handleGoogleCallback };
+  return { cargarUsuarios, leerUsuarios, getSession, setSession, clearSession, login, cambiarModoSesion, registrar, loginConGoogle, handleGoogleCallback };
 })();

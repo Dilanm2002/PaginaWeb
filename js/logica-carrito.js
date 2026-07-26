@@ -37,13 +37,25 @@ window.LogicaCarrito = (function () {
       .join('|');
 
   /**
-   * Clave completa de una línea: exclusiones + si es "para llevar" — un
-   * mismo plato puede pedirse una vez para la mesa y otra para llevar en
-   * el mismo pedido (ej. "un almuerzo para servirse y otro para llevar"),
-   * así que deben quedar en líneas separadas, no mezclarse.
+   * Clave de una combinación de opciones elegidas (grupos "elige 1 de N",
+   * ej. bebida del desayuno) — mismo patrón que _exclKey, para que el
+   * orden en que vengan no afecte la comparación.
    */
-  const _lineKey = (exclusiones = [], paraLlevar = false) =>
-    _exclKey(exclusiones) + (paraLlevar ? '::llevar' : '');
+  const _opcionesKey = (opcionesElegidas = []) =>
+    [...opcionesElegidas]
+      .map(o => o?.opcionId ?? o?.opcionNombre ?? '')
+      .sort()
+      .join('|');
+
+  /**
+   * Clave completa de una línea: exclusiones + si es "para llevar" + qué
+   * opciones se eligieron — un mismo plato puede pedirse una vez para la
+   * mesa y otra para llevar (o con distinta bebida elegida) en el mismo
+   * pedido, así que deben quedar en líneas separadas, no mezclarse.
+   */
+  const _lineKey = (exclusiones = [], paraLlevar = false, opcionesElegidas = []) =>
+    _exclKey(exclusiones) + (paraLlevar ? '::llevar' : '') +
+    (opcionesElegidas.length ? '::op:' + _opcionesKey(opcionesElegidas) : '');
 
   // Regla de negocio fija: un almuerzo (sopa + segundo) vale menos si el
   // cliente pide solo el segundo, sin la sopa. No es configurable por
@@ -78,17 +90,17 @@ window.LogicaCarrito = (function () {
    * @param {Object} producto — Debe tener id, nombre, precio, imagen.
    * @returns {Array} Carrito actualizado.
    */
-  const agregarItem = (producto, exclusiones = [], paraLlevar = false) => {
+  const agregarItem = (producto, exclusiones = [], paraLlevar = false, opcionesElegidas = []) => {
     const items = leerCarrito();
-    const key   = _lineKey(exclusiones, paraLlevar);
-    const idx   = items.findIndex(i => i.id === producto.id && _lineKey(i.exclusiones, i.paraLlevar) === key);
+    const key   = _lineKey(exclusiones, paraLlevar, opcionesElegidas);
+    const idx   = items.findIndex(i => i.id === producto.id && _lineKey(i.exclusiones, i.paraLlevar, i.opcionesElegidas) === key);
     if (idx >= 0) {
       items[idx].cantidad += 1;
     } else {
       const { id, nombre, imagen } = producto;
       const precio = calcularPrecioConExclusiones(producto, exclusiones);
       const lineId = id + (key ? '::' + key : '');
-      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, paraLlevar, lineId });
+      items.push({ id, nombre, precio, imagen, cantidad: 1, exclusiones, paraLlevar, opcionesElegidas, lineId });
     }
     guardarCarrito(items);
     return items;
@@ -107,7 +119,7 @@ window.LogicaCarrito = (function () {
     const idx   = items.findIndex(i => (i.lineId || i.id) === lineId);
     if (idx >= 0) {
       items[idx].paraLlevar = paraLlevar;
-      const key = _lineKey(items[idx].exclusiones, paraLlevar);
+      const key = _lineKey(items[idx].exclusiones, paraLlevar, items[idx].opcionesElegidas);
       items[idx].lineId = items[idx].id + (key ? '::' + key : '');
     }
     guardarCarrito(items);

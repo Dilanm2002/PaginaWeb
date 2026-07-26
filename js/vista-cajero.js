@@ -18,6 +18,12 @@ window.VistaCajero = (function () {
     return color ? ` style="--cat-c:${color}"` : '';
   };
 
+  // "Agua Aromática" a secas no dice a qué grupo pertenece cuando el plato
+  // tiene varios (bebida, huevos, ...) — se antepone el nombre del grupo
+  // para que quede claro qué se eligió en cada uno.
+  const _fmtOpcionesElegidas = (opcionesElegidas = []) =>
+    opcionesElegidas.map(o => o.grupoNombre ? `${o.grupoNombre}: ${o.opcionNombre}` : o.opcionNombre).join(', ');
+
   const METODO_NOMBRE = {
     met001: 'Efectivo',
     met002: 'Tarjeta de crédito',
@@ -111,52 +117,56 @@ window.VistaCajero = (function () {
       </div>`;
   }
 
+  function _initGastosDiaNav() {
+    const ant = document.getElementById('gastos-dia-ant');
+    const sig = document.getElementById('gastos-dia-sig');
+    if (ant && !ant._bound) {
+      ant._bound = true;
+      ant.addEventListener('click', () => { _diaOffset--; renderGastos(); });
+    }
+    if (sig && !sig._bound) {
+      sig._bound = true;
+      sig.addEventListener('click', () => {
+        if (_diaOffset < 0) { _diaOffset++; renderGastos(); }
+      });
+    }
+  }
+
   function renderGastos() {
     const SC = window.SC;
-    const fecha = _getFecha(_diaOffset);
-    const gastos    = SC.leerGastos().filter(g => g.fecha === fecha);
-    const historial = SC.leerHistorial().filter(h => h.fecha === fecha);
+    _initGastosDiaNav();
+    const fecha  = _getFecha(_diaOffset);
+    const gastos = SC.leerGastos().filter(g => g.fecha === fecha);
 
-    const formEl = document.querySelector('.gastos-form');
+    const diaLabelEl = document.getElementById('gastos-dia-label');
+    const diaSigBtn  = document.getElementById('gastos-dia-sig');
+    if (diaLabelEl) diaLabelEl.textContent = _getLabelFecha(_diaOffset);
+    if (diaSigBtn)  diaSigBtn.disabled = _diaOffset >= 0;
+
+    const formEl    = document.querySelector('.gastos-nueva-fila');
+    const catFormEl = document.getElementById('gastos-nueva-cat-fila');
     if (formEl) formEl.style.display = _diaOffset !== 0 ? 'none' : '';
+    if (_diaOffset !== 0 && catFormEl) catFormEl.style.display = 'none';
 
-    const totalVentas = historial.reduce((s,h) => s + h.total, 0);
-    const totalGastos = gastos.reduce((s,g) => s + g.monto, 0);
-    const ganancia    = totalVentas - totalGastos;
-
-    const resumenEl = document.getElementById('gastos-resumen');
-    const listaEl   = document.getElementById('gastos-lista');
-    if (!resumenEl || !listaEl) return;
-
-    resumenEl.innerHTML = `
-      <div class="gastos-kpi">
-        <div class="gastos-kpi__lbl">Ingresos del día</div>
-        <div class="gastos-kpi__val neutral">$${totalVentas.toFixed(2)}</div>
-      </div>
-      <div class="gastos-kpi">
-        <div class="gastos-kpi__lbl">Gastos del día</div>
-        <div class="gastos-kpi__val red">$${totalGastos.toFixed(2)}</div>
-      </div>
-      <div class="gastos-kpi">
-        <div class="gastos-kpi__lbl">Ganancia neta</div>
-        <div class="gastos-kpi__val ${ganancia >= 0 ? 'green' : 'red'}">$${ganancia.toFixed(2)}</div>
-      </div>`;
+    const listaEl = document.getElementById('gastos-lista');
+    if (!listaEl) return;
 
     const gastosRev = [...gastos].reverse();
     listaEl.innerHTML = `
       <table class="gastos-tabla">
         <thead>
           <tr>
-            <th>Descripción</th><th>Fecha</th><th>Hora</th>
+            <th>Descripción</th><th>Categoría</th><th>Fecha</th><th>Hora</th>
             <th style="text-align:right">Monto</th><th>Acciones</th>
           </tr>
         </thead>
         <tbody>
           ${!gastosRev.length
-            ? `<tr><td colspan="5" class="gastos-empty" style="text-align:center;padding:.9rem 0">No hay gastos registrados este día.</td></tr>`
+            ? `<tr><td colspan="6" class="gastos-empty" style="text-align:center;padding:.9rem 0">No hay gastos registrados este día.</td></tr>`
             : gastosRev.map(g => `
             <tr>
               <td class="td-desc">${SC.escapeHtml(g.descripcion)}</td>
+              <td class="td-hora">${g.categoria ? SC.escapeHtml(g.categoria) : '<span style="color:var(--text-muted)">—</span>'}</td>
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
@@ -444,13 +454,14 @@ window.VistaCajero = (function () {
               <span class="rol-pill ${p.rol}">${ROL_LABEL[p.rol] ?? p.rol}</span>
               <span>${SC.escapeHtml(p.nombreUsuario)}</span>
             </div>
+            ${p.clienteNombre ? `<div class="cajero-order-cliente">👤 Pedido de: <strong>${SC.escapeHtml(p.clienteNombre)}</strong></div>` : ''}
           </div>
           <div class="cajero-order-time">🕐 ${p.hora}</div>
         </div>
         <div class="cajero-order-items">
           ${items.map((it, idx) => `
             <div class="cajero-order-item">
-              <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
+              <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${it.opcionesElegidas?.length ? `<span class="cajero-excl"> ${_fmtOpcionesElegidas(it.opcionesElegidas)}</span>` : ''}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
               <div class="caj-qty">
                 <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
                 <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
@@ -497,6 +508,18 @@ window.VistaCajero = (function () {
         const peds = SC.leerCaja();
         const ped = peds.find(p => String(p.id) === String(pid));
         if (!ped || !Array.isArray(ped.items)) return;
+
+        // Eliminar el único ítem del pedido lo vaciaría por completo —
+        // eso se trata como anular el pedido entero (con confirmación y
+        // motivo, repone stock), no como un borrado silencioso de línea.
+        if (ped.items.length === 1) {
+          const motivo = await _confirmarAnularPedido(ped);
+          if (motivo === false) return; // canceló
+          const ok = await SC.anularPedido(ped.id, motivo);
+          if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
+          return;
+        }
+
         ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);
         renderCajeroView();
@@ -518,6 +541,18 @@ window.VistaCajero = (function () {
             return;
           }
         }
+
+        // Bajar a cero el único ítem del pedido lo vaciaría por completo —
+        // eso se trata como anular el pedido entero (con confirmación y
+        // motivo, repone stock), no como un borrado silencioso de línea.
+        if (action === 'dec' && ped.items[idx].cantidad === 1 && ped.items.length === 1) {
+          const motivo = await _confirmarAnularPedido(ped);
+          if (motivo === false) return; // canceló
+          const ok = await SC.anularPedido(ped.id, motivo);
+          if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
+          return;
+        }
+
         ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
         if (ped.items[idx].cantidad <= 0) {
           ped.items.splice(idx, 1);
@@ -622,7 +657,7 @@ window.VistaCajero = (function () {
     if (backdrop) {
       backdrop.classList.add('open');
       backdrop.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = document.documentElement.style.overflow = 'hidden';
       setTimeout(() => input?.focus(), 100);
     }
   }
@@ -632,7 +667,7 @@ window.VistaCajero = (function () {
     if (backdrop) {
       backdrop.classList.remove('open');
       backdrop.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      document.body.style.overflow = document.documentElement.style.overflow = '';
     }
     _correoNotaCtx = null;
   }
@@ -690,7 +725,7 @@ window.VistaCajero = (function () {
     if (backdrop) {
       backdrop.classList.add('open');
       backdrop.setAttribute('aria-hidden', 'false');
-      document.body.style.overflow = 'hidden';
+      document.body.style.overflow = document.documentElement.style.overflow = 'hidden';
       setTimeout(() => montoInp?.focus(), 100);
     }
   }
@@ -700,7 +735,7 @@ window.VistaCajero = (function () {
     if (backdrop) {
       backdrop.classList.remove('open');
       backdrop.setAttribute('aria-hidden', 'true');
-      document.body.style.overflow = '';
+      document.body.style.overflow = document.documentElement.style.overflow = '';
     }
     _pedidoParaCobrar = null;
   }
@@ -742,7 +777,7 @@ td{padding:2px 0;font-size:11px;vertical-align:top}
 <hr class="sep">
 <table><thead><tr><th>Descripción</th><th class="tr">Cant</th><th class="tr">$U</th><th class="tr">$Total</th></tr></thead>
 <tbody>${items.map(i=>`<tr>
-<td>${i.nombre}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>`:''}
+<td>${i.nombre}${i.opcionesElegidas?.length?`<br><span class="excl">${_fmtOpcionesElegidas(i.opcionesElegidas)}</span>`:''}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>`:''}
 </td><td class="tr">${i.cantidad}</td><td class="tr">${i.precio.toFixed(2)}</td>
 <td class="tr">${(i.precio*i.cantidad).toFixed(2)}</td></tr>`).join('')}</tbody>
 <tbody class="big"><tr><td colspan="3">TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr></tbody>
@@ -841,7 +876,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 </tr></thead>
 <tbody>${items.map((i,idx)=>`<tr>
   <td class="tc">${idx+1}</td>
-  <td>${i.nombre}${i.paraLlevar && !pedido.paraLlevar?' <em>(para llevar)</em>':''}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
+  <td>${i.nombre}${i.paraLlevar && !pedido.paraLlevar?' <em>(para llevar)</em>':''}${i.opcionesElegidas?.length?` <em>(${_fmtOpcionesElegidas(i.opcionesElegidas)})</em>`:''}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
   <td class="tc">${i.cantidad}</td>
   <td class="tr">$${i.precio.toFixed(2)}</td>
   <td class="tr">$${(i.precio*i.cantidad).toFixed(2)}</td>
@@ -1020,7 +1055,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
       if (backdrop) {
         backdrop.classList.add('open');
         backdrop.setAttribute('aria-hidden', 'false');
-        document.body.style.overflow = 'hidden';
+        document.body.style.overflow = document.documentElement.style.overflow = 'hidden';
       }
       window.SC.toast(`Pedido cobrado ✓ — ${metodoPagoNombre}`, 'success');
     }
@@ -1030,7 +1065,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
       if (backdrop) {
         backdrop.classList.remove('open');
         backdrop.setAttribute('aria-hidden', 'true');
-        document.body.style.overflow = '';
+        document.body.style.overflow = document.documentElement.style.overflow = '';
       }
     }
 

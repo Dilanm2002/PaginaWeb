@@ -12,8 +12,16 @@ window.VistaMenu = (function () {
   // pedido activo (ped.items), que no pasan por LogicaCarrito.
   const _exclKeyPed = (exclusiones = []) =>
     [...(exclusiones || [])].map(e => (typeof e === 'string' ? e : (e?.id ?? e?.nombre ?? ''))).sort().join('|');
+  // Misma idea, para las opciones elegidas (grupos "elige 1 de N").
+  const _opcionesKeyPed = (opcionesElegidas = []) =>
+    [...(opcionesElegidas || [])].map(o => o?.opcionId ?? o?.opcionNombre ?? '').sort().join('|');
   const _puedeExcluirIngredientes = p =>
     Array.isArray(p.ingredientes) && p.ingredientes.some(i => i && i.id) && p.permiteExcluir === true;
+  const _tieneGruposOpciones = p =>
+    Array.isArray(p.gruposOpciones) && p.gruposOpciones.length > 0;
+  // Cualquiera de las dos cosas obliga a personalizar antes de agregar:
+  // excluir ingredientes, o elegir una opción de cada grupo (ej. bebida).
+  const _necesitaPersonalizar = p => _puedeExcluirIngredientes(p) || _tieneGruposOpciones(p);
 
   // Color de una categoría (elegido por el admin al crearla) como estilo
   // inline --cat-c — el CSS de cada badge/título lee esa variable con un
@@ -23,12 +31,41 @@ window.VistaMenu = (function () {
     return color ? ` style="--cat-c:${color}"` : '';
   };
 
+  // En móvil el popover de ingredientes se ancla cerca del botón que se
+  // tocó (no al centro de la pantalla) pero con límites para que nunca
+  // se corte contra los bordes del viewport. En escritorio se deja el
+  // anclaje normal por CSS (junto al botón), sin tocar sus estilos.
+  function _posicionarPopoverMovil(pop, trigger) {
+    if (window.innerWidth > 600) {
+      pop.style.position = pop.style.left = pop.style.right = '';
+      pop.style.top = pop.style.bottom = pop.style.width = pop.style.transform = '';
+      return;
+    }
+    const r = trigger.getBoundingClientRect();
+    const margen = 16;
+    const popW = Math.min(260, window.innerWidth - margen * 2);
+    let left = r.left + r.width / 2 - popW / 2;
+    left = Math.max(margen, Math.min(left, window.innerWidth - popW - margen));
+
+    const popH = pop.offsetHeight || 150;
+    const arriba = r.top - popH - 10;
+    const top = arriba >= margen ? arriba : Math.min(r.bottom + 10, window.innerHeight - popH - margen);
+
+    pop.style.position  = 'fixed';
+    pop.style.left      = `${left}px`;
+    pop.style.right     = 'auto';
+    pop.style.width     = `${popW}px`;
+    pop.style.top       = `${top}px`;
+    pop.style.bottom    = 'auto';
+    pop.style.transform = 'none';
+  }
+
   // Agrega un producto (con o sin exclusiones) al destino correcto: directo
   // a la mesa activa si el mesero está agregando ahí (meseroMesaTarget), o
   // al carrito en cualquier otro caso. Centraliza la lógica que antes vivía
   // duplicada en 3 lugares (fila compacta del mesero, popover de exclusión,
   // modal de producto).
-  function _agregarConExclusiones(prod, exclusiones) {
+  function _agregarConExclusiones(prod, exclusiones, opcionesElegidas = []) {
     const SC = window.SC;
     const s = SC.getStock(prod.id);
     if (!s.disponible || s.stock <= 0) { SC.toast(`"${prod.nombre}" está agotado`, 'error'); return false; }
@@ -40,14 +77,14 @@ window.VistaMenu = (function () {
     if (meseroMesaTarget) {
       const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));
       if (!ped) return false;
-      const key = _exclKeyPed(exclusiones);
+      const key = _exclKeyPed(exclusiones) + '::' + _opcionesKeyPed(opcionesElegidas);
       const totalEnPedido = ped.items.filter(x => x.id === prod.id).reduce((s2, x) => s2 + x.cantidad, 0);
       if (totalEnPedido >= s.stock) { SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error'); return false; }
-      const existente = ped.items.find(x => x.id === prod.id && _exclKeyPed(x.exclusiones) === key);
+      const existente = ped.items.find(x => x.id === prod.id && (_exclKeyPed(x.exclusiones) + '::' + _opcionesKeyPed(x.opcionesElegidas)) === key);
       if (existente) existente.cantidad += 1;
       else {
         const precio = LogicaCarrito.calcularPrecioConExclusiones(prod, exclusiones);
-        ped.items.push({ id: prod.id, nombre: prod.nombre, precio, cantidad: 1, exclusiones });
+        ped.items.push({ id: prod.id, nombre: prod.nombre, precio, cantidad: 1, exclusiones, opcionesElegidas });
       }
       SC.actualizarStock(prod.id, 1);
       renderMesasActivas();
@@ -59,7 +96,7 @@ window.VistaMenu = (function () {
     const carrito = LogicaCarrito.leerCarrito();
     const totalEnCarrito = carrito.filter(x => x.id === prod.id).reduce((s2, x) => s2 + x.cantidad, 0);
     if (totalEnCarrito >= s.stock) return false;
-    LogicaCarrito.agregarItem(prod, exclusiones);
+    LogicaCarrito.agregarItem(prod, exclusiones, false, opcionesElegidas);
     SC.renderCarrito();
     syncQtys();
     SC.toast(exclusiones.length ? msg : `"${prod.nombre}" agregado a tu orden`, 'success');
@@ -216,10 +253,10 @@ window.VistaMenu = (function () {
         if (!prod) return;
         const s = SC.getStock(prod.id);
         if (!s.disponible || s.stock <= 0) return;
-        // Si el plato permite excluir ingredientes, "Ordenar" no debe
-        // agregarlo directo — hay que abrir el modal para que el cliente
-        // elija qué excluir antes de mandarlo a caja.
-        if (_puedeExcluirIngredientes(prod)) { abrirModalProducto(prod); return; }
+        // Si el plato permite excluir ingredientes y/o tiene grupos de
+        // opciones, "Ordenar" no debe agregarlo directo — hay que abrir el
+        // modal para que el cliente elija antes de mandarlo a caja.
+        if (_necesitaPersonalizar(prod)) { abrirModalProducto(prod); return; }
         const enCarrito = LogicaCarrito.leerCarrito().find(x => x.id === prod.id);
         if (enCarrito && enCarrito.cantidad >= s.stock) return;
         LogicaCarrito.agregarItem(prod); SC.renderCarrito();
@@ -259,6 +296,22 @@ window.VistaMenu = (function () {
       ? ingsConId.map(i => i.nombre).join(' · ')
       : '';
 
+    const grupos = Array.isArray(p.gruposOpciones) ? p.gruposOpciones : [];
+    const gruposHtml = grupos.map((g, gi) => `
+      <div class="modal-grupo-opciones">
+        <p class="modal-ingredients-title">${SC.escapeHtml(g.nombre)}</p>
+        <div class="modal-ingredients-chips">
+          ${g.opciones.map((op, oi) => `
+            <label class="ing-chip">
+              <input type="radio" name="modal-grupo-${gi}" class="opcion-radio"
+                data-grupo-id="${g.id}" data-grupo-nombre="${SC.escapeHtml(g.nombre)}"
+                data-opcion-id="${op.id}" data-opcion-nombre="${SC.escapeHtml(op.nombre)}"
+                ${oi === 0 ? 'checked' : ''}>
+              <span class="ing-chip__label">${SC.escapeHtml(op.nombre)}</span>
+            </label>`).join('')}
+        </div>
+      </div>`).join('');
+
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
         <div class="modal-img-bg" style="background-image:url('${p.imagen}')"></div>
@@ -282,6 +335,7 @@ window.VistaMenu = (function () {
             : `<p class="modal-ing-texto">${ingTexto}</p>`
           }
         ` : ''}
+        ${gruposHtml}
         <div class="modal-footer">
           <div class="modal-price" id="modal-price-display">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
@@ -317,10 +371,17 @@ window.VistaMenu = (function () {
       });
     }
 
+    const _leerOpcionesElegidasModal = () => {
+      return grupos.map((g, gi) => {
+        const sel = modalBox.querySelector(`input[name="modal-grupo-${gi}"]:checked`);
+        return sel ? { grupoId: g.id, grupoNombre: g.nombre, opcionId: sel.dataset.opcionId, opcionNombre: sel.dataset.opcionNombre } : null;
+      }).filter(Boolean);
+    };
+
     document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
-      _agregarConExclusiones(p, _leerExclusionesModal());
+      _agregarConExclusiones(p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -382,6 +443,10 @@ window.VistaMenu = (function () {
           <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
           <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
+          <button class="mesero-mesa-card__despachar${p.despachado ? ' despachado' : ''}" type="button"
+            data-pedido-id="${p.id}" data-despachado="${p.despachado ? 'true' : 'false'}">
+            ${p.despachado ? '✓ Despachado' : 'Despachado'}
+          </button>
         </div>`;
       }).join('');
 
@@ -437,6 +502,18 @@ window.VistaMenu = (function () {
         };
         card.addEventListener('click', activar);
         card.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); activar(); } });
+      });
+
+      seccion.querySelector('.mesero-mesas-chips').querySelectorAll('.mesero-mesa-card__despachar').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const pid    = btn.dataset.pedidoId;
+          const actual = btn.dataset.despachado === 'true';
+          btn.disabled = true;
+          const ok = await SC.despacharPedido(pid, !actual);
+          btn.disabled = false;
+          if (ok) renderMesasActivas();
+        });
       });
     }
 
@@ -534,12 +611,27 @@ window.VistaMenu = (function () {
                 const _s = SC.getStock(p.id);
                 const _agotado = !_s.disponible || _s.stock <= 0;
                 const _stockColor = _s.stock <= 0 ? '#dc2626' : _s.stock <= 5 ? '#d97706' : '#16a34a';
-                const _stockTxt = _s.stock <= 0 ? 'Agotado' : `${_s.stock} en stock`;
                 const _puedeExcl = _puedeExcluirIngredientes(p);
-                // Si el plato admite excluir ingredientes, el popover deja
-                // desmarcarlos ahí mismo y agregarlo con un botón — rápido,
-                // sin salir de la lista ni abrir el modal grande del cliente.
-                const _popContent = _puedeExcl ? `
+                const _grupos    = Array.isArray(p.gruposOpciones) ? p.gruposOpciones : [];
+                const _necesitaPers = _puedeExcl || _grupos.length > 0;
+                // Si el plato admite excluir ingredientes y/o tiene grupos de
+                // opciones (ej. "elige tu bebida"), el popover deja resolverlo
+                // ahí mismo y agregarlo con un botón — rápido, sin salir de la
+                // lista ni abrir el modal grande del cliente.
+                const _gruposPopHtml = _grupos.map((g, gi) => `
+                    <strong>${g.nombre}</strong>
+                    <div class="mesero-ing-pop__chips">
+                      ${g.opciones.map((op, oi) => `
+                        <label class="mesero-ing-check">
+                          <input type="radio" name="mpop-grupo-${p.id}-${gi}" class="mesero-opcion-radio"
+                            data-grupo-id="${g.id}" data-grupo-nombre="${g.nombre}"
+                            data-opcion-id="${op.id}" data-opcion-nombre="${op.nombre}"
+                            ${oi === 0 ? 'checked' : ''}>
+                          ${op.nombre}
+                        </label>`).join('')}
+                    </div>`).join('');
+                const _popContent = _necesitaPers ? `
+                    ${_puedeExcl ? `
                     <strong>Sin ingredientes que no quiera</strong>
                     <div class="mesero-ing-pop__chips">
                       ${p.ingredientes.filter(i => i && i.id).map(i => `
@@ -547,21 +639,24 @@ window.VistaMenu = (function () {
                           <input type="checkbox" class="mesero-excl-check" data-ing-id="${i.id}" data-ing-nombre="${i.nombre}" checked>
                           ${i.nombre}
                         </label>`).join('')}
-                    </div>
+                    </div>` : ''}
+                    ${_gruposPopHtml}
                     <div class="mesero-ing-pop__precio" id="mpop-precio-${p.id}">$${p.precio.toFixed(2)}</div>
                     <button class="mesero-ing-pop__add" data-id="${p.id}" type="button">+ Agregar</button>
                   ` : `
                     <strong>Ingredientes</strong>
                     ${p.ingredientes.map(i => i.nombre).join(' · ')}
-                    <span style="display:block;margin-top:.4rem;font-weight:700;color:${_stockColor};font-size:.75rem;">${_stockTxt}</span>
                   `;
+                const _stockBadge = _agotado
+                  ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>'
+                  : ` <span style="font-size:.68rem;font-weight:700;color:${_stockColor};background:#f3f0ea;border-radius:999px;padding:.1rem .45rem;">${_s.stock} disp.</span>`;
                 return `
               <div class="mesero-row${_agotado ? ' mesero-row--agotado' : ''}" data-id="${p.id}">
-                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_agotado ? ' <span style="font-size:.68rem;font-weight:700;color:#dc2626;background:#fee2e2;border-radius:999px;padding:.1rem .45rem;">Agotado</span>' : ''}</span>
+                <span class="mesero-row__name">${p.nombre}${p.createdAt && (Date.now() - new Date(p.createdAt).getTime()) < 5 * 86400000 ? ' <span class="mesero-badge-nuevo">Nuevo</span>' : ''}${_stockBadge}</span>
                 <span class="mesero-row__price">$${p.precio.toFixed(2)}</span>
-                <span class="mesero-info-btn${_puedeExcl ? ' mesero-info-btn--excl' : ''}" data-id="${p.id}" role="button" tabindex="0" aria-label="${_puedeExcl ? 'Elegir ingredientes de' : 'Ver ingredientes de'} ${p.nombre}" title="${_puedeExcl ? 'Personalizar' : 'Ingredientes'}">
-                  ${_puedeExcl ? '⚙' : 'i'}
-                  <div class="mesero-ing-pop${_puedeExcl ? ' mesero-ing-pop--excl' : ''}" id="mpop-${p.id}">${_popContent}</div>
+                <span class="mesero-info-btn${_necesitaPers ? ' mesero-info-btn--excl' : ''}" data-id="${p.id}" role="button" tabindex="0" aria-label="${_necesitaPers ? 'Personalizar' : 'Ver ingredientes de'} ${p.nombre}" title="${_necesitaPers ? 'Personalizar' : 'Ingredientes'}">
+                  ${_necesitaPers ? '⚙' : 'i'}
+                  <div class="mesero-ing-pop${_necesitaPers ? ' mesero-ing-pop--excl' : ''}" id="mpop-${p.id}">${_popContent}</div>
                 </span>
                 <div class="mesero-qty">
                   <button class="mesero-qty__btn dec" data-id="${p.id}" aria-label="Quitar uno de ${p.nombre}">−</button>
@@ -619,13 +714,22 @@ window.VistaMenu = (function () {
         pop?.querySelectorAll('.mesero-excl-check:not(:checked)').forEach(cb => {
           exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
         });
-        _agregarConExclusiones(prod, exclusiones);
+        const opcionesElegidas = [];
+        pop?.querySelectorAll('.mesero-opcion-radio:checked').forEach(r => {
+          opcionesElegidas.push({ grupoId: r.dataset.grupoId, grupoNombre: r.dataset.grupoNombre, opcionId: r.dataset.opcionId, opcionNombre: r.dataset.opcionNombre });
+        });
+        _agregarConExclusiones(prod, exclusiones, opcionesElegidas);
         pop?.classList.remove('visible');
-        // Reinicia las casillas a "incluido" — así, si el mesero vuelve a
-        // abrir el popover para pedir el mismo plato con OTRAS exclusiones
-        // (ej. dos Scacciatas, cada una sin un ingrediente distinto), no
-        // arrastra la selección de la orden anterior.
+        // Reinicia las casillas/radios al estado por defecto — así, si el
+        // mesero vuelve a abrir el popover para pedir el mismo plato con
+        // OTRAS exclusiones/opciones (ej. dos desayunos, cada uno con una
+        // bebida distinta), no arrastra la selección del pedido anterior.
         pop?.querySelectorAll('.mesero-excl-check').forEach(cb => { cb.checked = true; });
+        const nombresGrupos = new Set([...(pop?.querySelectorAll('.mesero-opcion-radio') ?? [])].map(r => r.name));
+        nombresGrupos.forEach(nombreGrupo => {
+          const primero = pop.querySelector(`input[name="${nombreGrupo}"]`);
+          if (primero) primero.checked = true;
+        });
         const precioEl = document.getElementById(`mpop-precio-${prod.id}`);
         if (precioEl) precioEl.textContent = `$${prod.precio.toFixed(2)}`;
         return;
@@ -637,7 +741,7 @@ window.VistaMenu = (function () {
         const pop = infoBtn.querySelector('.mesero-ing-pop');
         const isOpen = pop.classList.contains('visible');
         grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
-        if (!isOpen) pop.classList.add('visible');
+        if (!isOpen) { _posicionarPopoverMovil(pop, infoBtn); pop.classList.add('visible'); }
         return;
       }
       grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
@@ -648,10 +752,11 @@ window.VistaMenu = (function () {
       if (!prod) return;
 
       if (btn.classList.contains('add')) {
-        // Si admite excluir ingredientes, "+" abre el popover (⚙) para
-        // elegir ahí mismo — el botón "+ Agregar" de adentro hace el
-        // agregado real. Rápido: sin modal grande, sin salir de la lista.
-        if (_puedeExcluirIngredientes(prod)) {
+        // Si admite excluir ingredientes y/o tiene grupos de opciones, "+"
+        // abre el popover (⚙) para resolverlo ahí mismo — el botón
+        // "+ Agregar" de adentro hace el agregado real. Rápido: sin modal
+        // grande, sin salir de la lista.
+        if (_necesitaPersonalizar(prod)) {
           const pop = document.getElementById(`mpop-${prod.id}`);
           const isOpen = pop?.classList.contains('visible');
           grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
@@ -687,6 +792,13 @@ window.VistaMenu = (function () {
       document.addEventListener('click', () => {
         grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
       }, { capture: true });
+      // El popover se posiciona una sola vez al abrirse (position:fixed,
+      // calculado desde el botón tocado) — si la página scrollea después
+      // se queda flotando en el mismo sitio en vez de moverse con el
+      // botón, así que se cierra apenas hay scroll.
+      window.addEventListener('scroll', () => {
+        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+      }, { capture: true, passive: true });
       renderProductosMesero._popoverListenerAdded = true;
     }
   }
@@ -767,11 +879,20 @@ window.VistaMenu = (function () {
         const pop = infoBtn.querySelector('.mesero-ing-pop');
         const isOpen = pop.classList.contains('visible');
         grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
-        if (!isOpen) pop.classList.add('visible');
+        if (!isOpen) { _posicionarPopoverMovil(pop, infoBtn); pop.classList.add('visible'); }
         return;
       }
       grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
     };
+
+    if (!renderMenuCajero._scrollListenerAdded) {
+      // Mismo motivo que en renderProductosMesero: el popover queda fijo
+      // en la posición donde se abrió, así que se cierra al scrollear.
+      window.addEventListener('scroll', () => {
+        grid.querySelectorAll('.mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+      }, { capture: true, passive: true });
+      renderMenuCajero._scrollListenerAdded = true;
+    }
   }
 
   function init() {

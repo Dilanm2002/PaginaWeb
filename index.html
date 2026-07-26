@@ -213,9 +213,15 @@
           <span id="cart-count" class="cart-count" aria-live="polite">0</span>
         </button>
 
+        <button id="btn-cambiar-modo" class="btn-logout" style="display:none">
+          <span id="btn-cambiar-modo-icon"></span><span id="btn-cambiar-modo-label"></span>
+        </button>
         <button id="btn-mi-perfil" class="btn-logout">Mi perfil</button>
         <button id="btn-abrir-auth" class="btn-logout">Iniciar Sesión</button>
-        <button id="btn-logout" class="btn-logout" style="display:none">Salir</button>
+        <button id="btn-logout" class="btn-logout" style="display:none" title="Salir" aria-label="Salir">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+          <span id="btn-logout-label">Salir</span>
+        </button>
 
       </div>
     </div>
@@ -374,6 +380,29 @@
       </div>
     </div>
 
+    <!-- ══ VISTA COCINA (solo lectura, sin acciones) ══ -->
+    <div id="cocina-view">
+      <div class="cocina-wrap">
+        <div class="cajero-header">
+          <h2 class="cajero-title">
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M4 21h16"/><path d="M6 21V10a6 6 0 0112 0v11"/><path d="M6 13h12"/>
+            </svg>
+            Pedidos en Cocina
+          </h2>
+          <div class="cajero-stats">
+            <div class="cajero-stat">
+              <div class="cajero-stat__val" id="cocina-stat-pedidos">0</div>
+              <div class="cajero-stat__lbl">Pedidos pendientes</div>
+            </div>
+          </div>
+        </div>
+        <div id="cocina-grid" class="cajero-grid" role="list" aria-live="polite">
+          <!-- pedidos generados por JS -->
+        </div>
+      </div>
+    </div>
+
     <!-- ══ VISTA ADMINISTRADOR ══ -->
     <div id="admin-view" class="adm-layout">
 
@@ -414,6 +443,10 @@
             <button class="adm-nav__item" data-mod="stock">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 7H4a2 2 0 00-2 2v6a2 2 0 002 2h16a2 2 0 002-2V9a2 2 0 00-2-2z"/><path d="M16 21V5a2 2 0 00-2-2h-4a2 2 0 00-2 2v16"/></svg>
               Stock
+            </button>
+            <button class="adm-nav__item" data-mod="menudia">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              Menú del Día
             </button>
           </div>
           <div class="adm-nav__group">
@@ -555,6 +588,15 @@
                 </button>
               </div>
             </div>
+
+            <!-- Menú del día de hoy -->
+            <div class="adm-quick-section">
+              <h2 class="dash-menudia-titulo">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 2v7c0 1.1.9 2 2 2h1a2 2 0 002-2V2M6 2v20M17 2a5 5 0 00-5 5v6h2v9M18 2v9"/></svg>
+                Menú del día de hoy
+              </h2>
+              <div id="dash-menudia-hoy"></div>
+            </div>
           </section>
 
           <!-- MÓDULO: Productos -->
@@ -599,6 +641,43 @@
             <div id="stock-section">
               <div id="stock-lista" class="stock-lista"></div>
             </div>
+          </section>
+
+          <!-- MÓDULO: Menú del Día -->
+          <section class="adm-module" id="mod-menudia" aria-label="Menú del día">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Menú del Día</h2>
+            </div>
+            <div class="md-editor">
+              <div class="md-editor__fecha">
+                <label for="md-fecha">Fecha</label>
+                <input type="date" id="md-fecha">
+              </div>
+              <div class="md-editor__campo">
+                <label for="md-sopa">🍲 Sopa</label>
+                <input type="text" id="md-sopa" list="md-sopa-datalist" placeholder="Elige o escribe un plato" autocomplete="off">
+                <datalist id="md-sopa-datalist"></datalist>
+              </div>
+              <div class="md-editor__campo">
+                <label for="md-plato-fuerte">🍽️ Plato fuerte</label>
+                <input type="text" id="md-plato-fuerte" list="md-plato-fuerte-datalist" placeholder="Elige o escribe un plato" autocomplete="off">
+                <datalist id="md-plato-fuerte-datalist"></datalist>
+              </div>
+              <div class="md-editor__campo">
+                <label for="md-ensalada">🥗 Ensalada</label>
+                <input type="text" id="md-ensalada" list="md-ensalada-datalist" placeholder="Elige o escribe un plato" autocomplete="off">
+                <datalist id="md-ensalada-datalist"></datalist>
+              </div>
+              <div class="md-editor__campo">
+                <label for="md-jugo">🥤 Jugo</label>
+                <input type="text" id="md-jugo" list="md-jugo-datalist" placeholder="Elige o escribe un plato" autocomplete="off">
+                <datalist id="md-jugo-datalist"></datalist>
+              </div>
+              <button class="adm-btn-primary" id="btn-guardar-menudia">Guardar</button>
+            </div>
+            <p style="font-size:.78rem;color:var(--text-muted);margin:-.8rem 0 1rem">Puedes elegir un plato ya existente del catálogo o escribir uno nuevo que no esté en el menú.</p>
+            <h3 class="md-registro-titulo">Registro de menús — últimos y próximos 14 días</h3>
+            <div id="md-semana-lista" class="md-semana-lista"></div>
           </section>
 
           <!-- MÓDULO: Empleados -->
@@ -676,15 +755,25 @@
             <!-- Formulario nuevo gasto -->
             <div class="gastos-nueva-fila">
               <input type="text" id="gasto-desc" class="gastos-input-desc" placeholder="Descripción del gasto (ej: Ingredientes, gas, mantenimiento...)" maxlength="80" />
+              <select id="gasto-categoria" class="gastos-input-categoria" aria-label="Categoría del gasto"></select>
               <div class="gastos-monto-wrap">
                 <span class="gastos-dolar">$</span>
                 <input type="number" id="gasto-monto" class="gastos-input-monto" placeholder="0.00" min="0.01" max="5000" step="0.01" />
               </div>
               <button class="btn-add-gasto" id="btn-add-gasto">+ Registrar</button>
             </div>
+            <div class="gastos-nueva-cat-fila" id="gastos-nueva-cat-fila" style="display:none">
+              <span class="gastos-nueva-cat-label">🏷️ Categoría nueva</span>
+              <input type="text" id="gasto-cat-nueva-nombre" class="gastos-input-desc" placeholder="Ej: Marketing, Mantenimiento…" maxlength="40" />
+              <button class="btn-add-gasto" id="btn-confirmar-cat-gasto" type="button">Crear</button>
+              <button class="btn-cancelar-cat-gasto" id="btn-cancelar-cat-gasto" type="button" aria-label="Cancelar">✕</button>
+            </div>
 
-            <!-- Resumen KPIs -->
-            <div class="gastos-kpis" id="gastos-resumen"></div>
+            <div class="resumen-fecha-nav" id="gastos-dia-nav" style="align-self:flex-start">
+              <button class="btn-fecha-nav" id="gastos-dia-ant" aria-label="Día anterior">‹</button>
+              <span id="gastos-dia-label">Hoy</span>
+              <button class="btn-fecha-nav" id="gastos-dia-sig" aria-label="Día siguiente" disabled>›</button>
+            </div>
 
             <!-- Tabla de gastos -->
             <div class="gastos-tabla-wrap">
@@ -724,11 +813,14 @@
               <span class="ef-field-err" id="ef-err-apellido"></span>
             </div>
             <div class="emp-form-group emp-form-full">
-              <label for="ef-rol">Rol y acceso <span class="ef-req">*</span></label>
-              <select id="ef-rol">
-                <option value="rol002">Cajero</option>
-                <option value="rol003">Mesero</option>
-              </select>
+              <label>Rol y acceso <span class="ef-req">*</span></label>
+              <div class="ef-rol-group" id="ef-rol-group">
+                <label class="ef-rol-check"><input type="checkbox" id="ef-rol-rol002" value="rol002"> Cajero</label>
+                <label class="ef-rol-check"><input type="checkbox" id="ef-rol-rol003" value="rol003"> Mesero</label>
+                <label class="ef-rol-check"><input type="checkbox" id="ef-rol-rol005" value="rol005"> Cocinero</label>
+              </div>
+              <span class="ef-rol-hint">Cocinero es un rol exclusivo — no se combina con Cajero/Mesero.</span>
+              <span class="ef-field-err" id="ef-err-rol"></span>
             </div>
             <div class="emp-form-group">
               <label for="ef-fecha-ingreso">Fecha de ingreso <span class="ef-req">*</span></label>
@@ -861,6 +953,12 @@
                 <input type="checkbox" id="pf-permite-excluir">
                 Permitir que el cliente excluya ingredientes al ordenar
               </label>
+            </div>
+            <div class="prod-form-group prod-form-full">
+              <label>Grupos de opciones <small style="font-weight:400;text-transform:none;letter-spacing:normal;">(el cliente elige una opción de cada grupo — ej. "Elige tu bebida")</small></label>
+              <div id="pf-grupos-lista"></div>
+              <button type="button" id="btn-agregar-grupo" class="btn-agregar-grupo-op">+ Agregar grupo de opciones</button>
+              <span id="pf-grupos-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
           </div>
         </div>
@@ -1019,9 +1117,15 @@
           <input type="text" id="llevar-nombre" placeholder="Ej: Carlos Pérez" autocomplete="name" />
           <span id="llevar-nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Ingresa el nombre del cliente para el pedido para llevar.</span>
         </div>
+        <div class="mesa-field" id="campo-nombre-mesa-cliente" style="display:none">
+          <label for="mesa-cliente-nombre">Nombre del cliente <span style="color:#dc2626">*</span></label>
+          <input type="text" id="mesa-cliente-nombre" placeholder="Ej: Carlos Pérez" autocomplete="name" />
+          <span id="mesa-cliente-nombre-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;">Ingresa el nombre del cliente para poder identificarlo en caja.</span>
+        </div>
         <div class="mesa-field" id="campo-mesa">
-          <label for="mesa-input">Número de Mesa</label>
-          <input type="number" id="mesa-input" min="1" max="16" step="1" placeholder="Ej: 5" autocomplete="off" />
+          <label>Número de Mesa</label>
+          <div class="mesa-grid" id="mesa-grid" role="group" aria-label="Elige una mesa"></div>
+          <input type="hidden" id="mesa-input" />
           <span id="mesa-input-error" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
         </div>
         <div id="mesa-asignada-info" style="display:none" class="mesa-asignada-info">
@@ -1208,6 +1312,7 @@
   <script src="js/vista-cajero.js"></script>
   <script src="js/vista-admin.js"></script>
   <script src="js/vista-menu.js"></script>
+  <script src="js/vista-cocina.js"></script>
 
   <script>
   'use strict';
@@ -1242,6 +1347,7 @@
   let _caja      = [];
   let _historial = [];
   let _gastos    = [];
+  let _categoriasGasto = []; // [{ id, nombre }] — catálogo de categorías de gasto (Pago empleados, Extras, ...)
   let _stock     = {}; // { [productoId]: { stock, disponible } }
   let _menuItems = [];
   let _categoriasColores = {}; // { [cat_nombre]: '#rrggbb' } — para pintar cada categoría con su propio color en todo el sitio
@@ -1263,10 +1369,20 @@
   function _rowAPedido(r) {
     const esParaLlevar = r.ped_nombre_invitado === 'Para llevar' || r.ped_nombre_invitado?.startsWith('PL:');
     const llevarNombreDB = r.ped_nombre_invitado?.startsWith('PL:') ? r.ped_nombre_invitado.slice(3) : null;
-    const nombreUsuario = llevarNombreDB
-      ?? (r.usu_id
-        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
-        : (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado')));
+    // nombreUsuario es SIEMPRE la cuenta que hizo el pedido cuando hay una
+    // (usu_id) — antes se priorizaba el nombre "para llevar" y un mesero
+    // que tomaba un pedido a nombre de un cliente aparecía con el nombre
+    // DEL CLIENTE en vez del suyo propio. El nombre para llevar / de mesa
+    // es de quién es el pedido, no de quién lo creó (ver clienteNombre).
+    const nombreUsuario = r.usu_id
+      ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.nombre ?? 'Usuario')
+      : (llevarNombreDB ?? (esParaLlevar ? 'Para llevar' : (r.ped_nombre_invitado ?? 'Invitado')));
+    // Cliente que el mesero/cajero identificó al crear el pedido (de mesa a
+    // su nombre, o para llevar a nombre de quién lo retira) — distinto de
+    // nombreUsuario, que ahí es la cuenta del empleado.
+    const clienteNombre = r.usu_id
+      ? (esParaLlevar ? llevarNombreDB : (r.ped_nombre_invitado || null))
+      : null;
     const factura = Array.isArray(r.facturas) ? r.facturas[0] : r.facturas;
     const pago    = factura ? (Array.isArray(factura.pagos) ? factura.pagos[0] : factura.pagos) : null;
     return {
@@ -1275,8 +1391,10 @@
       paraLlevar:    esParaLlevar,
       mesId:         r.mes_id,
       estado:        r.ped_estado,
+      despachado:    r.ped_despachado === true,
       idUsuario:     r.usu_id ?? null,
       nombreUsuario,
+      clienteNombre,
       rol:           r.usu_id
         ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.rol ?? 'usuario')
         : 'invitado',
@@ -1295,7 +1413,14 @@
         // exclusión si el pedido se edita/repite (ver enviarACaja).
         exclusiones: (d.det_exclusiones || [])
           .map(e => e.ingredientes ? { id: e.ingredientes.ing_id, nombre: e.ingredientes.ing_nombre } : null)
-          .filter(Boolean)
+          .filter(Boolean),
+        // Opción elegida por cada grupo "elige 1 de N" (ej. bebida del
+        // desayuno) — snapshot de nombres, no depende de que el grupo siga
+        // existiendo en el catálogo.
+        opcionesElegidas: (d.det_opciones_elegidas || []).map(o => ({
+          grupoId: o.grupo_id, grupoNombre: o.grupo_nombre,
+          opcionId: o.opcion_id, opcionNombre: o.opcion_nombre
+        }))
       })),
       total:     parseFloat(r.ped_total    ?? 0),
       iva:       parseFloat(r.ped_iva      ?? 0),
@@ -1311,11 +1436,13 @@
   const _PED_SELECT = `
     ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
-    usu_id, mes_id,
+    usu_id, mes_id, ped_despachado,
     mesas(mes_numero),
-    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre))),
+    detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre)), det_opciones_elegidas(grupo_id, grupo_nombre, opcion_id, opcion_nombre)),
     facturas(fact_numero, fact_email, pagos(metodos_pago(metodo_nombre)))
   `;
+
+  const _GASTO_SELECT = 'gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id, gast_categoria_id, categorias_gasto(catgast_nombre)';
 
   function _mapGasto(r) {
     return {
@@ -1324,7 +1451,12 @@
       monto:       parseFloat(r.gast_monto),
       fecha:       _isoFechaALocale(r.gast_fecha),
       hora:        r.gast_hora ? r.gast_hora.slice(0, 5) : '',
-      usuId:       r.usu_id ?? null
+      usuId:       r.usu_id ?? null,
+      categoriaId: r.gast_categoria_id ?? null,
+      // registrar_gasto (RPC) devuelve solo el id, sin el join — se
+      // resuelve el nombre contra la caché ya cargada en ese caso.
+      categoria:   r.categorias_gasto?.catgast_nombre
+        ?? (r.gast_categoria_id ? (_categoriasGasto.find(c => c.id === r.gast_categoria_id)?.nombre ?? null) : null)
     };
   }
 
@@ -1345,7 +1477,20 @@
       ingredientes: (r.plato_ingredientes || []).map(pi => ({
         id:     pi.ingredientes?.ing_id,
         nombre: pi.ingredientes?.ing_nombre
-      })).filter(pi => pi.id && pi.nombre)
+      })).filter(pi => pi.id && pi.nombre),
+      // Grupos "elige 1 de N" (ej. "Elige tu bebida" → Café/Leche/Agua
+      // Aromática) — distinto de ingredientes, que solo se pueden excluir.
+      gruposOpciones: (r.plato_grupos_opciones || [])
+        .slice()
+        .sort((a, b) => (a.grupo_orden ?? 0) - (b.grupo_orden ?? 0))
+        .map(g => ({
+          id:     g.grupo_id,
+          nombre: g.grupo_nombre,
+          opciones: (g.grupo_opciones || [])
+            .slice()
+            .sort((a, b) => (a.opcion_orden ?? 0) - (b.opcion_orden ?? 0))
+            .map(o => ({ id: o.opcion_id, nombre: o.opcion_nombre }))
+        }))
     };
   }
 
@@ -1360,7 +1505,9 @@
           plat_tag, plat_codigo, plat_destacado, plat_activo, plat_created_at, plat_permite_excluir,
           categorias(cat_nombre),
           productos(prod_stock, prod_disponible),
-          plato_ingredientes(ingredientes(ing_id, ing_nombre))
+          plato_ingredientes(ingredientes(ing_id, ing_nombre)),
+          plato_grupos_opciones(grupo_id, grupo_nombre, grupo_orden,
+            grupo_opciones(opcion_id, opcion_nombre, opcion_orden))
         `),
         // Se pide aparte (no solo el join de arriba) porque el join solo trae
         // categorías que YA tienen algún plato — el selector de categoría del
@@ -1392,14 +1539,16 @@
      No bloquea el loader inicial; se refresca aplicarSesion(true) cuando termina. */
   async function cargarDatosOperativos() {
     try {
-      const [, rCaja, rHist, rGastos] = await Promise.all([
+      const [, rCaja, rHist, rGastos, rCatsGasto] = await Promise.all([
         ModuloAutenticacion.cargarUsuarios(),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
-        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true })
+        db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true }),
+        db.from('categorias_gasto').select('catgast_id, catgast_nombre').order('catgast_nombre', { ascending: true })
       ]);
       _caja      = (rCaja.data   || []).map(_rowAPedido);
       _historial = (rHist.data   || []).map(_rowAPedido);
+      _categoriasGasto = (rCatsGasto.data || []).map(c => ({ id: c.catgast_id, nombre: c.catgast_nombre }));
       _gastos    = (rGastos.data || []).map(_mapGasto);
     } catch(e) {
       console.warn('cargarDatosOperativos:', e);
@@ -1411,7 +1560,7 @@
       const [rCaja, rHist, rGastos] = await Promise.all([
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
-        db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true })
+        db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true })
       ]);
       if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido).filter(p => !_cobrando.has(String(p.id)));
       if (!rHist.error)   _historial = (rHist.data   || []).map(_rowAPedido);
@@ -1423,9 +1572,41 @@
     }
   }
 
+  async function recargarCategoriasGasto() {
+    try {
+      const { data, error } = await db.from('categorias_gasto').select('catgast_id, catgast_nombre').order('catgast_nombre', { ascending: true });
+      if (!error) _categoriasGasto = (data || []).map(c => ({ id: c.catgast_id, nombre: c.catgast_nombre }));
+      return !error;
+    } catch(e) {
+      console.warn('recargarCategoriasGasto:', e);
+      return false;
+    }
+  }
+
+  function leerCategoriasGasto() { return _categoriasGasto; }
+
+  async function crearCategoriaGasto(nombre) {
+    const nombreNorm = (nombre || '').trim();
+    if (!nombreNorm) return null;
+    // Ya existe (sin distinguir mayúsculas) — se reutiliza en vez de duplicar.
+    const existente = _categoriasGasto.find(c => c.nombre.toLowerCase() === nombreNorm.toLowerCase());
+    if (existente) return existente;
+    try {
+      const { data, error } = await db.from('categorias_gasto').insert({ catgast_nombre: nombreNorm }).select('catgast_id, catgast_nombre').single();
+      if (error || !data) { console.error('Supabase crearCategoriaGasto:', error); return null; }
+      const nueva = { id: data.catgast_id, nombre: data.catgast_nombre };
+      _categoriasGasto.push(nueva);
+      _categoriasGasto.sort((a, b) => a.nombre.localeCompare(b.nombre));
+      return nueva;
+    } catch(e) {
+      console.error('crearCategoriaGasto exception:', e);
+      return null;
+    }
+  }
+
   async function recargarGastos() {
     try {
-      const { data, error } = await db.from('gastos').select('gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id').order('gast_created_at', { ascending: true });
+      const { data, error } = await db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true });
       if (!error) _gastos = (data || []).map(_mapGasto);
       return !error;
     } catch(e) {
@@ -1508,7 +1689,7 @@
   }
   function guardarGastos(g) { _gastos = g; }
 
-  async function insertarGasto({ descripcion, monto, fecha, hora }) {
+  async function insertarGasto({ descripcion, monto, fecha, hora, categoriaId }) {
     const session = ModuloAutenticacion.getSession();
     try {
       // Evita el refresco redundante cuando este mismo INSERT vuelva por
@@ -1516,11 +1697,12 @@
       _skipNextRealtimeGastos = true;
       // Requiere sesión de cajero/administrador vigente — ver sql/hardening-rls.sql.
       const { data, error } = await db.rpc('registrar_gasto', {
-        p_token:       session?.token ?? null,
-        p_descripcion: descripcion,
-        p_monto:       monto,
-        p_fecha:       _fechaLocalISO(),
-        p_hora:        new Date().toTimeString().slice(0, 8)
+        p_token:        session?.token ?? null,
+        p_descripcion:  descripcion,
+        p_monto:        monto,
+        p_fecha:        _fechaLocalISO(),
+        p_hora:         new Date().toTimeString().slice(0, 8),
+        p_categoria_id: categoriaId || null
       });
 
       if (error || !data) {
@@ -1554,7 +1736,7 @@
     return true;
   }
 
-  async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false }) {
+  async function enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, paraLlevar = false, clienteNombre = null }) {
     const totales = LogicaCarrito.calcularTotales(items);
 
     // Buscar mes_id y verificar stock real en paralelo — son consultas
@@ -1614,7 +1796,7 @@
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
       mes_id:              mesaData?.mes_id ?? null,
       usu_id:              idUsuario || null,
-      ped_nombre_invitado: paraLlevar ? `PL:${nombreUsuario}` : (idUsuario ? null : nombreUsuario),
+      ped_nombre_invitado: paraLlevar ? `PL:${nombreUsuario}` : (clienteNombre || (idUsuario ? null : nombreUsuario)),
       ped_estado:          'pendiente',
       ped_hora:            hora,
       ped_fecha:           fecha,
@@ -1660,6 +1842,26 @@
         const { error: exclError } = await db.from('det_exclusiones').insert(exclRows);
         if (exclError) console.error('Supabase insert det_exclusiones:', exclError);
       }
+
+      // Opciones elegidas (grupos "elige 1 de N") — mismo criterio de
+      // correlación por posición que las exclusiones de arriba.
+      const opcionesRows = [];
+      detData.forEach((det, idx) => {
+        const item = items[idx];
+        (item?.opcionesElegidas || []).forEach(op => {
+          opcionesRows.push({
+            detped_id:     det.detped_id,
+            grupo_id:      op.grupoId ?? null,
+            grupo_nombre:  op.grupoNombre,
+            opcion_id:     op.opcionId ?? null,
+            opcion_nombre: op.opcionNombre
+          });
+        });
+      });
+      if (opcionesRows.length) {
+        const { error: opcionesError } = await db.from('det_opciones_elegidas').insert(opcionesRows);
+        if (opcionesError) console.error('Supabase insert det_opciones_elegidas:', opcionesError);
+      }
     }
 
     // Agregar a caché local
@@ -1669,13 +1871,17 @@
       paraLlevar:    paraLlevar,
       mesId:         mesaData?.mes_id ?? null,
       nombreUsuario: idUsuario ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === idUsuario)?.nombre ?? nombreUsuario) : nombreUsuario,
+      // Para llevar: nombreUsuario (el parámetro) trae el nombre de quién
+      // retira, no el del empleado — se muestra como clienteNombre, igual
+      // que en un pedido de mesa a nombre de un cliente.
+      clienteNombre: clienteNombre || (idUsuario && paraLlevar ? nombreUsuario : null),
       idUsuario:     idUsuario || null,
       rol,
       hora:          hora.slice(0, 5),
       fecha:         _isoFechaALocale(fecha),
       createdAt:     new Date().toISOString(),
       estado:        'pendiente',
-      items:         items.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, imagen: i.imagen || null, exclusiones: (i.exclusiones || []).map(e => e.nombre), paraLlevar: paraLlevar || i.paraLlevar || false })),
+      items:         items.map(i => ({ id: i.id, nombre: i.nombre, cantidad: i.cantidad, precio: i.precio, imagen: i.imagen || null, exclusiones: (i.exclusiones || []).map(e => e.nombre), paraLlevar: paraLlevar || i.paraLlevar || false, opcionesElegidas: i.opcionesElegidas || [] })),
       total:         totales.total,
       iva:           totales.iva,
       subtotal:      totales.subtotal
@@ -1815,6 +2021,10 @@
     _caja[idx].total    = total;
     _caja[idx].iva      = iva;
     _caja[idx].subtotal = subtotal;
+    // El pedido cambió — si ya estaba marcado como despachado por el
+    // mesero, hay ítems nuevos sin despachar, así que se le quita la
+    // marca hasta que se vuelva a despachar.
+    _caja[idx].despachado = false;
 
     clearTimeout(_pedidoUpdateTimers[pedidoId]);
     _pedidoUpdateTimers[pedidoId] = setTimeout(async () => {
@@ -1831,12 +2041,31 @@
         }))
       );
       const { error } = await db.from('pedidos').update({
-        ped_total:    total,
-        ped_iva:      iva,
-        ped_subtotal: subtotal
+        ped_total:       total,
+        ped_iva:         iva,
+        ped_subtotal:    subtotal,
+        ped_despachado:  false
       }).eq('ped_id', pedidoId);
       if (error) console.error('Supabase update pedido:', error);
     }, 600);
+  }
+
+  // El mesero marca un pedido como recogido de cocina — no toca items ni
+  // totales, solo el flag que cocina ve como marca de agua "DESPACHADO".
+  async function despacharPedido(pedidoId, despachado) {
+    const idx = _caja.findIndex(p => String(p.id) === String(pedidoId));
+    if (idx < 0) return false;
+    _caja[idx].despachado = despachado;
+    const { error } = await db.from('pedidos')
+      .update({ ped_despachado: despachado })
+      .eq('ped_id', pedidoId);
+    if (error) {
+      console.error('Supabase despacharPedido:', error);
+      _caja[idx].despachado = !despachado; // revertir el optimista si falló
+      toast('No se pudo actualizar. Intenta de nuevo.', 'error');
+      return false;
+    }
+    return true;
   }
 
   /* ══════════════════════════════════════════════════
@@ -1861,12 +2090,6 @@
   const modalBox        = document.getElementById('product-modal-box');
   const mesaBackdrop    = document.getElementById('mesa-modal-backdrop');
   const mesaInput       = document.getElementById('mesa-input');
-  // type="number" ignora maxlength (limitación del propio HTML) — sin esto
-  // se podía escribir cualquier cantidad de dígitos (ej. "10000000000000")
-  // aunque igual se bloqueara al enviar; esto lo corta mientras se escribe.
-  mesaInput?.addEventListener('input', () => {
-    if (mesaInput.value.length > 2) mesaInput.value = mesaInput.value.slice(0, 2);
-  });
   const mesaPreviewEl   = document.getElementById('mesa-preview');
   const mesaQuienEl     = document.getElementById('mesa-quien-info');
   const campoInvitado   = document.getElementById('campo-nombre-invitado');
@@ -1876,6 +2099,10 @@
 
   // ── Para llevar toggle ──
   let _esParaLlevar = false;
+  // Se activa en abrirModalMesa() cuando el pedido es genuinamente nuevo Y
+  // lo está creando un mesero/cajero/administrador — en ese caso se pide
+  // el nombre del cliente para poder identificarlo en caja al cobrar.
+  let _permiteNombreClienteMesa = false;
   const _btnTipoMesa   = document.getElementById('btn-tipo-mesa');
   const _btnTipoLlevar = document.getElementById('btn-tipo-llevar');
   function _setTipo(llevar) {
@@ -1900,41 +2127,76 @@
     if (campoInvitado) {
       campoInvitado.style.display = (!llevar && (!session || session.rol === 'invitado')) ? '' : 'none';
     }
+    const campoNombreMesaCliente = document.getElementById('campo-nombre-mesa-cliente');
+    if (campoNombreMesaCliente) {
+      campoNombreMesaCliente.style.display = (!llevar && _permiteNombreClienteMesa) ? '' : 'none';
+    }
   }
   _btnTipoMesa  ?.addEventListener('click', () => _setTipo(false));
   _btnTipoLlevar?.addEventListener('click', () => _setTipo(true));
 
-  mesaInput.addEventListener('input', () => {
-    // Forzar entero: eliminar decimales en tiempo real
-    const raw = mesaInput.value;
-    if (raw.includes('.') || raw.includes(',')) {
-      mesaInput.value = String(Math.floor(Math.abs(Number(raw))) || '');
-    }
+  // Grid de mesas físicas (1-12) para elegir con un toque en vez de
+  // escribir el número — las ocupadas vienen deshabilitadas/grises, así
+  // que ya no hace falta advertir después de escribir un número ocupado.
+  const MESAS_FISICAS = 12;
+
+  // Combina lo que ya sabemos localmente (_caja) con una consulta fresca a
+  // Supabase (para reflejar mesas ocupadas desde otros dispositivos) antes
+  // de pintar el grid — mismo chequeo que ya se hacía al confirmar.
+  async function _mesasOcupadas() {
+    const ocupadas = new Set(
+      leerCaja().filter(p => p.mesa && p.mesa !== 'Para llevar').map(p => Number(p.mesa))
+    );
+    try {
+      const { data } = await db.from('pedidos')
+        .select('mes_id, mesas(mes_numero)')
+        .eq('ped_estado', 'pendiente');
+      (data || []).forEach(r => { if (r.mesas?.mes_numero) ocupadas.add(r.mesas.mes_numero); });
+    } catch (_) { /* si falla, se queda con lo que ya sabía localmente */ }
+    return ocupadas;
+  }
+
+  function _renderMesaGrid(ocupadas) {
+    const grid = document.getElementById('mesa-grid');
+    if (!grid) return;
+    const seleccionada = Number(mesaInput.value) || null;
+    grid.innerHTML = Array.from({ length: MESAS_FISICAS }, (_, i) => i + 1).map(n => {
+      const sel = seleccionada === n;
+      // Una mesa ya elegida nunca se marca "ocupada" a la vez, aunque el
+      // refresco async llegue justo después de seleccionarla — si de
+      // verdad se ocupó mientras tanto, lo atrapa la validación al enviar.
+      const ocupada = !sel && ocupadas.has(n);
+      return `<button type="button" class="mesa-grid__btn${sel ? ' selected' : ''}${ocupada ? ' ocupada' : ''}"
+        data-mesa="${n}" ${ocupada ? 'disabled' : ''} aria-pressed="${sel}">${n}</button>`;
+    }).join('');
+  }
+
+  // Reemplaza el foco/borde rojo que tenía el input de texto — resalta el
+  // grid completo brevemente para que se note el error sin mesa elegida.
+  function _marcarErrorMesaGrid() {
+    const grid = document.getElementById('mesa-grid');
+    if (!grid) return;
+    grid.classList.add('mesa-grid--error');
+    grid.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
+    setTimeout(() => grid.classList.remove('mesa-grid--error'), 1200);
+  }
+
+  document.getElementById('mesa-grid')?.addEventListener('click', e => {
+    const btn = e.target.closest('.mesa-grid__btn');
+    if (!btn || btn.disabled) return;
+    document.querySelectorAll('#mesa-grid .mesa-grid__btn.selected').forEach(b => {
+      b.classList.remove('selected');
+      b.setAttribute('aria-pressed', 'false');
+    });
+    btn.classList.add('selected');
+    btn.setAttribute('aria-pressed', 'true');
+    mesaInput.value = btn.dataset.mesa;
     mesaInput.style.borderColor = '';
     const err = document.getElementById('mesa-input-error');
-    if (!err) return;
-    const num = Number(mesaInput.value.trim());
-    if (num >= 1 && num <= 16) {
-      const session = ModuloAutenticacion.getSession();
-      const pedOcupado = leerCaja().find(p => String(p.mesa) === String(num));
-      if (pedOcupado) {
-        const esMesero = session?.rol === 'mesero';
-        const esMio = !esMesero && (
-          (session?.id && session.id === pedOcupado.idUsuario) ||
-          (!session?.id && pedOcupado.rol === 'invitado')
-        );
-        if (!esMio) {
-          err.textContent = `Mesa ${num} ya está ocupada`;
-          err.style.display = 'block';
-          mesaInput.style.borderColor = '#f59e0b';
-          return;
-        }
-      }
-    }
-    err.textContent = '';
-    err.style.display = 'none';
+    if (err) { err.textContent = ''; err.style.display = 'none'; }
   });
   const cajeroView      = document.getElementById('cajero-view');
+  const cocinaView      = document.getElementById('cocina-view');
   const menuView        = document.getElementById('menu-view');
   const cajeroGrid      = document.getElementById('cajero-grid');
   const statPedidos     = document.getElementById('stat-pedidos');
@@ -1946,6 +2208,7 @@
   const userAvatar      = document.getElementById('user-avatar');
   const userName        = document.getElementById('user-name');
   const btnLogout       = document.getElementById('btn-logout');
+  const btnCambiarModo  = document.getElementById('btn-cambiar-modo');
 
   /* ══════════════════════════════════════════════════
      TOAST
@@ -2012,6 +2275,7 @@
           <div>
             <p class="cart-item__name">${item.nombre}</p>
             ${item.exclusiones?.length ? `<p class="cart-item__excl">sin: ${item.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</p>` : ''}
+            ${item.opcionesElegidas?.length ? `<p class="cart-item__excl">${item.opcionesElegidas.map(o => o.grupoNombre ? `${o.grupoNombre}: ${o.opcionNombre}` : o.opcionNombre).join(', ')}</p>` : ''}
             <p class="cart-item__price">$${(item.precio * item.cantidad).toFixed(2)}</p>
             <button class="cart-item__llevar-toggle${item.paraLlevar ? ' active' : ''}" data-action="llevar" data-id="${lineId}" title="Cambiar a ${item.paraLlevar ? 'para la mesa' : 'para llevar'}">
               ${item.paraLlevar ? '🥡 Para llevar' : '🍽️ Para la mesa'}
@@ -2271,8 +2535,41 @@
       }
     }
 
+    // Grupos de opciones ("elige 1 de N", ej. bebida del desayuno) — se
+    // reemplazan por completo en cada guardado (borrar + reinsertar),
+    // igual que ingredientes. Borrar el grupo también borra en cascada
+    // sus opciones (ON DELETE CASCADE).
+    await db.from('plato_grupos_opciones').delete().eq('plat_id', platId);
+    const gruposOpcionesGuardados = [];
+    let gruposConError = false;
+    if (Array.isArray(item.gruposOpciones) && item.gruposOpciones.length > 0) {
+      for (let i = 0; i < item.gruposOpciones.length; i++) {
+        const g = item.gruposOpciones[i];
+        if (!g?.nombre || !Array.isArray(g.opciones) || g.opciones.length < 2) continue;
+        const { data: grupoIns, error: grupoErr } = await db.from('plato_grupos_opciones')
+          .insert({ plat_id: platId, grupo_nombre: g.nombre, grupo_orden: i })
+          .select('grupo_id').single();
+        if (grupoErr || !grupoIns) { console.error('Supabase insert plato_grupos_opciones:', grupoErr); gruposConError = true; continue; }
+
+        const { data: opcionesIns, error: opcionesErr } = await db.from('grupo_opciones')
+          .insert(g.opciones.map((op, j) => ({ grupo_id: grupoIns.grupo_id, opcion_nombre: op, opcion_orden: j })))
+          .select('opcion_id, opcion_nombre');
+        if (opcionesErr) { console.error('Supabase insert grupo_opciones:', opcionesErr); gruposConError = true; continue; }
+
+        gruposOpcionesGuardados.push({
+          id: grupoIns.grupo_id,
+          nombre: g.nombre,
+          opciones: (opcionesIns || []).map(o => ({ id: o.opcion_id, nombre: o.opcion_nombre }))
+        });
+      }
+      // Antes esto quedaba en silencio (solo console.error) — el admin veía
+      // "Guardado" aunque los grupos no se hubieran guardado de verdad
+      // (pasó con el error de RLS de plato_grupos_opciones/grupo_opciones).
+      if (gruposConError) toast('El plato se guardó, pero hubo un error guardando los grupos de opciones. Revísalos e intenta de nuevo.', 'error');
+    }
+
     // Actualizar caché local
-    const itemActualizado = { ...item, id: platId, categoria: item.categoria, createdAt, ingredientes: ingredientesConId };
+    const itemActualizado = { ...item, id: platId, categoria: item.categoria, createdAt, ingredientes: ingredientesConId, gruposOpciones: gruposOpcionesGuardados };
     _menuItems = _menuItems.filter(m => m.id !== platId);
     _menuItems.push(itemActualizado);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
@@ -2340,8 +2637,9 @@
   window.SC = {
     leerCaja, leerHistorial, leerGastos, guardarGastos,
     insertarGasto, eliminarGasto,
+    leerCategoriasGasto, crearCategoriaGasto, recargarCategoriasGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock,
+    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido,
     guardarMenuItemDB, eliminarMenuItemDB,
     getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,
@@ -2442,6 +2740,40 @@
       mesaAsignadaDiv.style.display = 'none';
     }
 
+    // Pintar el grid de mesas: primero con lo que ya sabemos localmente
+    // (instantáneo), y enseguida se actualiza con una consulta fresca a
+    // Supabase por si otro dispositivo ocupó una mesa mientras tanto.
+    if (!meseroMesaTarget && !editando && !pedidoPrevio) {
+      _renderMesaGrid(new Set(leerCaja().filter(p => p.mesa && p.mesa !== 'Para llevar').map(p => Number(p.mesa))));
+      _mesasOcupadas().then(_renderMesaGrid);
+    }
+
+    // Nombre del cliente en mesa: solo cuando el staff (mesero/cajero/
+    // administrador) está creando un pedido genuinamente nuevo para una
+    // mesa — así caja puede identificar al cliente cuando venga a pagar,
+    // sin depender solo del número de mesa. _setTipo() usa esta bandera
+    // para mostrar/ocultar el campo según se cambie Mesa ↔ Para llevar.
+    _permiteNombreClienteMesa = !meseroMesaTarget && !editando && !pedidoPrevio &&
+      session && session.rol !== 'invitado' && session.rol !== 'usuario';
+    const mesaClienteInput = document.getElementById('mesa-cliente-nombre');
+    if (mesaClienteInput) {
+      mesaClienteInput.value = '';
+      mesaClienteInput.style.borderColor = '';
+      const mesaClienteErr = document.getElementById('mesa-cliente-nombre-error');
+      if (mesaClienteErr) mesaClienteErr.style.display = 'none';
+      mesaClienteInput.oninput = () => {
+        if (mesaClienteInput.value.trim()) {
+          mesaClienteInput.style.borderColor = '';
+          const e = document.getElementById('mesa-cliente-nombre-error');
+          if (e) e.style.display = 'none';
+        }
+      };
+    }
+    const campoNombreMesaCliente = document.getElementById('campo-nombre-mesa-cliente');
+    if (campoNombreMesaCliente) {
+      campoNombreMesaCliente.style.display = (_permiteNombreClienteMesa && !todosParaLlevar) ? '' : 'none';
+    }
+
     if (session && session.rol !== 'invitado') {
       mesaQuienEl.innerHTML = `
         <span class="rol-pill ${session.rol}" style="flex-shrink:0">${ROL_LABEL[session.rol]}</span>
@@ -2481,7 +2813,7 @@
     mesaPreviewEl.innerHTML = `
       ${items.map(i => `
         <div class="preview-item">
-          <span><strong>${i.cantidad}×</strong> ${i.nombre}</span>
+          <span><strong>${i.cantidad}×</strong> ${i.nombre}${i.opcionesElegidas?.length ? ` <small style="color:var(--text-muted);font-weight:400">(${i.opcionesElegidas.map(o => o.grupoNombre ? `${o.grupoNombre}: ${o.opcionNombre}` : o.opcionNombre).join(', ')})</small>` : ''}</span>
           <span>$${(i.precio * i.cantidad).toFixed(2)}</span>
         </div>`).join('')}
       <div class="mesa-total-row">
@@ -2558,13 +2890,12 @@
     } else {
       mesa = Number(mesaInput.value.trim());
       if (!mesa || mesa < 1 || mesa > 16 || !Number.isInteger(mesa)) {
-        mesaInput.style.borderColor = '#dc2626';
         const mesaErrRango = document.getElementById('mesa-input-error');
         if (mesaErrRango) {
-          mesaErrRango.textContent = 'Revisa el número de tu mesa. Solo existen mesas del 1 al 16.';
+          mesaErrRango.textContent = 'Selecciona una mesa para continuar.';
           mesaErrRango.style.display = 'block';
         }
-        mesaInput.focus();
+        _marcarErrorMesaGrid();
         return;
       }
     }
@@ -2695,13 +3026,13 @@
       );
 
       if (!mismaPersona) {
-        mesaInput.style.borderColor = '#dc2626';
         const mesaErrEl2 = document.getElementById('mesa-input-error');
         if (mesaErrEl2) {
           mesaErrEl2.textContent = `Mesa ${mesa} ya está ocupada. Elige otra mesa o espera a que se libere.`;
           mesaErrEl2.style.display = 'block';
         }
-        mesaInput.focus();
+        _marcarErrorMesaGrid();
+        _mesasOcupadas().then(_renderMesaGrid);
         return;
       }
 
@@ -2735,9 +3066,22 @@
       return;
     }
 
+    let clienteNombreMesa = null;
+    if (_permiteNombreClienteMesa) {
+      const mesaClienteInput = document.getElementById('mesa-cliente-nombre');
+      clienteNombreMesa = mesaClienteInput?.value.trim() ?? '';
+      if (!clienteNombreMesa) {
+        if (mesaClienteInput) mesaClienteInput.style.borderColor = '#dc2626';
+        const err = document.getElementById('mesa-cliente-nombre-error');
+        if (err) err.style.display = 'block';
+        mesaClienteInput?.focus();
+        return;
+      }
+    }
+
     _skipNextRealtime = true;
     btnConfirmarMesa.disabled = true;
-    const resEnvio = await enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items });
+    const resEnvio = await enviarACaja({ mesa, nombreUsuario, idUsuario, rol, items, clienteNombre: clienteNombreMesa });
     btnConfirmarMesa.disabled = false;
     if (!resEnvio) return; // error ya mostrado dentro de enviarACaja
     LogicaCarrito.vaciarCarrito();
@@ -2938,8 +3282,15 @@
       return;
     }
     errEl.classList.remove('visible');
-    ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol, token:result.user.token ?? null });
+    ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol, roles:result.user.roles, token:result.user.token ?? null });
     aplicarSesion();
+    // Le ofrece al navegador guardar usuario/contraseña (Administrador de
+    // contraseñas nativo) — así la próxima vez el login puede autocompletarse
+    // o entrar solo, sin volver a escribirlos. Silencioso si el navegador
+    // no soporta esta API (Safari/Firefox) o el usuario no lo permite.
+    if (window.PasswordCredential) {
+      navigator.credentials.store(new PasswordCredential({ id: usuario, password, name: usuario })).catch(() => {});
+    }
   });
 
   /* ── Validación en tiempo real del formulario de registro ── */
@@ -3182,6 +3533,21 @@
 
   btnLogout.addEventListener('click', _cerrarSesion);
 
+  // Selector de modo — visible solo para empleados con más de un rol
+  // asignado (ej. mesero + cajero); cambia el rol activo de la sesión
+  // actual sin pedir credenciales de nuevo.
+  const _ROL_MODO_LABEL = { mesero: '🍽️ Mesero', cajero: '🧾 Caja' };
+  btnCambiarModo?.addEventListener('click', async () => {
+    const nuevoRol = btnCambiarModo.dataset.rolDestino;
+    if (!nuevoRol) return;
+    btnCambiarModo.disabled = true;
+    const res = await ModuloAutenticacion.cambiarModoSesion(nuevoRol);
+    btnCambiarModo.disabled = false;
+    if (!res.ok) { toast(res.msg, 'error'); return; }
+    aplicarSesion();
+    toast(`Modo cambiado a ${_ROL_MODO_LABEL[nuevoRol] ?? nuevoRol} ✓`, 'success');
+  });
+
   /* ══════════════════════════════════════════════════
      APLICAR SESIÓN — controla qué ve cada rol
   ══════════════════════════════════════════════════ */
@@ -3408,6 +3774,28 @@
     // Chip de usuario
     const btnAbrirAuth = document.getElementById('btn-abrir-auth');
     const btnMiPerfil = document.getElementById('btn-mi-perfil');
+
+    // Selector de modo: solo si el empleado tiene más de un rol asignado.
+    // En móvil el texto se oculta por CSS y queda solo el ícono, para
+    // poder cambiar de modo con un toque rápido (ver breakpoint 768px).
+    if (btnCambiarModo) {
+      const roles = session.roles ?? [session.rol];
+      const otroRol = roles.length > 1 ? roles.find(r => r !== session.rol) : null;
+      if (otroRol) {
+        const _ICONO_MODO = { mesero: '🍽️', cajero: '🧾' };
+        const etiqueta = _ROL_MODO_LABEL[otroRol] ?? otroRol;
+        document.getElementById('btn-cambiar-modo-icon').textContent  = _ICONO_MODO[otroRol] ?? '🔄';
+        document.getElementById('btn-cambiar-modo-label').textContent = ` Cambiar a ${etiqueta}`;
+        btnCambiarModo.title = `Cambiar a modo ${etiqueta}`;
+        btnCambiarModo.setAttribute('aria-label', `Cambiar a modo ${etiqueta}`);
+        btnCambiarModo.dataset.rolDestino = otroRol;
+        btnCambiarModo.style.display = '';
+      } else {
+        btnCambiarModo.style.display = 'none';
+        delete btnCambiarModo.dataset.rolDestino;
+      }
+    }
+
     if (session.rol === 'invitado') {
       // Invitado: mostrar solo el botón "Iniciar Sesión", ocultar chip y Salir
       userChip.style.display  = 'none';
@@ -3418,7 +3806,11 @@
       // Sesión real: mostrar chip y Salir, ocultar "Iniciar Sesión"
       userChip.style.display = '';
       userAvatar.textContent  = session.nombre.charAt(0).toUpperCase();
-      userAvatar.className    = `user-chip__avatar ${session.rol}`;
+      // Color del avatar por el rol PRINCIPAL de la cuenta (roles[0]), no
+      // por session.rol — ese es el modo activo y cambia con "Cambiar a
+      // Mesero/Caja", lo que hacía que el avatar cambiara de color solo
+      // por alternar de modo en vez de mantenerse fijo por empleado.
+      userAvatar.className    = `user-chip__avatar ${(session.roles ?? [session.rol])[0]}`;
       userName.textContent    = session.nombre;
       btnLogout.style.display = '';
       if (btnAbrirAuth) btnAbrirAuth.style.display = 'none';
@@ -3431,7 +3823,7 @@
       userChip.classList.toggle('user-chip--clickable', esUsuario);
     }
 
-    const esRolEspecial = session.rol === 'cajero' || session.rol === 'mesero' || session.rol === 'administrador';
+    const esRolEspecial = session.rol === 'cajero' || session.rol === 'mesero' || session.rol === 'administrador' || session.rol === 'cocinero';
     /* Sección contacto y buscador: solo para usuario e invitado */
     const contactoEl = document.getElementById('seccion-contacto');
     if (contactoEl) contactoEl.style.display = esRolEspecial ? 'none' : '';
@@ -3443,15 +3835,27 @@
     if (session.rol === 'administrador') {
       menuView.style.display  = 'none';
       cajeroView.classList.remove('visible');
+      cocinaView?.classList.remove('visible');
       if (adminView) { adminView.style.display = ''; adminView.classList.add('visible'); }
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none';
       document.querySelector('.hero').style.display = 'none';
       window.VistaAdmin?.renderAdminView();
+    } else if (session.rol === 'cocinero') {
+      // Cocina: vista de solo lectura, sin carrito ni acceso a caja/admin
+      if (adminView) { adminView.classList.remove('visible'); adminView.style.display = 'none'; }
+      menuView.style.display  = 'none';
+      cajeroView.classList.remove('visible');
+      cocinaView?.classList.add('visible');
+      btnOpen.style.display   = 'none';
+      btnCaja.style.display   = 'none';
+      document.querySelector('.hero').style.display = 'none';
+      window.VistaCocina?.renderCocinaView();
     } else if (session.rol === 'cajero') {
       // Solo cajero: muestra vista de caja, oculta menú y botón Mi Orden
       if (adminView) { adminView.classList.remove('visible'); adminView.style.display = 'none'; }
       menuView.style.display  = 'none';
+      cocinaView?.classList.remove('visible');
       cajeroView.classList.add('visible');
       btnOpen.style.display   = 'none';
       btnCaja.style.display   = 'none';
@@ -3466,6 +3870,7 @@
       // Mesero / usuario / invitado
       if (adminView) { adminView.classList.remove('visible'); adminView.style.display = 'none'; }
       cajeroView.classList.remove('visible');
+      cocinaView?.classList.remove('visible');
       btnOpen.style.display   = '';
       btnCaja.style.display   = 'none';
 
@@ -3771,6 +4176,24 @@
   aplicarSesion();
   renderCarrito();
 
+  // La sesión de staff se guarda en sessionStorage (se borra al cerrar la
+  // pestaña, a propósito — varios empleados comparten el mismo dispositivo).
+  // Si el navegador tiene guardadas las credenciales de esta cuenta, se
+  // intenta un re-login silencioso (sin mostrar ningún prompt) para no
+  // pedir usuario/contraseña de nuevo en cada apertura. mediation:'silent'
+  // hace que el navegador solo devuelva la credencial si puede sin
+  // interacción del usuario; si no puede, no pasa nada.
+  if (!sesionActual && window.PasswordCredential) {
+    navigator.credentials.get({ password: true, mediation: 'silent' }).then(async cred => {
+      if (!cred || !cred.password) return;
+      const result = await ModuloAutenticacion.login(cred.id, cred.password);
+      if (result.ok) {
+        ModuloAutenticacion.setSession({ id:result.user.id, nombre:result.user.nombre, usuario:result.user.usuario, rol:result.user.rol, roles:result.user.roles, token:result.user.token ?? null });
+        aplicarSesion(true);
+      }
+    }).catch(() => {});
+  }
+
   // 3. Cargar el menú primero (es lo único que bloquea el loader) y refrescar
   inicializarDB().finally(() => {
     aplicarSesion(true);
@@ -3824,6 +4247,7 @@
       window.VistaCajero?.renderCajeroView();
       window.VistaMenu?.renderMesasActivas();
       window.VistaAdmin?.renderAdminView();
+      window.VistaCocina?.renderCocinaView();
       if (document.getElementById('usuario-view')?.style.display !== 'none') renderUsuarioView();
       const _rolR = ModuloAutenticacion.getSession()?.rol;
       _renderMenu(_rolR);
@@ -3857,6 +4281,7 @@
         await recargarGastos();
         window.VistaCajero?.renderGastos?.();
       })
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'categorias_gasto' }, () => recargarCategoriasGasto())
       .subscribe();
 
     // Enviar un pedido (o anularlo) escribe en `productos` una vez POR CADA

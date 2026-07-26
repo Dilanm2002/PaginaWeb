@@ -257,9 +257,6 @@ Sal-y-Canela/
 │   └── SCRUM.md                ← Documentación Scrum completa
 ├── assets/
 │   └── styles.css              ← Estilos complementarios
-├── data/
-│   └── productos.json          ← Catálogo de 30 productos
-├── imagenes comida/            ← 32 imágenes del menú
 ├── js/
 │   ├── repositorio.js          ← Carga de datos (fetch + fallback)
 │   ├── carrito.js              ← Módulo IndexedDB
