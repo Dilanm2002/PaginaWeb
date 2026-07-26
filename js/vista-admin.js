@@ -533,7 +533,11 @@ window.VistaAdmin = (function () {
   async function _md_cargarFecha(fechaISO) {
     if (!fechaISO) return;
     const { data, error } = await window.db.from('menu_dia').select(_MD_SELECT).eq('mendia_fecha', fechaISO).maybeSingle();
-    if (error) console.error('Supabase menu_dia select:', error);
+    if (error) {
+      console.error('Supabase menu_dia select:', error);
+      window.SC?.toast('Error al cargar ese día — revisa la consola.', 'error');
+      return;
+    }
     _MD_CAMPOS.forEach(c => {
       const inp = document.getElementById(c.input);
       if (inp) inp.value = _md_nombreCampo(data, c) ?? '';
@@ -598,17 +602,33 @@ window.VistaAdmin = (function () {
       const fechaLbl = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' });
       const resumen = _MD_CAMPOS.map(c => `${c.icon} ${SC.escapeHtml(_md_nombreCampo(d, c) ?? 'sin definir')}`).join(' · ');
       return `<div class="md-semana-item${esHoy ? ' md-semana-item--hoy' : ''}" data-fecha="${d.mendia_fecha}">
-        <button class="md-semana-item__main" data-fecha="${d.mendia_fecha}" type="button">
+        <div class="md-semana-item__main">
           <span class="md-semana-item__fecha">${SC.escapeHtml(fechaLbl)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</span>
           <span class="md-semana-item__platos">${resumen}</span>
-        </button>
-        <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
+        </div>
+        <div class="md-semana-item__acciones">
+          <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️ Editar</button>
+          <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
+        </div>
       </div>`;
     }).join('');
-    el.querySelectorAll('.md-semana-item__main').forEach(btn => {
-      btn.addEventListener('click', () => {
+    el.querySelectorAll('.md-semana-item__edit').forEach(btn => {
+      btn.addEventListener('click', async () => {
         const fechaInput = document.getElementById('md-fecha');
-        if (fechaInput) { fechaInput.value = btn.dataset.fecha; _md_cargarFecha(btn.dataset.fecha); }
+        if (fechaInput) {
+          fechaInput.value = btn.dataset.fecha;
+          await _md_cargarFecha(btn.dataset.fecha);
+        }
+        // El cambio de valores en los campos de arriba es fácil de pasar
+        // por alto si la lista está lejos del editor — se resalta la caja
+        // y se enfoca el primer campo para que sea evidente que ya cargó.
+        const editorBox = document.querySelector('.md-editor');
+        editorBox?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        editorBox?.classList.remove('md-editor--flash');
+        void editorBox?.offsetWidth; // reinicia la animación si se clickea varias veces seguidas
+        editorBox?.classList.add('md-editor--flash');
+        document.getElementById('md-sopa')?.focus();
+        SC?.toast('Menú cargado — edítalo y presiona Guardar', 'success');
       });
     });
     el.querySelectorAll('.md-semana-item__del').forEach(btn => {
