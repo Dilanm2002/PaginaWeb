@@ -597,15 +597,34 @@ window.VistaAdmin = (function () {
       const esHoy = d.mendia_fecha === hoyISO;
       const fechaLbl = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' });
       const resumen = _MD_CAMPOS.map(c => `${c.icon} ${SC.escapeHtml(_md_nombreCampo(d, c) ?? 'sin definir')}`).join(' · ');
-      return `<button class="md-semana-item${esHoy ? ' md-semana-item--hoy' : ''}" data-fecha="${d.mendia_fecha}" type="button">
-        <span class="md-semana-item__fecha">${SC.escapeHtml(fechaLbl)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</span>
-        <span class="md-semana-item__platos">${resumen}</span>
-      </button>`;
+      return `<div class="md-semana-item${esHoy ? ' md-semana-item--hoy' : ''}" data-fecha="${d.mendia_fecha}">
+        <button class="md-semana-item__main" data-fecha="${d.mendia_fecha}" type="button">
+          <span class="md-semana-item__fecha">${SC.escapeHtml(fechaLbl)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</span>
+          <span class="md-semana-item__platos">${resumen}</span>
+        </button>
+        <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
+      </div>`;
     }).join('');
-    el.querySelectorAll('.md-semana-item').forEach(btn => {
+    el.querySelectorAll('.md-semana-item__main').forEach(btn => {
       btn.addEventListener('click', () => {
         const fechaInput = document.getElementById('md-fecha');
         if (fechaInput) { fechaInput.value = btn.dataset.fecha; _md_cargarFecha(btn.dataset.fecha); }
+      });
+    });
+    el.querySelectorAll('.md-semana-item__del').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const fecha = btn.dataset.fecha;
+        const fechaLbl = new Date(fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long', day: '2-digit', month: 'short' });
+        const confirmado = await _modalConfirmar(fechaLbl, '¿Eliminar este menú del día?');
+        if (!confirmado) return;
+        const { error } = await window.db.from('menu_dia').delete().eq('mendia_fecha', fecha);
+        if (error) { console.error('Supabase menu_dia delete:', error); SC?.toast('Error al eliminar el menú.', 'error'); return; }
+        SC?.toast('Menú eliminado ✓', 'success');
+        // Si la fecha borrada es la que está cargada en el editor, lo limpia.
+        const fechaInput = document.getElementById('md-fecha');
+        if (fechaInput?.value === fecha) _md_cargarFecha(fecha);
+        await _md_renderProximos();
+        if (fecha === _fechaLocalISO()) _renderDashboardMenuDia();
       });
     });
   }
@@ -904,14 +923,14 @@ window.VistaAdmin = (function () {
     window._trapProdForm?.activar();
   }
 
-  function _modalConfirmar(nombre) {
+  function _modalConfirmar(nombre, titulo = '¿Eliminar producto?') {
     return new Promise(resolve => {
       const overlay = document.createElement('div');
       overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
       overlay.innerHTML = `
         <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
           <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">🗑️</div>
-          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Eliminar producto?</h3>
+          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">${titulo}</h3>
           <p style="color:#7A5640;font-size:.88rem;margin-bottom:1.5rem;line-height:1.5;">
             Se eliminará permanentemente<br><strong style="color:#C8561A;">"${nombre}"</strong>.<br>Esta acción no se puede deshacer.
           </p>
