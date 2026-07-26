@@ -1317,6 +1317,10 @@
       transition: all .18s;
     }
     .gasto-del-btn:hover { background: #dc2626; color: #fff; border-color: #dc2626; }
+    .gasto-registrado {
+      font-size: .78rem; font-weight: 600; color: var(--text-muted);
+      white-space: nowrap; display: inline-flex; align-items: center; gap: .3rem;
+    }
     .gastos-empty {
       padding: 4rem 2rem; text-align: center;
       color: #b89a82; font-size: .9rem;

@@ -170,7 +170,9 @@ window.VistaCajero = (function () {
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
               <td class="td-monto">−$${g.monto.toFixed(2)}</td>
-              <td class="td-del"><button class="gasto-del-btn" data-del-id="${g.id}">🗑️ Eliminar</button></td>
+              <td class="td-del">${_diaOffset === 0
+                ? `<button class="gasto-del-btn" data-del-id="${g.id}">🗑️ Eliminar</button>`
+                : '<span class="gasto-registrado" title="Los gastos de días anteriores ya quedaron en el registro y no se pueden borrar">🔒 Registrado</span>'}</td>
             </tr>`).join('')}
         </tbody>
       </table>`;

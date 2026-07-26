@@ -547,11 +547,10 @@ window.VistaAdmin = (function () {
 
   function _md_initHandlers() {
     const SC = window.SC;
-    const fechaInput = document.getElementById('md-fecha');
-    if (fechaInput && !fechaInput._mdBound) {
-      fechaInput._mdBound = true;
-      fechaInput.addEventListener('change', () => _md_cargarFecha(fechaInput.value));
-    }
+    // Nota: la fecha NO recarga los campos automáticamente al cambiarla —
+    // solo decide a qué día se va a guardar. Si recargara sola, cambiar la
+    // fecha mientras se está escribiendo un plato nuevo borraba todo sin
+    // avisar. Cargar lo ya guardado de un día sigue siendo solo con "Editar".
     const btn = document.getElementById('btn-guardar-menudia');
     if (btn && !btn._mdBound) {
       btn._mdBound = true;
