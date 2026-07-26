@@ -579,13 +579,12 @@ window.VistaAdmin = (function () {
     const btnCancelar = document.getElementById('btn-cancelar-menudia');
     if (btnCancelar && !btnCancelar._mdBound) {
       btnCancelar._mdBound = true;
-      btnCancelar.addEventListener('click', async () => {
-        // "Cancelar" descarta lo escrito sin guardar y vuelve a traer lo
-        // que de verdad está guardado para esa fecha (o la deja vacía si
-        // esa fecha nunca se guardó).
-        const fecha = document.getElementById('md-fecha')?.value;
-        await _md_cargarFecha(fecha);
-        SC?.toast('Cambios descartados', 'success');
+      btnCancelar.addEventListener('click', () => {
+        // Vacía los 4 campos para empezar de cero — si lo que se quería era
+        // volver a lo ya guardado, basta con tocar "Editar" de nuevo en el
+        // registro de abajo.
+        _MD_CAMPOS.forEach(c => { const inp = document.getElementById(c.input); if (inp) inp.value = ''; });
+        SC?.toast('Campos vacíos', 'success');
       });
     }
   }
