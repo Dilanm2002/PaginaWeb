@@ -640,11 +640,14 @@ window.VistaAdmin = (function () {
     }).join('');
     el.querySelectorAll('.md-semana-item__edit').forEach(btn => {
       btn.addEventListener('click', async () => {
+        if (btn.disabled) return; // evita clics repetidos apilando el mismo toast
+        btn.disabled = true;
         const fechaInput = document.getElementById('md-fecha');
         if (fechaInput) {
           fechaInput.value = btn.dataset.fecha;
           await _md_cargarFecha(btn.dataset.fecha);
         }
+        btn.disabled = false;
         // El cambio de valores en los campos de arriba es fácil de pasar
         // por alto si la lista está lejos del editor — se resalta la caja
         // y se enfoca el primer campo para que sea evidente que ya cargó.
