@@ -2403,7 +2403,12 @@
       const { error } = await db.storage.from('menu-imagenes').upload(path, blob, { upsert: true, contentType: mime });
       if (error) throw error;
       const { data: { publicUrl } } = db.storage.from('menu-imagenes').getPublicUrl(path);
-      return publicUrl;
+      // Re-subir una imagen para el mismo producto sobreescribe el mismo
+      // archivo (mismo path) — la URL pública queda idéntica a la anterior,
+      // así que el navegador (que ya la tenía en caché) seguía mostrando la
+      // imagen vieja aunque el archivo en el servidor sí se actualizó. Se
+      // agrega un parámetro de versión para forzar que se pida de nuevo.
+      return `${publicUrl}?v=${Date.now()}`;
     } catch (e) {
       console.error('Storage upload imagen:', e);
       return base64;
