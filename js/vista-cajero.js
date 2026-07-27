@@ -160,7 +160,9 @@ window.VistaCajero = (function () {
     if (!listaEl) return;
 
     const gastosRev = [...gastos].reverse();
-    listaEl.innerHTML = `
+    listaEl.innerHTML = !gastosRev.length
+      ? `<div class="gastos-empty">No hay gastos registrados este día.</div>`
+      : `
       <table class="gastos-tabla">
         <thead>
           <tr>
@@ -169,9 +171,7 @@ window.VistaCajero = (function () {
           </tr>
         </thead>
         <tbody>
-          ${!gastosRev.length
-            ? `<tr><td colspan="6" class="gastos-empty" style="text-align:center;padding:.9rem 0">No hay gastos registrados este día.</td></tr>`
-            : gastosRev.map(g => `
+          ${gastosRev.map(g => `
             <tr>
               <td class="td-desc">${SC.escapeHtml(g.descripcion)}</td>
               <td class="td-hora">${g.categoria ? SC.escapeHtml(g.categoria) : '<span style="color:var(--text-muted)">—</span>'}</td>
