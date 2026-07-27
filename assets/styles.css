@@ -3195,9 +3195,17 @@
     overflow-y: auto;
     overflow-x: hidden;
     z-index: 10;
+    /* Scrollbar propia (delgada, tenue) en vez de la barra genérica del
+       navegador — el fondo del sidebar es oscuro, así que va clara. */
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.18) transparent;
     font-family: 'Inter', sans-serif;
     transition: transform .28s cubic-bezier(.4,0,.2,1);
   }
+  .adm-sidebar::-webkit-scrollbar { width: 5px; }
+  .adm-sidebar::-webkit-scrollbar-track { background: transparent; }
+  .adm-sidebar::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+  .adm-sidebar::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.32); }
 
   .adm-sidebar__brand {
     display: flex;
@@ -3241,7 +3249,13 @@
     flex: 1;
     padding: .85rem 0 1rem;
     overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,.18) transparent;
   }
+  .adm-nav::-webkit-scrollbar { width: 5px; }
+  .adm-nav::-webkit-scrollbar-track { background: transparent; }
+  .adm-nav::-webkit-scrollbar-thumb { background: rgba(255,255,255,.18); border-radius: 999px; }
+  .adm-nav::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,.32); }
   .adm-nav__group {
     padding: .65rem 0 .35rem;
   }
