@@ -1135,7 +1135,15 @@ window.VistaAdmin = (function () {
     // letras (en vez de usar \b, cuyo límite de palabra en JS no reconoce
     // letras acentuadas como "é" y las cortaba a la mitad) arregla ambos
     // casos: funciona pegado a paréntesis y no rompe acentos.
-    return nombre.trim().toLowerCase().replace(/\p{L}+/gu, palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1));
+    return nombre.trim().replace(/\p{L}+/gu, palabra => {
+      // Si el admin escribió una palabra CORTA toda en mayúsculas (ej.
+      // "BBQ"), se asume que es una sigla a propósito y se deja tal cual
+      // — solo para palabras cortas, para que categorías escritas todo en
+      // mayúscula sin querer (ej. "SOPAS") se sigan normalizando a "Sopas".
+      if (palabra.length >= 2 && palabra.length <= 4 && palabra === palabra.toUpperCase()) return palabra;
+      const min = palabra.toLowerCase();
+      return min.charAt(0).toUpperCase() + min.slice(1);
+    });
   }
 
   function _parsearNombresIngredientes(valor) {
