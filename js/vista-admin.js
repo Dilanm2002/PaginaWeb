@@ -1128,9 +1128,14 @@ window.VistaAdmin = (function () {
   // calientes" quedan como "Sopas" / "Bebidas Calientes") — sin importar
   // cómo lo escriba el administrador.
   function _normalizarTitleCase(nombre) {
-    return nombre.trim().split(/\s+/).filter(Boolean)
-      .map(palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1).toLowerCase())
-      .join(' ');
+    // Antes se dividía por espacios y solo se tocaba el primer carácter de
+    // cada trozo — con algo como "(milanesa" ese primer carácter es "(",
+    // así que la "m" nunca se capitalizaba y quedaba pegada en minúscula
+    // sin importar cuántas veces se guardara. Capitalizar cada RACHA de
+    // letras (en vez de usar \b, cuyo límite de palabra en JS no reconoce
+    // letras acentuadas como "é" y las cortaba a la mitad) arregla ambos
+    // casos: funciona pegado a paréntesis y no rompe acentos.
+    return nombre.trim().toLowerCase().replace(/\p{L}+/gu, palabra => palabra.charAt(0).toUpperCase() + palabra.slice(1));
   }
 
   function _parsearNombresIngredientes(valor) {
