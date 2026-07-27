@@ -1726,6 +1726,17 @@ window.VistaAdmin = (function () {
     const _tickvals = xLabels.filter((_, i) => i % _tickStep === 0);
     const _ticktext = _tickvals;
 
+    // Plotly mide el ancho del contenedor al dibujar — si el módulo de
+    // Reportes todavía no había terminado su transición de layout (o el
+    // contenedor medía 0 por estar recién visible), se queda con un
+    // ancho más chico que el real y "responsive" no lo vuelve a corregir
+    // hasta el próximo resize de ventana. Forzar un resize un frame
+    // después de dibujar corrige ese ancho sin esperar a que el usuario
+    // redimensione la ventana.
+    function _forzarResizeChart(div) {
+      requestAnimationFrame(() => { if (div) window.Plotly?.Plots?.resize(div); });
+    }
+
     function _dibujarChartVentas() {
       if (!window.Plotly || !divVentas) return;
       window.Plotly.react(divVentas, [{
@@ -1744,7 +1755,7 @@ window.VistaAdmin = (function () {
         xaxis: _tickStep > 1
           ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40 }
           : { showgrid: false }
-      }, _config);
+      }, _config).then(() => _forzarResizeChart(divVentas));
     }
     _dibujarChartVentas();
 
@@ -1789,7 +1800,7 @@ window.VistaAdmin = (function () {
         margin: { t: 10, r: 20, b: 30, l: 130 },
         xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
         yaxis: { showgrid: false, automargin: true }
-      }, _config);
+      }, _config).then(() => _forzarResizeChart(divTop));
     }
     _dibujarChartTop();
 
