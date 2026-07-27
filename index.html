@@ -2601,10 +2601,14 @@
       if (gruposConError) toast('El plato se guardó, pero hubo un error guardando los grupos de opciones. Revísalos e intenta de nuevo.', 'error');
     }
 
-    // Actualizar caché local
+    // Actualizar caché local — si ya existía, se reemplaza EN SU MISMO
+    // LUGAR (antes se sacaba y se volvía a meter al final, así que cada
+    // producto editado "saltaba" al final de su categoría en la grilla).
+    // Uno nuevo sí va al final, no tiene una posición previa que conservar.
     const itemActualizado = { ...item, id: platId, categoria: item.categoria, createdAt, ingredientes: ingredientesConId, gruposOpciones: gruposOpcionesGuardados };
-    _menuItems = _menuItems.filter(m => m.id !== platId);
-    _menuItems.push(itemActualizado);
+    const idxExistente = _menuItems.findIndex(m => m.id === platId);
+    if (idxExistente >= 0) _menuItems[idxExistente] = itemActualizado;
+    else _menuItems.push(itemActualizado);
     localStorage.setItem('salycanela_menu_items', JSON.stringify(_menuItems));
 
     return true;
