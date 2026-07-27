@@ -1285,9 +1285,13 @@
       box-shadow: 0 2px 16px rgba(59,26,8,.07);
       border: 1px solid var(--border);
       overflow-x: hidden; overflow-y: auto; flex: 1;
-      display: flex; flex-direction: column;
     }
-    #gastos-lista { display: flex; flex-direction: column; flex: 1; }
+    /* Sin gastos ese día: el cuadro no debe estirarse a ocupar toda la
+       altura disponible, solo el tamaño de su propio contenido — y sin
+       doble marco, ya que .gastos-empty trae su propia tarjeta. */
+    .gastos-tabla-wrap:has(.gastos-empty) {
+      flex: 0 0 auto; background: transparent; box-shadow: none; border: none;
+    }
     .gastos-tabla { width: 100%; border-collapse: collapse; font-size: .855rem; }
     .gastos-tabla thead tr {
       background: var(--brown-dark);
@@ -1324,13 +1328,15 @@
       white-space: nowrap; display: inline-flex; align-items: center; gap: .3rem;
     }
     .gastos-empty {
-      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 200px; padding: 2rem; text-align: center;
-      color: #b89a82; font-size: .9rem;
+      background: #fff8f0;
+      border: 1.5px dashed rgba(200,86,26,.35); border-radius: 18px;
+      padding: 2rem 1.5rem; text-align: center;
     }
-    .gastos-empty::before {
-      content: '📋'; display: block; font-size: 2.5rem; margin-bottom: .75rem; opacity: .4;
+    .gastos-empty__icon { font-size: 2.2rem; margin-bottom: .5rem; opacity: .7; }
+    .gastos-empty__titulo {
+      font-size: 1.02rem; font-weight: 800; color: var(--cinnamon); margin-bottom: .3rem;
     }
+    .gastos-empty__msg { font-size: .85rem; color: var(--text-muted); line-height: 1.4; }
     @media (max-width: 600px) {
       .gastos-tabla { font-size: .75rem; }
       .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }

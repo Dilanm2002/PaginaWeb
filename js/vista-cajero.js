@@ -161,7 +161,11 @@ window.VistaCajero = (function () {
 
     const gastosRev = [...gastos].reverse();
     listaEl.innerHTML = !gastosRev.length
-      ? `<div class="gastos-empty">No hay gastos registrados este día.</div>`
+      ? `<div class="gastos-empty">
+          <div class="gastos-empty__icon">🧾</div>
+          <div class="gastos-empty__titulo">Sin gastos registrados</div>
+          <div class="gastos-empty__msg">Todavía no se ha registrado ningún gasto este día.</div>
+        </div>`
       : `
       <table class="gastos-tabla">
         <thead>
