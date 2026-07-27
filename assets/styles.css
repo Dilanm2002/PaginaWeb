@@ -1234,6 +1234,8 @@
       background: transparent; padding: .85rem 1.1rem;
     }
     .gastos-input-desc::placeholder { color: #b89a82; }
+    /* Solo visibles en el layout apilado de móvil (ver media query abajo) */
+    .gastos-campo-label { display: none; }
     .gastos-monto-wrap {
       display: flex; align-items: center; gap: .3rem;
       border-left: 1.5px solid var(--border); padding: 0 .9rem;
@@ -1264,6 +1266,7 @@
       border-right: 1.5px solid rgba(200,86,26,.25);
     }
     .gastos-nueva-cat-fila .gastos-input-desc { flex: 1; background: transparent; }
+    .gastos-nueva-cat-acciones { display: flex; flex-shrink: 0; }
     .btn-cancelar-cat-gasto {
       width: 46px; background: #fee2e2; color: #dc2626;
       border: none; border-left: 1.5px solid var(--border); font-size: 1.1rem; font-weight: 700;
@@ -1342,14 +1345,43 @@
       .gastos-tabla th, .gastos-tabla td { padding: .4rem .5rem; }
       .gastos-tabla th:nth-child(2), .gastos-tabla td:nth-child(2),
       .gastos-tabla th:nth-child(4), .gastos-tabla td:nth-child(4) { display: none; }
-      .gastos-nueva-fila { flex-wrap: wrap; }
-      .gastos-input-desc { flex: 1 1 100%; border-bottom: 1.5px solid var(--border); }
-      .gastos-input-categoria { flex: 1 1 100%; width: auto; border-left: none; border-bottom: 1.5px solid var(--border); }
-      .gastos-monto-wrap { flex: 1 1 auto; border-left: none; border-bottom: 1.5px solid var(--border); }
-      .btn-add-gasto { flex: 1 1 100%; padding: .85rem 1rem; }
-      .gastos-nueva-cat-fila { flex-wrap: wrap; }
-      .gastos-nueva-cat-label { flex: 1 1 100%; border-right: none; border-bottom: 1.5px solid rgba(200,86,26,.25); padding: .6rem 1rem; }
-      .gastos-nueva-cat-fila .gastos-input-desc { flex: 1 1 auto; }
+
+      /* ── Formulario "nuevo gasto": de tira fusionada a campos
+         apilados, cada uno con su propia etiqueta y tarjeta ── */
+      .gastos-nueva-fila {
+        flex-direction: column; align-items: stretch; gap: .8rem;
+        background: transparent; border: none; box-shadow: none; overflow: visible;
+      }
+      .gastos-campo-label {
+        display: block; font-size: .68rem; font-weight: 700; text-transform: uppercase;
+        letter-spacing: .05em; color: var(--text-muted); margin-bottom: -.4rem;
+      }
+      .gastos-input-desc, .gastos-input-categoria, .gastos-monto-wrap {
+        border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+        background: #fff; box-shadow: 0 1px 4px rgba(59,26,8,.05);
+      }
+      .gastos-input-desc { padding: .7rem .9rem; }
+      .gastos-input-categoria { width: 100%; padding: .65rem .9rem; }
+      .gastos-monto-wrap { padding: 0 .9rem; }
+      .gastos-input-monto { width: 100%; text-align: left; padding: .65rem 0; }
+      .btn-add-gasto { border-radius: var(--radius-sm); padding: .8rem 1rem; margin-top: .1rem; }
+
+      /* ── Formulario "categoría nueva": misma tarjeta apilada,
+         Crear + ✕ quedan lado a lado en su propia fila ── */
+      .gastos-nueva-cat-fila {
+        flex-direction: column; align-items: stretch; gap: .7rem;
+        background: transparent; border: none; box-shadow: none; overflow: visible;
+      }
+      .gastos-nueva-cat-label {
+        border: 1.5px solid rgba(200,86,26,.3); border-radius: var(--radius-sm);
+        background: #fff8f0; padding: .65rem .9rem;
+      }
+      .gastos-nueva-cat-fila .gastos-input-desc { flex: none; }
+      .gastos-nueva-cat-acciones { gap: .6rem; }
+      .gastos-nueva-cat-acciones .btn-add-gasto { flex: 1; border-radius: var(--radius-sm); }
+      .gastos-nueva-cat-acciones .btn-cancelar-cat-gasto {
+        border: 1.5px solid #fca5a5; border-radius: var(--radius-sm);
+      }
     }
     .resumen-kpis {
       display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));

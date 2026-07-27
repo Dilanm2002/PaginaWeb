@@ -782,8 +782,11 @@
           <section class="adm-module" id="mod-gastos" aria-label="Control de Gastos">
             <!-- Formulario nuevo gasto -->
             <div class="gastos-nueva-fila">
+              <label class="gastos-campo-label" for="gasto-desc">Descripción</label>
               <input type="text" id="gasto-desc" class="gastos-input-desc" placeholder="Descripción del gasto (ej: Ingredientes, gas, mantenimiento...)" maxlength="80" />
+              <label class="gastos-campo-label" for="gasto-categoria">Categoría</label>
               <select id="gasto-categoria" class="gastos-input-categoria" aria-label="Categoría del gasto"></select>
+              <label class="gastos-campo-label" for="gasto-monto">Monto</label>
               <div class="gastos-monto-wrap">
                 <span class="gastos-dolar">$</span>
                 <input type="number" id="gasto-monto" class="gastos-input-monto" placeholder="0.00" min="0.01" max="5000" step="0.01" />
@@ -793,8 +796,10 @@
             <div class="gastos-nueva-cat-fila" id="gastos-nueva-cat-fila" style="display:none">
               <span class="gastos-nueva-cat-label">🏷️ Categoría nueva</span>
               <input type="text" id="gasto-cat-nueva-nombre" class="gastos-input-desc" placeholder="Ej: Marketing, Mantenimiento…" maxlength="40" />
-              <button class="btn-add-gasto" id="btn-confirmar-cat-gasto" type="button">Crear</button>
-              <button class="btn-cancelar-cat-gasto" id="btn-cancelar-cat-gasto" type="button" aria-label="Cancelar">✕</button>
+              <div class="gastos-nueva-cat-acciones">
+                <button class="btn-add-gasto" id="btn-confirmar-cat-gasto" type="button">Crear</button>
+                <button class="btn-cancelar-cat-gasto" id="btn-cancelar-cat-gasto" type="button" aria-label="Cancelar">✕</button>
+              </div>
             </div>
 
             <div class="resumen-fecha-nav" id="gastos-dia-nav" style="align-self:flex-start">
