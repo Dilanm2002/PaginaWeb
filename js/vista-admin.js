@@ -2267,14 +2267,27 @@ window.VistaAdmin = (function () {
     sel.value = (valorPrevio && [...sel.options].some(o => o.value === valorPrevio)) ? valorPrevio : '';
   }
 
+  // Tope de 3 dígitos enteros ($999.99) — un gasto diario no debería
+  // pasar de ahí; evita que alguien escriba un número absurdo por error.
+  const _GASTO_MONTO_MAX = 999.99;
+
   function _initBtnGasto() {
     const SC  = window.SC;
     const btn = document.getElementById('btn-add-gasto');
     const sel = document.getElementById('gasto-categoria');
+    const montoInput = document.getElementById('gasto-monto');
     const catFila   = document.getElementById('gastos-nueva-cat-fila');
     const catInput  = document.getElementById('gasto-cat-nueva-nombre');
     const btnCatOk  = document.getElementById('btn-confirmar-cat-gasto');
     const btnCatCanc = document.getElementById('btn-cancelar-cat-gasto');
+
+    if (montoInput && !montoInput._gastoMontoBound) {
+      montoInput._gastoMontoBound = true;
+      montoInput.addEventListener('input', () => {
+        const valor = parseFloat(montoInput.value);
+        if (!isNaN(valor) && valor > _GASTO_MONTO_MAX) montoInput.value = _GASTO_MONTO_MAX;
+      });
+    }
 
     if (sel && !sel._gastoCatBound) {
       sel._gastoCatBound = true;
@@ -2318,6 +2331,7 @@ window.VistaAdmin = (function () {
       const categoriaId = document.getElementById('gasto-categoria')?.value;
       if (!desc)       { SC?.toast('Escribe una descripción.', 'error'); return; }
       if (!monto || monto <= 0) { SC?.toast('Ingresa un monto válido.', 'error'); return; }
+      if (monto > _GASTO_MONTO_MAX) { SC?.toast(`Monto demasiado grande — máximo $${_GASTO_MONTO_MAX}.`, 'error'); return; }
       if (categoriaId === '__nueva__') { SC?.toast('Confirma la categoría nueva primero.', 'error'); return; }
       btn.disabled = true;
       // Reutiliza SC.insertarGasto (ya pasa por la RPC registrar_gasto, exige sesión de staff)
