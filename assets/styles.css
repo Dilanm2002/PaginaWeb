@@ -4041,12 +4041,48 @@
     .adm-dash-welcome { padding: 1.2rem 1.25rem; }
     .adm-dash-welcome__title { font-size: 1.1rem; }
     .adm-dash-welcome__badge { display: none; }
+
+    /* ── Tablas de admin (Reportes / Menú del Día) como tarjetas ──
+       En vez de forzar scroll horizontal, cada <tr> se convierte en una
+       tarjeta y cada <td> muestra su encabezado (data-label) a la
+       izquierda y el valor a la derecha. */
+    .adm-tabla thead { display: none; }
+    .adm-tabla, .adm-tabla tbody, .adm-tabla tr { display: block; width: 100%; }
+    .adm-tabla tbody tr {
+      background: #fff; border: 1px solid rgba(224,201,176,.6); border-radius: 12px;
+      margin-bottom: .6rem; padding: .2rem .9rem;
+      box-shadow: 0 2px 8px rgba(59,26,8,.05);
+    }
+    .adm-tabla tbody tr:nth-child(even) { background: #fff; }
+    .adm-tabla tbody tr:hover { background: #fff; }
+    .adm-tabla td {
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      padding: .55rem 0 !important; border-bottom: 1px dashed rgba(59,26,8,.1);
+      text-align: right; color: var(--text);
+    }
+    .adm-tabla td:last-child { border-bottom: none; }
+    .adm-tabla td[data-label]::before {
+      content: attr(data-label); font-weight: 700; font-size: .66rem; text-transform: uppercase;
+      letter-spacing: .04em; color: var(--text-muted); text-align: left; flex-shrink: 0;
+    }
+    .adm-tabla td[colspan] { display: block; text-align: center !important; padding: 1.25rem 0 !important; }
+    .md-tabla { min-width: 0; width: 100%; }
+    .md-td-acciones { justify-content: flex-end; gap: .5rem; }
+    .md-td-acciones::before { content: none; }
+    .md-tabla-wrap { border: none; box-shadow: none; background: transparent; overflow: visible; }
   }
 
   @media (max-width: 480px) {
     .adm-kpi-grid { grid-template-columns: 1fr; }
     .adm-quick-grid { grid-template-columns: repeat(2, 1fr); }
     .adm-kpi { padding: 1rem; }
+    .reportes-kpis { grid-template-columns: 1fr; }
+    .cuadre-kpis { grid-template-columns: 1fr 1fr; gap: .6rem; }
+    .cuadre-kpi { padding: .85rem .7rem; }
+    .cuadre-kpi__val { font-size: 1.25rem; }
+    .md-editor { padding: 1rem; gap: .85rem; }
+    .md-editor input[type="date"], .md-editor input[type="text"], .md-editor select { min-width: 0; width: 100%; }
+    .md-editor__fecha, .md-editor__campo { width: 100%; }
   }
 
   /* ── Employee Form Modal ─────────────────── */

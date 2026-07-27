@@ -625,13 +625,13 @@ window.VistaAdmin = (function () {
       const diaMes    = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
       const celdaPlato = c => {
         const nombre = _md_nombreCampo(d, c);
-        return nombre ? `<td>${SC.escapeHtml(nombre)}</td>` : `<td class="md-td-vacio">Sin definir</td>`;
+        return nombre ? `<td data-label="${c.lbl}">${SC.escapeHtml(nombre)}</td>` : `<td class="md-td-vacio" data-label="${c.lbl}">Sin definir</td>`;
       };
       return `<tr class="md-fila${esHoy ? ' md-fila--hoy' : ''}" data-fecha="${d.mendia_fecha}">
-        <td class="md-td-dia">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
-        <td class="md-td-fecha">${SC.escapeHtml(diaMes)}</td>
+        <td class="md-td-dia" data-label="Día">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
+        <td class="md-td-fecha" data-label="Fecha">${SC.escapeHtml(diaMes)}</td>
         ${_MD_CAMPOS.map(celdaPlato).join('')}
-        <td class="md-td-acciones">
+        <td class="md-td-acciones" data-label="Acciones">
           <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
           <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
         </td>
@@ -1869,11 +1869,11 @@ window.VistaAdmin = (function () {
               ? new Date(p.ped_cobrado_en).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })
               : (p.ped_fecha ?? '—');
             return `<tr>
-              <td>${fechaHora}</td>
-              <td>${SC?.escapeHtml(_mesa(p)) ?? _mesa(p)}</td>
-              <td>${SC?.escapeHtml(_cliente(p)) ?? _cliente(p)}</td>
-              <td style="text-align:center">${items}</td>
-              <td style="text-align:right;font-weight:700;color:var(--cinnamon)">$${(parseFloat(p.ped_total)||0).toFixed(2)}</td>
+              <td data-label="Fecha / Hora">${fechaHora}</td>
+              <td data-label="Mesa">${SC?.escapeHtml(_mesa(p)) ?? _mesa(p)}</td>
+              <td data-label="Cliente">${SC?.escapeHtml(_cliente(p)) ?? _cliente(p)}</td>
+              <td data-label="Ítems" style="text-align:center">${items}</td>
+              <td data-label="Total" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${(parseFloat(p.ped_total)||0).toFixed(2)}</td>
             </tr>`;
           }).join('')}
         </tbody>
@@ -2135,12 +2135,12 @@ window.VistaAdmin = (function () {
         ? `<strong style="color:${_METODO_COLOR_CUADRE[metodo] ?? 'var(--text-muted)'}">${SC?.escapeHtml(metodo) ?? metodo}</strong>`
         : '—';
       return `<tr>
-        <td>${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
-        <td>${creador}</td>
-        <td style="text-align:center">${estadoTxt}</td>
-        <td>${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
-        <td>${metodoTxt}</td>
-        <td>${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
+        <td data-label="Pedido">${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
+        <td data-label="Creado por">${creador}</td>
+        <td data-label="Estado" style="text-align:center">${estadoTxt}</td>
+        <td data-label="Cobrado por">${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
+        <td data-label="Método de pago">${metodoTxt}</td>
+        <td data-label="Anulado por">${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
       </tr>`;
     }).join('');
 
