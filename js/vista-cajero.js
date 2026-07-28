@@ -92,7 +92,7 @@ window.VistaCajero = (function () {
           ${!filas.length ? `<tr><td colspan="6" class="resumen-empty" style="text-align:center;padding:.9rem 0">No hay pedidos cobrados este día.</td></tr>` : filas.map(h => `
             <tr>
               <td><strong>${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</strong></td>
-              <td>${SC.escapeHtml(h.nombreUsuario)}</td>
+              <td>${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}</td>
               <td>${Array.isArray(h.items) ? h.items.map(i => `${i.cantidad}× ${SC.escapeHtml(i.nombre)}`).join('<br>') : '—'}</td>
               <td class="td-hora">${h.fecha}</td>
               <td class="td-hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</td>
@@ -109,8 +109,8 @@ window.VistaCajero = (function () {
             </div>
             <div class="resumen-card__body">
               <div class="resumen-card__cliente">
-                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${(h.nombreUsuario || '?').charAt(0).toUpperCase()}</span>
-                ${SC.escapeHtml(h.nombreUsuario)}
+                <span style="display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:var(--cinnamon);color:#fff;font-size:.65rem;font-weight:800;flex-shrink:0">${(h.clienteNombre || h.nombreUsuario || '?').charAt(0).toUpperCase()}</span>
+                ${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}
               </div>
               <div class="resumen-card__items">
                 ${Array.isArray(h.items) ? h.items.map(i => `
@@ -617,7 +617,7 @@ window.VistaCajero = (function () {
           ${cobrados.map(h => `
             <tr>
               <td><strong>${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</strong></td>
-              <td>${SC.escapeHtml(h.nombreUsuario)}</td>
+              <td>${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}</td>
               <td class="td-hora">${_hora(h)}</td>
               <td class="td-total">$${h.total.toFixed(2)}</td>
               <td style="white-space:nowrap">${_acciones(h)}</td>
@@ -632,7 +632,7 @@ window.VistaCajero = (function () {
               <span class="resumen-card__total">$${h.total.toFixed(2)}</span>
             </div>
             <div class="resumen-card__body">
-              <div class="resumen-card__cliente">${SC.escapeHtml(h.nombreUsuario)}</div>
+              <div class="resumen-card__cliente">${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}</div>
               <div class="resumen-card__hora">${_hora(h)}</div>
               <div style="display:flex;gap:.5rem;margin-top:.5rem">${_acciones(h)}</div>
             </div>

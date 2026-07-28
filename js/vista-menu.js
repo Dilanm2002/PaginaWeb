@@ -7,6 +7,11 @@ window.VistaMenu = (function () {
 
   let meseroMesaTarget = null;
   let _meseroOriginalItems = null;
+  // Cuando el mesero agrega ítems a una mesa ya activa, puede marcar que
+  // los SIGUIENTES ítems que toque son para llevar (p.ej. la mesa ya está
+  // comiendo y pide algo extra para llevarse) — así no hace falta crear un
+  // pedido aparte solo para eso. Se resetea al cambiar de mesa objetivo.
+  let _meseroItemParaLlevar = false;
 
   // Misma idea que _exclKey en logica-carrito.js, para las líneas de un
   // pedido activo (ped.items), que no pasan por LogicaCarrito.
@@ -77,19 +82,22 @@ window.VistaMenu = (function () {
     if (meseroMesaTarget) {
       const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));
       if (!ped) return false;
-      const key = _exclKeyPed(exclusiones) + '::' + _opcionesKeyPed(opcionesElegidas);
+      // El modo "para llevar" entra en la clave de fusión: el mismo plato
+      // con las mismas exclusiones/opciones NO debe mezclarse en una sola
+      // línea si una unidad es para la mesa y otra para llevar aparte.
+      const key = _exclKeyPed(exclusiones) + '::' + _opcionesKeyPed(opcionesElegidas) + '::' + (_meseroItemParaLlevar ? 'llevar' : 'mesa');
       const totalEnPedido = ped.items.filter(x => x.id === prod.id).reduce((s2, x) => s2 + x.cantidad, 0);
       if (totalEnPedido >= s.stock) { SC.toast(`"${prod.nombre}" sin stock suficiente`, 'error'); return false; }
-      const existente = ped.items.find(x => x.id === prod.id && (_exclKeyPed(x.exclusiones) + '::' + _opcionesKeyPed(x.opcionesElegidas)) === key);
+      const existente = ped.items.find(x => x.id === prod.id && (_exclKeyPed(x.exclusiones) + '::' + _opcionesKeyPed(x.opcionesElegidas) + '::' + (x.paraLlevar ? 'llevar' : 'mesa')) === key);
       if (existente) existente.cantidad += 1;
       else {
         const precio = LogicaCarrito.calcularPrecioConExclusiones(prod, exclusiones);
-        ped.items.push({ id: prod.id, nombre: prod.nombre, precio, cantidad: 1, exclusiones, opcionesElegidas });
+        ped.items.push({ id: prod.id, nombre: prod.nombre, precio, cantidad: 1, exclusiones, opcionesElegidas, paraLlevar: _meseroItemParaLlevar });
       }
       SC.actualizarStock(prod.id, 1);
       renderMesasActivas();
       syncQtys();
-      SC.toast(`${msg} a Mesa ${meseroMesaTarget.mesa}`, 'success');
+      SC.toast(`${msg} a Mesa ${meseroMesaTarget.mesa}${_meseroItemParaLlevar ? ' (para llevar)' : ''}`, 'success');
       return true;
     }
 
@@ -440,6 +448,7 @@ window.VistaMenu = (function () {
              aria-pressed="${seleccionada ? 'true' : 'false'}"
              aria-label="${p.paraLlevar || p.mesa === 'Para llevar' ? 'Para llevar' : `Mesa ${p.mesa}`}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
           <span class="mesero-mesa-card__num">${p.paraLlevar || p.mesa === 'Para llevar' ? '🛍 Para llevar' : `🍽️ Mesa ${p.mesa}`}</span>
+          ${p.clienteNombre ? `<span class="mesero-mesa-card__cliente">👤 ${SC.escapeHtml(p.clienteNombre)}</span>` : ''}
           <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
           <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
@@ -458,19 +467,25 @@ window.VistaMenu = (function () {
           <div class="mesero-mesa-detalle__head">
             <div class="mesero-mesa-detalle__head-left">
               <span class="mesero-mesa-detalle__title">${pedidoSeleccionado.paraLlevar || pedidoSeleccionado.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${pedidoSeleccionado.mesa}`}</span>
-              <span class="mesero-mesa-detalle__cliente">👤 ${pedidoSeleccionado.nombreUsuario}</span>
+              <span class="mesero-mesa-detalle__cliente">👤 ${SC.escapeHtml(pedidoSeleccionado.clienteNombre || pedidoSeleccionado.nombreUsuario)}</span>
             </div>
             <span class="mesero-mesa-detalle__total">$${pedidoSeleccionado.total.toFixed(2)}</span>
           </div>
+          ${(!pedidoSeleccionado.paraLlevar && pedidoSeleccionado.mesa !== 'Para llevar') ? `
+          <div class="mesero-mesa-detalle__modo">
+            <button class="mesero-llevar-toggle${_meseroItemParaLlevar ? ' active' : ''}" id="btn-toggle-item-llevar" type="button">
+              ${_meseroItemParaLlevar ? '🥡 Los próximos ítems son para llevar' : '🍽️ Agregando para la mesa — toca para marcar "para llevar"'}
+            </button>
+          </div>` : ''}
           <div class="mesero-mesa-detalle__body" id="mesero-detalle-body">
-            ${pedidoSeleccionado.items.map(i => `
+            ${pedidoSeleccionado.items.map((i, idx) => `
               <div class="mesero-mesa-detalle__row">
                 <span class="mesero-mesa-detalle__qty">${i.cantidad}×</span>
-                <span class="mesero-mesa-detalle__nombre">${i.nombre}</span>
+                <span class="mesero-mesa-detalle__nombre">${i.nombre}${i.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}</span>
                 <span class="mesero-mesa-detalle__precio">$${(i.precio * i.cantidad).toFixed(2)}</span>
                 <div class="mesero-det-ctrl">
-                  <button class="mesero-det-btn" data-det-action="dec" data-item-id="${i.id}" aria-label="Quitar uno">−</button>
-                  <button class="mesero-det-btn" data-det-action="inc" data-item-id="${i.id}" aria-label="Agregar uno">+</button>
+                  <button class="mesero-det-btn" data-det-action="dec" data-item-idx="${idx}" aria-label="Quitar uno">−</button>
+                  <button class="mesero-det-btn" data-det-action="inc" data-item-idx="${idx}" aria-label="Agregar uno">+</button>
                 </div>
               </div>`).join('')}
           </div>
@@ -497,6 +512,7 @@ window.VistaMenu = (function () {
             const _snapPed = SC.leerCaja().find(p => String(p.id) === String(pid));
             _meseroOriginalItems = _snapPed ? JSON.parse(JSON.stringify(_snapPed.items)) : [];
           }
+          _meseroItemParaLlevar = false;
           renderMesasActivas();
           syncQtys();
         };
@@ -527,6 +543,7 @@ window.VistaMenu = (function () {
         }
         meseroMesaTarget = null;
         _meseroOriginalItems = null;
+        _meseroItemParaLlevar = false;
         renderMesasActivas();
         syncQtys();
       };
@@ -539,14 +556,31 @@ window.VistaMenu = (function () {
         const peds = SC.leerCaja();
         const ped  = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
         if (ped) {
+          // El mesero no puede dejar un pedido sin ítems — eso lo borraría
+          // por completo (actualizarPedido elimina el pedido si queda
+          // vacío). Anular un pedido es decisión del administrador, no
+          // algo que el mesero deba poder hacer quitando ítems.
+          if (!ped.items.length) {
+            SC.toast('Un pedido no puede quedar sin ítems. Si ya no se va a servir, pide al administrador que lo anule.', 'error');
+            return;
+          }
           SC.actualizarPedido(ped.id, ped.items);
           window.VistaCajero?.renderCajeroView();
           SC.toast(`Mesa ${meseroMesaTarget.mesa} actualizada`, 'success');
         }
         meseroMesaTarget = null;
         _meseroOriginalItems = null;
+        _meseroItemParaLlevar = false;
         renderMesasActivas();
         syncQtys();
+      };
+    }
+
+    const btnToggleLlevar = document.getElementById('btn-toggle-item-llevar');
+    if (btnToggleLlevar) {
+      btnToggleLlevar.onclick = () => {
+        _meseroItemParaLlevar = !_meseroItemParaLlevar;
+        renderMesasActivas();
       };
     }
 
@@ -556,12 +590,14 @@ window.VistaMenu = (function () {
         const btn = e.target.closest('[data-det-action]');
         if (!btn || !meseroMesaTarget) return;
         const action = btn.dataset.detAction;
-        const itemId = btn.dataset.itemId;
         const peds   = SC.leerCaja();
         const ped    = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
         if (!ped) return;
-        const idx = ped.items.findIndex(x => String(x.id) === String(itemId));
-        if (idx < 0) return;
+        // Índice de la línea, no el plat_id — el mismo producto puede
+        // aparecer dos veces (una para la mesa, otra para llevar) y el id
+        // por sí solo no distingue cuál línea se está tocando.
+        const idx = Number(btn.dataset.itemIdx);
+        if (!Number.isInteger(idx) || idx < 0 || idx >= ped.items.length) return;
         if (action === 'inc') {
           ped.items[idx].cantidad += 1;
         } else if (action === 'dec') {

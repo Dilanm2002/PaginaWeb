@@ -1830,8 +1830,14 @@ window.VistaAdmin = (function () {
     const users    = window.ModuloAutenticacion?.leerUsuarios() ?? [];
     const _mesa    = p => p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
     const _cliente = p => {
-      if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
-      return users.find(u => u.id === p.usu_id)?.nombre ?? 'Usuario';
+      // El "Cliente" es a quién pertenece el pedido (mesa/para llevar), no
+      // la cuenta que lo creó — un mesero puede tomar el pedido a nombre de
+      // otra persona. Mismo criterio que _rowAPedido en index.html.
+      const esParaLlevar = p.ped_nombre_invitado === 'Para llevar' || p.ped_nombre_invitado?.startsWith('PL:');
+      const llevarNombre = p.ped_nombre_invitado?.startsWith('PL:') ? p.ped_nombre_invitado.slice(3) : null;
+      if (!p.usu_id) return llevarNombre ?? (esParaLlevar ? 'Para llevar' : (p.ped_nombre_invitado ?? 'Invitado'));
+      const clienteNombre = esParaLlevar ? llevarNombre : (p.ped_nombre_invitado || null);
+      return clienteNombre || users.find(u => u.id === p.usu_id)?.nombre || 'Usuario';
     };
     const _facturaDe = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
     const _pagoDe    = p => { const f = _facturaDe(p); return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null; };

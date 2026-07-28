@@ -1789,7 +1789,13 @@
       return null;
     }
 
-    // Limpiar pedido pendiente previo en orden (FK: exclusiones → detalles → pedido)
+    // Limpiar pedido pendiente previo en orden (FK: exclusiones → detalles → pedido).
+    // El pedido a borrar se elige con un SELECT previo, y entre ese SELECT y
+    // este DELETE puede pasar un rato (varios round-trips a Supabase) — si en
+    // ese hueco justo se cobra ese mismo pedido, sin el .eq('ped_estado',...)
+    // de abajo se borraría un pedido YA PAGADO en vez de uno pendiente,
+    // perdiendo esa venta sin dejar rastro. Se vuelve a exigir 'pendiente' en
+    // el propio DELETE para que, si eso pasa, simplemente no borre nada.
     async function _limpiarPeds(query) {
       const { data: peds } = await query;
       if (!peds?.length) return;
@@ -1799,7 +1805,7 @@
         await db.from('det_exclusiones').delete().in('detped_id', dets.map(d => d.detped_id));
         await db.from('detalle_pedidos').delete().in('ped_id', pIds);
       }
-      await db.from('pedidos').delete().in('ped_id', pIds);
+      await db.from('pedidos').delete().in('ped_id', pIds).eq('ped_estado', 'pendiente');
     }
     if (mesaData?.mes_id) {
       await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('mes_id', mesaData.mes_id));
@@ -2061,9 +2067,20 @@
 
     clearTimeout(_pedidoUpdateTimers[pedidoId]);
     _pedidoUpdateTimers[pedidoId] = setTimeout(async () => {
-      // Reemplazar detalle_pedidos: eliminar y reinsertar
+      // Reemplazar detalle_pedidos: eliminar y reinsertar. Antes de borrar
+      // los detalles hay que borrar lo que cuelga de ellos (FK: exclusiones
+      // / opciones → detalle), igual que en _limpiarPeds — si no, además de
+      // fallar el borrado, las exclusiones y opciones elegidas ("sin: Arroz",
+      // "Bebida: Café") se perdían al reinsertar los ítems y no volvían a
+      // aparecer la próxima vez que se abría el pedido.
+      const { data: detsPrevios } = await db.from('detalle_pedidos').select('detped_id').eq('ped_id', pedidoId);
+      if (detsPrevios?.length) {
+        const detIdsPrevios = detsPrevios.map(d => d.detped_id);
+        await db.from('det_exclusiones').delete().in('detped_id', detIdsPrevios);
+        await db.from('det_opciones_elegidas').delete().in('detped_id', detIdsPrevios);
+      }
       await db.from('detalle_pedidos').delete().eq('ped_id', pedidoId);
-      await db.from('detalle_pedidos').insert(
+      const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(
         nuevoItems.map(i => ({
           ped_id:             pedidoId,
           plat_id:            i.id,
@@ -2072,7 +2089,42 @@
           detped_subtotal:    i.precio * i.cantidad,
           detped_para_llevar: i.paraLlevar || false
         }))
-      );
+      ).select('detped_id, plat_id');
+      if (detError) console.error('Supabase insert detalle_pedidos (actualizarPedido):', detError);
+
+      // Mismo criterio de correlación por posición que enviarACaja: detData[i]
+      // corresponde a nuevoItems[i], no se busca por plat_id porque un mismo
+      // plato puede repetirse con distintas exclusiones/opciones.
+      if (detData?.length) {
+        const exclRows = [];
+        detData.forEach((det, idx) => {
+          (nuevoItems[idx]?.exclusiones || []).forEach(excl => {
+            if (excl?.id) exclRows.push({ detped_id: det.detped_id, ing_id: excl.id });
+          });
+        });
+        if (exclRows.length) {
+          const { error } = await db.from('det_exclusiones').insert(exclRows);
+          if (error) console.error('Supabase insert det_exclusiones (actualizarPedido):', error);
+        }
+
+        const opcionesRows = [];
+        detData.forEach((det, idx) => {
+          (nuevoItems[idx]?.opcionesElegidas || []).forEach(op => {
+            opcionesRows.push({
+              detped_id:     det.detped_id,
+              grupo_id:      op.grupoId ?? null,
+              grupo_nombre:  op.grupoNombre,
+              opcion_id:     op.opcionId ?? null,
+              opcion_nombre: op.opcionNombre
+            });
+          });
+        });
+        if (opcionesRows.length) {
+          const { error } = await db.from('det_opciones_elegidas').insert(opcionesRows);
+          if (error) console.error('Supabase insert det_opciones_elegidas (actualizarPedido):', error);
+        }
+      }
+
       const { error } = await db.from('pedidos').update({
         ped_total:       total,
         ped_iva:         iva,
