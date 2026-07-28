@@ -574,6 +574,10 @@ window.VistaAdmin = (function () {
         btn.disabled = false;
         if (error) { console.error('Supabase menu_dia upsert:', error); SC?.toast('Error al guardar el menú.', 'error'); return; }
         SC?.toast('Menú del día guardado ✓', 'success');
+        // Deja el formulario listo para el siguiente día en vez de dejar lo
+        // recién guardado ahí escrito — si se quiere volver a ver/editar,
+        // está el botón "Editar" en el registro de abajo.
+        _MD_CAMPOS.forEach(c => { const inp = document.getElementById(c.input); if (inp) inp.value = ''; });
         _md_toggleCancelar(false);
         await _md_renderProximos();
         if (fecha === _fechaLocalISO()) _renderDashboardMenuDia();

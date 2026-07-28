@@ -111,6 +111,23 @@ window.VistaMenu = (function () {
     return true;
   }
 
+  // Actualiza las exclusiones/opciones de un ítem YA existente en una mesa
+  // activa, en su mismo lugar (misma cantidad, mismo puesto en la lista) —
+  // para cuando el cliente cambia de opinión sobre un plato que ya está en
+  // el pedido (ej. "ya no quiere el seco") sin tener que quitarlo y
+  // volver a agregarlo. No toca el stock: la cantidad no cambia.
+  function _editarItemPedido(pedidoId, idx, prod, exclusiones, opcionesElegidas) {
+    const SC  = window.SC;
+    const ped = SC.leerCaja().find(p => String(p.id) === String(pedidoId));
+    if (!ped || !ped.items[idx]) return false;
+    const precio = LogicaCarrito.calcularPrecioConExclusiones(prod, exclusiones);
+    ped.items[idx] = { ...ped.items[idx], precio, exclusiones, opcionesElegidas };
+    renderMesasActivas();
+    syncQtys();
+    SC.toast(`"${prod.nombre}" actualizado ✓`, 'success');
+    return true;
+  }
+
   // Placeholder cuando el plato no tiene imagen (mismo estilo que el panel admin)
   const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
@@ -279,8 +296,12 @@ window.VistaMenu = (function () {
     };
   }
 
-  /* ── Modal ingredientes ── */
-  function abrirModalProducto(p) {
+  /* ── Modal ingredientes ──
+     editarItem (opcional): {pedidoId, idx} — cuando viene, el modal abre en
+     modo edición de un ítem YA en el pedido: precarga sus exclusiones y
+     opciones actuales, y "Guardar cambios" actualiza esa línea en su lugar
+     en vez de agregar una nueva (ver _editarItemPedido). */
+  function abrirModalProducto(p, editarItem = null) {
     const SC = window.SC;
     const s       = SC.getStock(p.id);
     const agotado = !s.disponible || s.stock <= 0;
@@ -288,16 +309,22 @@ window.VistaMenu = (function () {
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     const modalBox      = document.getElementById('product-modal-box');
 
+    const itemActual = editarItem
+      ? SC.leerCaja().find(x => String(x.id) === String(editarItem.pedidoId))?.items?.[editarItem.idx] ?? null
+      : null;
+    const exclIdsActuales = new Set((itemActual?.exclusiones || []).map(e => String(e.id)));
+
     const ingsConId = Array.isArray(p.ingredientes) ? p.ingredientes.filter(i => i && i.id) : [];
     const tieneIngredientes = ingsConId.length > 0;
     const puedeExcluir = tieneIngredientes && p.permiteExcluir === true;
     const ingChips = puedeExcluir
-      ? ingsConId.map(ing =>
-          `<label class="ing-chip">
-              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
+      ? ingsConId.map(ing => {
+          const marcado = itemActual ? !exclIdsActuales.has(String(ing.id)) : true;
+          return `<label class="ing-chip">
+              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" ${marcado ? 'checked' : ''}>
               <span class="ing-chip__label">${ing.nombre}</span>
-            </label>`
-        ).join('')
+            </label>`;
+        }).join('')
       : '';
 
     const ingTexto = !puedeExcluir && tieneIngredientes
@@ -305,20 +332,30 @@ window.VistaMenu = (function () {
       : '';
 
     const grupos = Array.isArray(p.gruposOpciones) ? p.gruposOpciones : [];
-    const gruposHtml = grupos.map((g, gi) => `
+    const gruposHtml = grupos.map((g, gi) => {
+      const opcionActualId = itemActual?.opcionesElegidas?.find(o => String(o.grupoId) === String(g.id))?.opcionId;
+      return `
       <div class="modal-grupo-opciones">
         <p class="modal-ingredients-title">${SC.escapeHtml(g.nombre)}</p>
         <div class="modal-ingredients-chips">
-          ${g.opciones.map((op, oi) => `
+          ${g.opciones.map((op, oi) => {
+            const marcado = opcionActualId != null ? String(op.id) === String(opcionActualId) : oi === 0;
+            return `
             <label class="ing-chip">
               <input type="radio" name="modal-grupo-${gi}" class="opcion-radio"
                 data-grupo-id="${g.id}" data-grupo-nombre="${SC.escapeHtml(g.nombre)}"
                 data-opcion-id="${op.id}" data-opcion-nombre="${SC.escapeHtml(op.nombre)}"
-                ${oi === 0 ? 'checked' : ''}>
+                ${marcado ? 'checked' : ''}>
               <span class="ing-chip__label">${SC.escapeHtml(op.nombre)}</span>
-            </label>`).join('')}
+            </label>`;
+          }).join('')}
         </div>
-      </div>`).join('');
+      </div>`;
+    }).join('');
+
+    const precioInicial = itemActual
+      ? LogicaCarrito.calcularPrecioConExclusiones(p, itemActual.exclusiones || [])
+      : p.precio;
 
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
@@ -330,6 +367,7 @@ window.VistaMenu = (function () {
       </div>
       <div class="modal-body">
         <span class="modal-badge" data-cat="${p.categoria}"${_colorEstilo(p.categoria)}>${p.categoria}</span>
+        ${editarItem ? `<p class="modal-editing-badge">✏️ Editando este ítem del pedido</p>` : ''}
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
         ${tieneIngredientes ? `
@@ -345,12 +383,12 @@ window.VistaMenu = (function () {
         ` : ''}
         ${gruposHtml}
         <div class="modal-footer">
-          <div class="modal-price" id="modal-price-display">$${p.precio.toFixed(2)} <small>USD</small></div>
+          <div class="modal-price" id="modal-price-display">$${precioInicial.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
             <button class="btn-modal-close" id="btn-cerrar-modal">Cerrar</button>
-            <button class="btn-modal-add" data-id="${p.id}" ${agotado ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+            <button class="btn-modal-add" data-id="${p.id}" ${(!editarItem && agotado) ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              ${agotado ? 'Agotado' : 'Ordenar'}
+              ${editarItem ? 'Guardar cambios' : (agotado ? 'Agotado' : 'Ordenar')}
             </button>
           </div>
         </div>
@@ -389,7 +427,11 @@ window.VistaMenu = (function () {
     document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
-      _agregarConExclusiones(p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
+      if (editarItem) {
+        _editarItemPedido(editarItem.pedidoId, editarItem.idx, p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
+      } else {
+        _agregarConExclusiones(p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
+      }
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -478,16 +520,24 @@ window.VistaMenu = (function () {
             </button>
           </div>` : ''}
           <div class="mesero-mesa-detalle__body" id="mesero-detalle-body">
-            ${pedidoSeleccionado.items.map((i, idx) => `
+            ${pedidoSeleccionado.items.map((i, idx) => {
+              // Solo tiene sentido editar si el plato admite excluir
+              // ingredientes o tiene grupos de opciones — si no, no hay
+              // nada que cambiarle salvo la cantidad (ya cubierta por −/+).
+              const prodCatalogo = SC.getAllProductosMergeados()?.find(x => x.id === i.id);
+              const editable = prodCatalogo && (_puedeExcluirIngredientes(prodCatalogo) || _tieneGruposOpciones(prodCatalogo));
+              return `
               <div class="mesero-mesa-detalle__row">
                 <span class="mesero-mesa-detalle__qty">${i.cantidad}×</span>
                 <span class="mesero-mesa-detalle__nombre">${i.nombre}${i.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}</span>
                 <span class="mesero-mesa-detalle__precio">$${(i.precio * i.cantidad).toFixed(2)}</span>
                 <div class="mesero-det-ctrl">
+                  ${editable ? `<button class="mesero-det-btn" data-det-action="edit" data-item-idx="${idx}" aria-label="Editar ítem">✏️</button>` : ''}
                   <button class="mesero-det-btn" data-det-action="dec" data-item-idx="${idx}" aria-label="Quitar uno">−</button>
                   <button class="mesero-det-btn" data-det-action="inc" data-item-idx="${idx}" aria-label="Agregar uno">+</button>
                 </div>
-              </div>`).join('')}
+              </div>`;
+            }).join('')}
           </div>
           <div class="mesero-mesa-detalle__cta">
             <span>⬇ Selecciona productos abajo para agregar a esta mesa</span>
@@ -598,6 +648,11 @@ window.VistaMenu = (function () {
         // por sí solo no distingue cuál línea se está tocando.
         const idx = Number(btn.dataset.itemIdx);
         if (!Number.isInteger(idx) || idx < 0 || idx >= ped.items.length) return;
+        if (action === 'edit') {
+          const prodCatalogo = SC.getAllProductosMergeados()?.find(x => x.id === ped.items[idx].id);
+          if (prodCatalogo) abrirModalProducto(prodCatalogo, { pedidoId: ped.id, idx });
+          return;
+        }
         if (action === 'inc') {
           ped.items[idx].cantidad += 1;
         } else if (action === 'dec') {

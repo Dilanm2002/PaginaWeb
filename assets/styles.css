@@ -1851,6 +1851,11 @@
     .modal-body { padding: 1.5rem; }
     .modal-badge { display: inline-block; font-size: .68rem; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; padding: .25rem .7rem; border-radius: 999px; color: #fff; margin-bottom: .75rem; }
     .modal-badge { background: var(--cat-c, var(--cinnamon)); }
+    .modal-editing-badge {
+      display: inline-block; font-size: .72rem; font-weight: 700;
+      color: var(--cinnamon); background: #fef3ec; border: 1px solid rgba(200,86,26,.3);
+      border-radius: 999px; padding: .2rem .65rem; margin: 0 0 .5rem .5rem;
+    }
     .modal-title { font-family: 'Dancing Script', cursive; font-size: 1.7rem; color: var(--brown-dark); margin-bottom: .5rem; }
     .modal-desc { font-size: .86rem; color: var(--text-muted); line-height: 1.7; margin-bottom: 1.25rem; }
     .btn-modal-x {
