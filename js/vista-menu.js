@@ -128,6 +128,50 @@ window.VistaMenu = (function () {
     return true;
   }
 
+  // Mismo popover compacto (checkboxes/radios) que se usa para agregar un
+  // plato nuevo desde la lista — reutilizado aquí para editar un ítem que
+  // ya está en el pedido, precargado con lo que ese ítem tiene marcado.
+  // Nada de imagen/descripción/modal grande: solo lo que hay que resolver.
+  function _popoverEdicionHtml(prod, itemActual, idx) {
+    const exclIdsActuales = new Set((itemActual.exclusiones || []).map(e => String(e.id)));
+    const puedeExcl = _puedeExcluirIngredientes(prod);
+    const grupos    = Array.isArray(prod.gruposOpciones) ? prod.gruposOpciones : [];
+    const gruposPopHtml = grupos.map((g, gi) => {
+      const opcionActualId = itemActual.opcionesElegidas?.find(o => String(o.grupoId) === String(g.id))?.opcionId;
+      return `
+        <strong>${g.nombre}</strong>
+        <div class="mesero-ing-pop__chips">
+          ${g.opciones.map((op, oi) => {
+            const marcado = opcionActualId != null ? String(op.id) === String(opcionActualId) : oi === 0;
+            return `
+            <label class="mesero-ing-check">
+              <input type="radio" name="epop-grupo-${idx}-${gi}" class="mesero-edit-opcion-radio"
+                data-grupo-id="${g.id}" data-grupo-nombre="${g.nombre}"
+                data-opcion-id="${op.id}" data-opcion-nombre="${op.nombre}"
+                ${marcado ? 'checked' : ''}>
+              ${op.nombre}
+            </label>`;
+          }).join('')}
+        </div>`;
+    }).join('');
+    const precioActual = LogicaCarrito.calcularPrecioConExclusiones(prod, itemActual.exclusiones || []);
+    return `
+      <div class="mesero-ing-pop mesero-ing-pop--excl" id="epop-${idx}">
+        ${puedeExcl ? `
+        <strong>Sin ingredientes que no quiera</strong>
+        <div class="mesero-ing-pop__chips">
+          ${prod.ingredientes.filter(ing => ing && ing.id).map(ing => `
+            <label class="mesero-ing-check">
+              <input type="checkbox" class="mesero-edit-excl-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" ${!exclIdsActuales.has(String(ing.id)) ? 'checked' : ''}>
+              ${ing.nombre}
+            </label>`).join('')}
+        </div>` : ''}
+        ${gruposPopHtml}
+        <div class="mesero-ing-pop__precio" id="epop-precio-${idx}">$${precioActual.toFixed(2)}</div>
+        <button class="mesero-ing-pop__add" data-det-action="edit-guardar" data-item-idx="${idx}" type="button">Guardar cambios</button>
+      </div>`;
+  }
+
   // Placeholder cuando el plato no tiene imagen (mismo estilo que el panel admin)
   const _IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22><rect fill=%22%23f4e8d6%22 width=%22100%25%22 height=%22100%25%22/><text x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%237a5640%22 font-size=%2228%22>🍽️</text></svg>'";
 
@@ -296,12 +340,8 @@ window.VistaMenu = (function () {
     };
   }
 
-  /* ── Modal ingredientes ──
-     editarItem (opcional): {pedidoId, idx} — cuando viene, el modal abre en
-     modo edición de un ítem YA en el pedido: precarga sus exclusiones y
-     opciones actuales, y "Guardar cambios" actualiza esa línea en su lugar
-     en vez de agregar una nueva (ver _editarItemPedido). */
-  function abrirModalProducto(p, editarItem = null) {
+  /* ── Modal ingredientes ── */
+  function abrirModalProducto(p) {
     const SC = window.SC;
     const s       = SC.getStock(p.id);
     const agotado = !s.disponible || s.stock <= 0;
@@ -309,22 +349,16 @@ window.VistaMenu = (function () {
     const modalBackdrop = document.getElementById('product-modal-backdrop');
     const modalBox      = document.getElementById('product-modal-box');
 
-    const itemActual = editarItem
-      ? SC.leerCaja().find(x => String(x.id) === String(editarItem.pedidoId))?.items?.[editarItem.idx] ?? null
-      : null;
-    const exclIdsActuales = new Set((itemActual?.exclusiones || []).map(e => String(e.id)));
-
     const ingsConId = Array.isArray(p.ingredientes) ? p.ingredientes.filter(i => i && i.id) : [];
     const tieneIngredientes = ingsConId.length > 0;
     const puedeExcluir = tieneIngredientes && p.permiteExcluir === true;
     const ingChips = puedeExcluir
-      ? ingsConId.map(ing => {
-          const marcado = itemActual ? !exclIdsActuales.has(String(ing.id)) : true;
-          return `<label class="ing-chip">
-              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" ${marcado ? 'checked' : ''}>
+      ? ingsConId.map(ing =>
+          `<label class="ing-chip">
+              <input type="checkbox" class="ing-check" data-ing-id="${ing.id}" data-ing-nombre="${ing.nombre}" checked>
               <span class="ing-chip__label">${ing.nombre}</span>
-            </label>`;
-        }).join('')
+            </label>`
+        ).join('')
       : '';
 
     const ingTexto = !puedeExcluir && tieneIngredientes
@@ -332,30 +366,20 @@ window.VistaMenu = (function () {
       : '';
 
     const grupos = Array.isArray(p.gruposOpciones) ? p.gruposOpciones : [];
-    const gruposHtml = grupos.map((g, gi) => {
-      const opcionActualId = itemActual?.opcionesElegidas?.find(o => String(o.grupoId) === String(g.id))?.opcionId;
-      return `
+    const gruposHtml = grupos.map((g, gi) => `
       <div class="modal-grupo-opciones">
         <p class="modal-ingredients-title">${SC.escapeHtml(g.nombre)}</p>
         <div class="modal-ingredients-chips">
-          ${g.opciones.map((op, oi) => {
-            const marcado = opcionActualId != null ? String(op.id) === String(opcionActualId) : oi === 0;
-            return `
+          ${g.opciones.map((op, oi) => `
             <label class="ing-chip">
               <input type="radio" name="modal-grupo-${gi}" class="opcion-radio"
                 data-grupo-id="${g.id}" data-grupo-nombre="${SC.escapeHtml(g.nombre)}"
                 data-opcion-id="${op.id}" data-opcion-nombre="${SC.escapeHtml(op.nombre)}"
-                ${marcado ? 'checked' : ''}>
+                ${oi === 0 ? 'checked' : ''}>
               <span class="ing-chip__label">${SC.escapeHtml(op.nombre)}</span>
-            </label>`;
-          }).join('')}
+            </label>`).join('')}
         </div>
-      </div>`;
-    }).join('');
-
-    const precioInicial = itemActual
-      ? LogicaCarrito.calcularPrecioConExclusiones(p, itemActual.exclusiones || [])
-      : p.precio;
+      </div>`).join('');
 
     modalBox.innerHTML = `
       <div class="modal-img-wrap">
@@ -367,7 +391,6 @@ window.VistaMenu = (function () {
       </div>
       <div class="modal-body">
         <span class="modal-badge" data-cat="${p.categoria}"${_colorEstilo(p.categoria)}>${p.categoria}</span>
-        ${editarItem ? `<p class="modal-editing-badge">✏️ Editando este ítem del pedido</p>` : ''}
         <h2 class="modal-title">${p.nombre}</h2>
         <p class="modal-desc">${p.descripcion}</p>
         ${tieneIngredientes ? `
@@ -383,12 +406,12 @@ window.VistaMenu = (function () {
         ` : ''}
         ${gruposHtml}
         <div class="modal-footer">
-          <div class="modal-price" id="modal-price-display">$${precioInicial.toFixed(2)} <small>USD</small></div>
+          <div class="modal-price" id="modal-price-display">$${p.precio.toFixed(2)} <small>USD</small></div>
           <div class="modal-actions">
             <button class="btn-modal-close" id="btn-cerrar-modal">Cerrar</button>
-            <button class="btn-modal-add" data-id="${p.id}" ${(!editarItem && agotado) ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
+            <button class="btn-modal-add" data-id="${p.id}" ${agotado ? 'disabled style="opacity:.45;cursor:not-allowed;"' : ''}>
               <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-              ${editarItem ? 'Guardar cambios' : (agotado ? 'Agotado' : 'Ordenar')}
+              ${agotado ? 'Agotado' : 'Ordenar'}
             </button>
           </div>
         </div>
@@ -427,11 +450,7 @@ window.VistaMenu = (function () {
     document.getElementById('btn-cerrar-modal-x').onclick = cerrarModalProducto;
     document.getElementById('btn-cerrar-modal').onclick = cerrarModalProducto;
     modalBox.querySelector('.btn-modal-add').onclick = () => {
-      if (editarItem) {
-        _editarItemPedido(editarItem.pedidoId, editarItem.idx, p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
-      } else {
-        _agregarConExclusiones(p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
-      }
+      _agregarConExclusiones(p, _leerExclusionesModal(), _leerOpcionesElegidasModal());
       cerrarModalProducto();
     };
     setTimeout(() => window._trapProducto?.activar(), 0);
@@ -532,7 +551,11 @@ window.VistaMenu = (function () {
                 <span class="mesero-mesa-detalle__nombre">${i.nombre}${i.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}</span>
                 <span class="mesero-mesa-detalle__precio">$${(i.precio * i.cantidad).toFixed(2)}</span>
                 <div class="mesero-det-ctrl">
-                  ${editable ? `<button class="mesero-det-btn" data-det-action="edit" data-item-idx="${idx}" aria-label="Editar ítem">✏️</button>` : ''}
+                  ${editable ? `
+                  <span class="mesero-info-btn mesero-info-btn--excl" data-det-action="edit-toggle" role="button" tabindex="0" aria-label="Editar ${i.nombre}">
+                    ✏️
+                    ${_popoverEdicionHtml(prodCatalogo, i, idx)}
+                  </span>` : ''}
                   <button class="mesero-det-btn" data-det-action="dec" data-item-idx="${idx}" aria-label="Quitar uno">−</button>
                   <button class="mesero-det-btn" data-det-action="inc" data-item-idx="${idx}" aria-label="Agregar uno">+</button>
                 </div>
@@ -636,10 +659,45 @@ window.VistaMenu = (function () {
 
     const detalleBody = document.getElementById('mesero-detalle-body');
     if (detalleBody) {
+      // Precio en vivo del popover de edición al desmarcar un ingrediente
+      // — se reasigna en cada render (igual que .onclick), no acumula.
+      detalleBody.onchange = e => {
+        const cb = e.target.closest('.mesero-edit-excl-check');
+        if (!cb || !meseroMesaTarget) return;
+        const pop = cb.closest('.mesero-ing-pop');
+        const idx = pop?.id?.replace('epop-', '');
+        if (!idx) return;
+        const ped  = SC.leerCaja().find(p => String(p.id) === String(meseroMesaTarget.id));
+        const item = ped?.items?.[Number(idx)];
+        const prodCatalogo = item && SC.getAllProductosMergeados()?.find(x => x.id === item.id);
+        if (!prodCatalogo) return;
+        const exclusiones = [];
+        pop.querySelectorAll('.mesero-edit-excl-check:not(:checked)').forEach(c => {
+          exclusiones.push({ id: c.dataset.ingId, nombre: c.dataset.ingNombre });
+        });
+        const precioAjustado = LogicaCarrito.calcularPrecioConExclusiones(prodCatalogo, exclusiones);
+        const precioEl = document.getElementById(`epop-precio-${idx}`);
+        if (precioEl) precioEl.textContent = `$${precioAjustado.toFixed(2)}`;
+      };
+
       detalleBody.onclick = e => {
         const btn = e.target.closest('[data-det-action]');
         if (!btn || !meseroMesaTarget) return;
         const action = btn.dataset.detAction;
+
+        // Abrir/cerrar el popover de edición — mismo patrón que el popover
+        // de "agregar" en la lista de productos (⚙ / mesero-ing-pop).
+        if (action === 'edit-toggle') {
+          e.stopPropagation();
+          const pop = btn.querySelector('.mesero-ing-pop');
+          if (!pop) return;
+          const isOpen = pop.classList.contains('visible');
+          document.querySelectorAll('#mesero-detalle-body .mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+          if (!isOpen) { _posicionarPopoverMovil(pop, btn); pop.classList.add('visible'); }
+          return;
+        }
+        document.querySelectorAll('#mesero-detalle-body .mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+
         const peds   = SC.leerCaja();
         const ped    = peds.find(p => String(p.id) === String(meseroMesaTarget.id));
         if (!ped) return;
@@ -648,9 +706,19 @@ window.VistaMenu = (function () {
         // por sí solo no distingue cuál línea se está tocando.
         const idx = Number(btn.dataset.itemIdx);
         if (!Number.isInteger(idx) || idx < 0 || idx >= ped.items.length) return;
-        if (action === 'edit') {
+        if (action === 'edit-guardar') {
           const prodCatalogo = SC.getAllProductosMergeados()?.find(x => x.id === ped.items[idx].id);
-          if (prodCatalogo) abrirModalProducto(prodCatalogo, { pedidoId: ped.id, idx });
+          const pop = document.getElementById(`epop-${idx}`);
+          if (!prodCatalogo || !pop) return;
+          const exclusiones = [];
+          pop.querySelectorAll('.mesero-edit-excl-check:not(:checked)').forEach(cb => {
+            exclusiones.push({ id: cb.dataset.ingId, nombre: cb.dataset.ingNombre });
+          });
+          const opcionesElegidas = [];
+          pop.querySelectorAll('.mesero-edit-opcion-radio:checked').forEach(r => {
+            opcionesElegidas.push({ grupoId: r.dataset.grupoId, grupoNombre: r.dataset.grupoNombre, opcionId: r.dataset.opcionId, opcionNombre: r.dataset.opcionNombre });
+          });
+          _editarItemPedido(ped.id, idx, prodCatalogo, exclusiones, opcionesElegidas);
           return;
         }
         if (action === 'inc') {
@@ -664,6 +732,18 @@ window.VistaMenu = (function () {
         renderMesasActivas();
         syncQtys();
       };
+    }
+
+    // Cerrar el popover de edición al hacer clic fuera o al scrollear —
+    // registrado una sola vez (no en cada render, que sería cada vez que
+    // se toca +/− en el pedido).
+    if (!renderMesasActivas._popoverListenerAdded) {
+      renderMesasActivas._popoverListenerAdded = true;
+      const _cerrarPopoversEdicion = () => {
+        document.querySelectorAll('#mesero-detalle-body .mesero-ing-pop.visible').forEach(p => p.classList.remove('visible'));
+      };
+      document.addEventListener('click', _cerrarPopoversEdicion, { capture: true });
+      window.addEventListener('scroll', _cerrarPopoversEdicion, { capture: true, passive: true });
     }
   }
 

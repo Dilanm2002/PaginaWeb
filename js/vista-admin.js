@@ -89,8 +89,8 @@ window.VistaAdmin = (function () {
         <div class="product-card__img-wrap">
           <img src="${p.imagen}" alt="Foto de ${p.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           ${p.destacado ? '<span class="admin-badge-dest">★</span>' : ''}
-          ${esNuevo && !oculto ? '<span class="admin-badge-nuevo">Nuevo</span>' : ''}
-          ${oculto ? '<span class="admin-badge-oculto">Oculto</span>' : ''}
+          ${oculto ? '<span class="admin-badge-oculto">Oculto</span>' : (agotado ? '<span class="admin-badge-agotado">Agotado</span>' : '')}
+          ${esNuevo && !oculto && !agotado ? '<span class="admin-badge-nuevo">Nuevo</span>' : ''}
         </div>
         <div class="product-card__body">
           <h3 class="product-card__name">${p.nombre}</h3>
@@ -1779,7 +1779,9 @@ window.VistaAdmin = (function () {
       });
     });
     const top5       = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
-    const topNombres = top5.map(([n]) => n.length > 20 ? n.slice(0, 18) + '…' : n);
+    // Nombre completo (sin recortar) — el margen izquierdo es automático
+    // (automargin) así que se ajusta solo al nombre más largo del top 5.
+    const topNombres = top5.map(([n]) => n);
     const topCants   = top5.map(([, c]) => c);
     const maxTop     = topCants.length ? Math.max(...topCants) : 1;
     // dtick fijo en 1 generaba una marca por unidad (ilegible con 30+ ventas);
@@ -2106,7 +2108,7 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero)')
+      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(pago_monto))')
       .eq('ped_fecha', fechaSel)
       .order('ped_hora', { ascending: true });
 
@@ -2143,6 +2145,14 @@ window.VistaAdmin = (function () {
     // caja lo cobró o anuló (nunca el mismo que lo creó, salvo que sea
     // cajero/admin tomando su propio pedido).
     const _METODO_COLOR_CUADRE = { 'Efectivo': '#16a34a', 'Transferencia': '#5b7fa6', 'Tarjeta de crédito': 'var(--brown-dark)', 'Tarjeta de débito': 'var(--brown-dark)' };
+    // pago_monto es lo que el cliente entregó en mano (ej. $20 por una
+    // cuenta de $3.50) — solo tiene sentido mostrarlo para efectivo, ya
+    // que ahí sí puede diferir del total (da pie al vuelto); en los demás
+    // métodos siempre es igual al total y no aporta nada nuevo.
+    const _pagoDeCuadre = p => {
+      const f = Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
+      return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null;
+    };
     const filasPedidos = todos.map(p => {
       const creador = p.usu_id ? _pill(p.usu_id, 'usuario') : `<span class="rol-pill invitado">Invitado</span>`;
       const mesaTxt = p.mes_id && p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
@@ -2155,12 +2165,15 @@ window.VistaAdmin = (function () {
       const metodoTxt = p.ped_estado === 'cobrado' && metodo
         ? `<strong style="color:${_METODO_COLOR_CUADRE[metodo] ?? 'var(--text-muted)'}">${SC?.escapeHtml(metodo) ?? metodo}</strong>`
         : '—';
+      const montoRecibido = p.ped_estado === 'cobrado' && metodo === 'Efectivo' ? _pagoDeCuadre(p)?.pago_monto : null;
+      const recibidoTxt = montoRecibido != null ? `$${parseFloat(montoRecibido).toFixed(2)}` : '—';
       return `<tr>
         <td data-label="Pedido">${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
         <td data-label="Creado por">${creador}</td>
         <td data-label="Estado" style="text-align:center">${estadoTxt}</td>
         <td data-label="Cobrado por">${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
         <td data-label="Método de pago">${metodoTxt}</td>
+        <td data-label="Recibido en efectivo" style="text-align:right">${recibidoTxt}</td>
         <td data-label="Anulado por">${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
       </tr>`;
     }).join('');
@@ -2218,6 +2231,7 @@ window.VistaAdmin = (function () {
           <th style="text-align:center">Estado</th>
           <th>Cobrado por</th>
           <th>Método de pago</th>
+          <th style="text-align:right">Recibido en efectivo</th>
           <th>Anulado por</th>
         </tr></thead>
         <tbody>${filasPedidos}</tbody>
