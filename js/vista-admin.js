@@ -511,7 +511,10 @@ window.VistaAdmin = (function () {
     _md_toggleCancelar(false);
     const fechaInput = document.getElementById('md-fecha');
     if (fechaInput && !fechaInput.value) fechaInput.value = _fechaLocalISO();
-    await _md_cargarFecha(fechaInput?.value);
+    // El formulario siempre arranca vacío al entrar a la pestaña, aunque ya
+    // exista un menú guardado para hoy — cargarlo es una acción explícita,
+    // solo con "Editar" en el registro de abajo.
+    _MD_CAMPOS.forEach(c => { const inp = document.getElementById(c.input); if (inp) inp.value = ''; });
     await _md_renderProximos();
     _md_initHandlers();
   }
