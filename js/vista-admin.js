@@ -2108,7 +2108,7 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(pago_monto))')
+      .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(pago_monto))')
       .eq('ped_fecha', fechaSel)
       .order('ped_hora', { ascending: true });
 
@@ -2169,11 +2169,12 @@ window.VistaAdmin = (function () {
       const recibidoTxt = montoRecibido != null ? `$${parseFloat(montoRecibido).toFixed(2)}` : '—';
       return `<tr>
         <td data-label="Pedido">${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
+        <td data-label="Monto" style="text-align:right">$${(parseFloat(p.ped_total) || 0).toFixed(2)}</td>
         <td data-label="Creado por">${creador}</td>
         <td data-label="Estado" style="text-align:center">${estadoTxt}</td>
         <td data-label="Cobrado por">${p.ped_estado === 'cobrado' ? _pill(p.ped_cobrado_por, 'cajero') : '—'}</td>
         <td data-label="Método de pago">${metodoTxt}</td>
-        <td data-label="Recibido en efectivo" style="text-align:right">${recibidoTxt}</td>
+        <td data-label="Recibido en efectivo" style="text-align:center">${recibidoTxt}</td>
         <td data-label="Anulado por">${p.ped_estado === 'anulado' ? _pill(p.ped_anulado_por, 'cajero') : '—'}</td>
       </tr>`;
     }).join('');
@@ -2227,11 +2228,12 @@ window.VistaAdmin = (function () {
       <table class="adm-tabla" style="margin-top:1rem">
         <thead><tr>
           <th>Pedido</th>
+          <th style="text-align:right">Monto</th>
           <th>Creado por</th>
           <th style="text-align:center">Estado</th>
           <th>Cobrado por</th>
           <th>Método de pago</th>
-          <th style="text-align:right">Recibido en efectivo</th>
+          <th style="text-align:center">Recibido en efectivo</th>
           <th>Anulado por</th>
         </tr></thead>
         <tbody>${filasPedidos}</tbody>
