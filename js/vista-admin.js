@@ -68,6 +68,10 @@ window.VistaAdmin = (function () {
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
+  // Clic en el encabezado "Método de pago" del Control de Caja alterna
+  // entre orden cronológico y agrupado por método — agrupar hace mucho más
+  // rápido el cuadre manual (todo el efectivo junto, luego transferencias...).
+  let _cuadreOrdenMetodo = false;
   let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
 
   // Catálogo estándar del negocio (coincide con _CAT_PREFIX en index.html) —
@@ -2156,7 +2160,18 @@ window.VistaAdmin = (function () {
       const f = Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
       return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null;
     };
-    const filasPedidos = todos.map(p => {
+    // Agrupar por método (opcional, ver _cuadreOrdenMetodo) — junta todo el
+    // efectivo, luego transferencias, etc., para poder cuadrar a mano más
+    // rápido en vez de ir saltando entre métodos en orden cronológico.
+    const _ORDEN_METODO_PRIORIDAD = { 'Efectivo': 0, 'Transferencia': 1, 'Tarjeta de crédito': 2, 'Tarjeta de débito': 3 };
+    const todosParaTabla = _cuadreOrdenMetodo
+      ? [...todos].sort((a, b) => {
+          const pa = _ORDEN_METODO_PRIORIDAD[metodoPorPedido?.get(a.ped_id)] ?? 99;
+          const pb = _ORDEN_METODO_PRIORIDAD[metodoPorPedido?.get(b.ped_id)] ?? 99;
+          return pa - pb || (a.ped_hora ?? '').localeCompare(b.ped_hora ?? '');
+        })
+      : todos;
+    const filasPedidos = todosParaTabla.map(p => {
       const creador = p.usu_id ? _pill(p.usu_id, 'usuario') : `<span class="rol-pill invitado">Invitado</span>`;
       const mesaTxt = p.mes_id && p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
       const estadoTxt = p.ped_estado === 'cobrado'
@@ -2235,7 +2250,9 @@ window.VistaAdmin = (function () {
           <th>Creado por</th>
           <th style="text-align:center">Estado</th>
           <th>Cobrado por</th>
-          <th>Método de pago</th>
+          <th id="th-cuadre-metodo" style="cursor:pointer;user-select:none" title="Clic para ${_cuadreOrdenMetodo ? 'volver al orden por hora' : 'agrupar por método de pago'}">
+            Método de pago ${_cuadreOrdenMetodo ? '▾ agrupado' : '↕'}
+          </th>
           <th style="text-align:center">Recibido en efectivo</th>
           <th>Anulado por</th>
         </tr></thead>
@@ -2243,6 +2260,11 @@ window.VistaAdmin = (function () {
       </table>
       ` : '<p style="text-align:center;color:#888;font-size:.85rem;padding:1.5rem 0;font-style:italic">No hay pedidos registrados hoy.</p>'}
       <div id="cierre-caja-estado" style="margin-top:1.25rem"></div>`;
+
+    document.getElementById('th-cuadre-metodo')?.addEventListener('click', () => {
+      _cuadreOrdenMetodo = !_cuadreOrdenMetodo;
+      _renderCuadreCaja(periodo, fechaSel, labelDia, SC, porMetodo, metodoPorPedido);
+    });
 
     await _renderCierreCajaEstado(fechaSel, labelDia, SC);
   }

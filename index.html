@@ -1809,7 +1809,12 @@
     }
     if (mesaData?.mes_id) {
       await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('mes_id', mesaData.mes_id));
-    } else if (idUsuario) {
+    } else if (idUsuario && rol === 'usuario') {
+      // Solo aplica cuando el propio cliente (rol "usuario") reenvía su
+      // borrador para llevar antes de que se procese — para mesero/cajero/
+      // admin el usu_id es SIEMPRE el suyo, no el del cliente, así que
+      // filtrar por usu_id borraría el para-llevar anterior de OTRO
+      // cliente cada vez que el mismo mesero manda uno nuevo.
       await _limpiarPeds(db.from('pedidos').select('ped_id').eq('ped_estado','pendiente').eq('usu_id', idUsuario).is('mes_id', null));
     }
 
