@@ -36,7 +36,9 @@ window.VistaCajero = (function () {
   // que el string ya venga formateado desde donde se llamó.
   function _fmtMetodoPago(pedido, fallback) {
     if (pedido?.pagos?.length > 1) {
-      return 'Mixto (' + pedido.pagos.map(p => `${p.metodoNombre} $${p.monto.toFixed(2)}`).join(' + ') + ')';
+      // Neto (recibido − cambio) — la pierna en efectivo puede traer
+      // cambio, la transferencia no.
+      return 'Mixto (' + pedido.pagos.map(p => `${p.metodoNombre} $${(p.monto - (p.cambio || 0)).toFixed(2)}`).join(' + ') + ')';
     }
     return fallback || 'Efectivo';
   }
@@ -1117,20 +1119,31 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
       });
     });
 
+    // La transferencia es un monto exacto (no hay vuelto posible ahí); el
+    // efectivo sí puede ser mayor a lo que falta cubrir y dar cambio —
+    // igual que en el cobro 100% efectivo.
+    const _restanteMixto = pedido => {
+      const efectivoRecibido = parseFloat(mixtoEfInp?.value) || 0;
+      const transferencia    = parseFloat(mixtoTrInp?.value) || 0;
+      const faltaCubrir = Math.round((pedido.total - transferencia) * 100) / 100;
+      return { efectivoRecibido, transferencia, faltaCubrir };
+    };
     const _actualizarRestanteMixto = () => {
       const SC     = window.SC;
       const pedido = SC.leerCaja().find(p => String(p.id) === String(_pedidoParaCobrar));
       if (!pedido || !mixtoRestEl) return;
-      const ef = parseFloat(mixtoEfInp?.value) || 0;
-      const tr = parseFloat(mixtoTrInp?.value) || 0;
-      const restante = Math.round((pedido.total - ef - tr) * 100) / 100;
-      if (ef <= 0 && tr <= 0) { mixtoRestEl.textContent = ''; return; }
-      if (restante === 0) {
-        mixtoRestEl.textContent = '✓ Cuadra con el total';
-        mixtoRestEl.style.color = '#15803d';
-      } else {
-        mixtoRestEl.textContent = restante > 0 ? `Falta $${restante.toFixed(2)}` : `Sobra $${Math.abs(restante).toFixed(2)}`;
+      const { efectivoRecibido, transferencia, faltaCubrir } = _restanteMixto(pedido);
+      if (efectivoRecibido <= 0 && transferencia <= 0) { mixtoRestEl.textContent = ''; return; }
+      if (transferencia > pedido.total) {
+        mixtoRestEl.textContent = 'La transferencia no puede superar el total';
         mixtoRestEl.style.color = '#dc2626';
+      } else if (efectivoRecibido < faltaCubrir) {
+        mixtoRestEl.textContent = `Falta $${(faltaCubrir - efectivoRecibido).toFixed(2)}`;
+        mixtoRestEl.style.color = '#dc2626';
+      } else {
+        const cambio = Math.round((efectivoRecibido - faltaCubrir) * 100) / 100;
+        mixtoRestEl.textContent = cambio > 0 ? `Cambio: $${cambio.toFixed(2)}` : '✓ Cuadra con el total';
+        mixtoRestEl.style.color = '#15803d';
       }
     };
     mixtoEfInp?.addEventListener('input', _actualizarRestanteMixto);
@@ -1190,25 +1203,30 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
           }
           cambio = Math.max(0, montoPagado - pedido.total);
         } else if (esMixto) {
-          const montoEfectivo      = parseFloat(mixtoEfInp?.value) || 0;
-          const montoTransferencia = parseFloat(mixtoTrInp?.value) || 0;
-          if (montoEfectivo <= 0 || montoTransferencia <= 0) {
+          const { efectivoRecibido, transferencia, faltaCubrir } = _restanteMixto(pedido);
+          if (efectivoRecibido <= 0 || transferencia <= 0) {
             SC.toast('Ingresa un monto en efectivo Y en transferencia, o elige un solo método.', 'error');
-            (montoEfectivo <= 0 ? mixtoEfInp : mixtoTrInp)?.focus();
+            (efectivoRecibido <= 0 ? mixtoEfInp : mixtoTrInp)?.focus();
             return;
           }
-          const restante = Math.round((pedido.total - montoEfectivo - montoTransferencia) * 100) / 100;
-          if (restante !== 0) {
-            SC.toast(restante > 0 ? `Falta $${restante.toFixed(2)} para completar el total.` : `Sobran $${Math.abs(restante).toFixed(2)} — la suma no puede pasar el total.`, 'error');
+          if (transferencia > pedido.total) {
+            SC.toast('La transferencia no puede superar el total del pedido.', 'error');
+            mixtoTrInp?.focus();
             return;
           }
+          if (efectivoRecibido < faltaCubrir) {
+            SC.toast(`Falta $${(faltaCubrir - efectivoRecibido).toFixed(2)} en efectivo para cubrir el total.`, 'error');
+            mixtoEfInp?.focus();
+            return;
+          }
+          const cambioEfectivo = Math.round((efectivoRecibido - faltaCubrir) * 100) / 100;
           pagosMixtos = [
-            { metodoId: 'met001', monto: montoEfectivo },
-            { metodoId: 'met004', monto: montoTransferencia }
+            { metodoId: 'met001', monto: efectivoRecibido, cambio: cambioEfectivo },
+            { metodoId: 'met004', monto: transferencia, cambio: 0 }
           ];
           montoPagado = pedido.total;
-          cambio = 0;
-          metodoPagoNombre = `Mixto (Efectivo $${montoEfectivo.toFixed(2)} + Transferencia $${montoTransferencia.toFixed(2)})`;
+          cambio = cambioEfectivo;
+          metodoPagoNombre = `Mixto (Efectivo $${faltaCubrir.toFixed(2)}${cambioEfectivo > 0 ? ` recibido $${efectivoRecibido.toFixed(2)}, cambio $${cambioEfectivo.toFixed(2)}` : ''} + Transferencia $${transferencia.toFixed(2)})`;
         }
 
         // Correo para la nota: siempre depende del checkbox — si está

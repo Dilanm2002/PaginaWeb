@@ -355,13 +355,16 @@ window.VistaAdmin = (function () {
       const raw = Array.isArray(factura?.pagos) ? factura.pagos : (factura?.pagos ? [factura.pagos] : []);
       return raw;
     };
+    // Neto que aportó esa fila de pago a la venta (recibido − cambio) — la
+    // pierna en efectivo de un mixto puede traer cambio, la transferencia no.
+    const _netoPago = pg => (parseFloat(pg.pago_monto) || 0) - (parseFloat(pg.pago_cambio) || 0);
     // Más de una fila de pago = pago mixto (parte efectivo, parte
     // transferencia) — se muestra con su desglose en vez de un solo método.
     const _metodoNombre = p => {
       const pagos = _pagosDe(p);
       if (!pagos.length) return 'Sin registrar';
       if (pagos.length > 1) {
-        return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${(parseFloat(pg.pago_monto) || 0).toFixed(2)}`).join(' + ') + ')';
+        return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${_netoPago(pg).toFixed(2)}`).join(' + ') + ')';
       }
       return pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
     };
@@ -1635,7 +1638,7 @@ window.VistaAdmin = (function () {
     const [{ data: pedidos, error: errPed }, { data: anulados, error: errAnul }] = await Promise.all([
       window.db
         .from('pedidos')
-        .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre)), facturas(fact_numero, pagos(metodo_id, pago_monto, metodos_pago(metodo_nombre)))')
+        .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre)), facturas(fact_numero, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
         .eq('ped_estado', 'cobrado')
         .gte('ped_fecha', desdeStr)
         .lte('ped_fecha', hastaStr)
@@ -1864,12 +1867,15 @@ window.VistaAdmin = (function () {
     };
     const _facturaDe = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
     const _pagosDe   = p => { const f = _facturaDe(p); const raw = f ? f.pagos : null; return Array.isArray(raw) ? raw : (raw ? [raw] : []); };
+    // Neto que aportó esa fila de pago a la venta (recibido − cambio) — la
+    // pierna en efectivo de un mixto puede traer cambio, la transferencia no.
+    const _netoPago  = pg => (parseFloat(pg.pago_monto) || 0) - (parseFloat(pg.pago_cambio) || 0);
     // Más de una fila de pago = pago mixto (parte efectivo, parte
     // transferencia) — se muestra con su desglose en vez de un solo método.
     const _metodoDe  = p => {
       const pagos = _pagosDe(p);
       if (!pagos.length) return 'Sin registrar';
-      if (pagos.length > 1) return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${(parseFloat(pg.pago_monto) || 0).toFixed(2)}`).join(' + ') + ')';
+      if (pagos.length > 1) return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${_netoPago(pg).toFixed(2)}`).join(' + ') + ')';
       return pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
     };
 
@@ -1888,7 +1894,9 @@ window.VistaAdmin = (function () {
         pagos.forEach(pg => {
           const m = pg.metodos_pago?.metodo_nombre ?? 'Sin registrar';
           if (!porMetodo[m]) porMetodo[m] = { total: 0, cantidad: 0 };
-          porMetodo[m].total += parseFloat(pg.pago_monto) || 0;
+          // Neto (recibido − cambio) — la pierna en efectivo de un mixto
+          // puede traer cambio (ver cobrar_pedido), la transferencia no.
+          porMetodo[m].total += (parseFloat(pg.pago_monto) || 0) - (parseFloat(pg.pago_cambio) || 0);
         });
       } else {
         const m = pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';

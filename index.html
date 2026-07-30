@@ -1207,9 +1207,9 @@
           <div id="pago-cambio-display" class="pago-cambio-display"></div>
         </div>
         <div id="pago-mixto-section" class="pago-efectivo-section" style="display:none">
-          <label class="pago-section-label" for="pago-mixto-efectivo">💵 Efectivo ($)</label>
+          <label class="pago-section-label" for="pago-mixto-efectivo">💵 Efectivo recibido ($)</label>
           <input type="number" id="pago-mixto-efectivo" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
-          <label class="pago-section-label" for="pago-mixto-transferencia">🔄 Transferencia ($)</label>
+          <label class="pago-section-label" for="pago-mixto-transferencia">🔄 Transferencia — monto exacto ($)</label>
           <input type="number" id="pago-mixto-transferencia" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
           <div id="pago-mixto-restante" class="pago-cambio-display"></div>
         </div>
@@ -1997,7 +1997,7 @@
       p_monto:     pagosMixtos ? null : montoFinal,
       p_cambio:    pagosMixtos ? null : cambioFinal,
       p_email:     email || null,
-      p_pagos:     pagosMixtos ? pagosMixtos.map(p => ({ metodo_id: p.metodoId, monto: p.monto, cambio: 0 })) : null
+      p_pagos:     pagosMixtos ? pagosMixtos.map(p => ({ metodo_id: p.metodoId, monto: p.monto, cambio: p.cambio || 0 })) : null
     });
 
     if (cobroError || !resultado) {
@@ -2016,7 +2016,7 @@
 
     // Actualizar caché local
     const pagos = pagosMixtos
-      ? pagosMixtos.map(p => ({ metodoId: p.metodoId, metodoNombre: _METODO_NOMBRE[p.metodoId] || p.metodoId, monto: p.monto, cambio: 0 }))
+      ? pagosMixtos.map(p => ({ metodoId: p.metodoId, metodoNombre: _METODO_NOMBRE[p.metodoId] || p.metodoId, monto: p.monto, cambio: p.cambio || 0 }))
       : [{ metodoId: metodoPagoId, metodoNombre: _METODO_NOMBRE[metodoPagoId] || 'Efectivo', monto: montoFinal, cambio: cambioFinal }];
     const esMixto = pagos.length > 1;
     const entrada = {
