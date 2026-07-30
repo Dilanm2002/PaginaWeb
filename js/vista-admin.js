@@ -738,6 +738,19 @@ window.VistaAdmin = (function () {
     const todos = SC.getAllProductosMergeados ? SC.getAllProductosMergeados() : SC.getProductosMergeados();
     const porCat = {};
     todos.forEach(p => { if (!porCat[p.categoria]) porCat[p.categoria] = []; porCat[p.categoria].push(p); });
+    // Los almuerzos se numeran en el propio nombre ("Almuerzo #4 (...)")
+    // y se quieren ver en ese orden, no como vengan cargados de la base.
+    // Solo aplica a esta categoría — el resto mantiene su orden normal.
+    if (porCat['Almuerzos']) {
+      porCat['Almuerzos'] = [...porCat['Almuerzos']].sort((a, b) => {
+        const na = parseInt(a.nombre?.match(/#(\d+)/)?.[1], 10);
+        const nb = parseInt(b.nombre?.match(/#(\d+)/)?.[1], 10);
+        if (isNaN(na) && isNaN(nb)) return 0;
+        if (isNaN(na)) return 1;
+        if (isNaN(nb)) return -1;
+        return na - nb;
+      });
+    }
     const cats = _CATS_ORDER.filter(c => porCat[c]).concat(Object.keys(porCat).filter(c => !_CATS_ORDER.includes(c) && porCat[c]));
 
     const colores = SC.getCategoriasColores ? SC.getCategoriasColores() : {};
