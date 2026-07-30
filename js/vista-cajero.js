@@ -57,6 +57,21 @@ window.VistaCajero = (function () {
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
+  // Fondo inicial guardado a mano para hoy — el cajero lo fija una vez al
+  // abrir y no debería tener que volver a escribirlo cada vez que la
+  // página se recarga durante el día (el cierre real, con lo contado, se
+  // guarda solo hasta "Cerrar caja" al final del día).
+  const LS_FONDO_INICIAL = 'sc_fondo_inicial_hoy';
+  function _leerFondoGuardado() {
+    try {
+      const raw = JSON.parse(localStorage.getItem(LS_FONDO_INICIAL));
+      return raw && raw.fecha === _fechaISOHoy() && Number.isFinite(raw.monto) ? raw.monto : null;
+    } catch { return null; }
+  }
+  function _guardarFondoGuardado(monto) {
+    try { localStorage.setItem(LS_FONDO_INICIAL, JSON.stringify({ fecha: _fechaISOHoy(), monto })); } catch (_) {}
+  }
+
   function _getLabelFecha(offset) {
     if (offset === 0)  return 'Hoy';
     if (offset === -1) return 'Ayer';
@@ -704,7 +719,8 @@ window.VistaCajero = (function () {
     if (actual) {
       _cc_renderCerrado(box, actual);
     } else {
-      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '', null);
+      const fondoGuardado = _leerFondoGuardado();
+      _cc_renderForm(box, fechaISO, efectivoVentas, fondoGuardado ?? (ultimo?.cierre_fondo_inicial ?? ''), null);
     }
   }
 
@@ -749,7 +765,10 @@ window.VistaCajero = (function () {
         <div class="cierre-caja__form">
           <div class="cierre-caja__campo">
             <label for="cc-fondo">Fondo inicial</label>
-            <input type="number" id="cc-fondo" step="0.01" min="0" max="${_CC_MAX}" value="${fondoInicial}">
+            <div style="display:flex;gap:.4rem;align-items:center">
+              <input type="number" id="cc-fondo" step="0.01" min="0" max="${_CC_MAX}" value="${fondoInicial}">
+              <button class="cierre-caja__editar" id="btn-guardar-fondo" type="button" title="Guarda el fondo inicial para no tener que escribirlo de nuevo si recargas la página">💾 Guardar</button>
+            </div>
           </div>
           <div class="cierre-caja__campo">
             <label>Efectivo esperado</label>
@@ -770,6 +789,13 @@ window.VistaCajero = (function () {
       const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
       const esperado = valor + efectivoVentas;
       if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
+    });
+
+    document.getElementById('btn-guardar-fondo')?.addEventListener('click', () => {
+      const valor = parseFloat(fondoInput?.value);
+      if (isNaN(valor) || valor < 0) { SC?.toast('Ingresa un fondo inicial válido.', 'error'); return; }
+      _guardarFondoGuardado(Math.min(valor, _CC_MAX));
+      SC?.toast('Fondo inicial guardado ✓', 'success');
     });
 
     const btn = document.getElementById('btn-cerrar-caja');
