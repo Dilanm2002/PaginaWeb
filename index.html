@@ -1446,8 +1446,12 @@
       idUsuario:     r.usu_id ?? null,
       nombreUsuario,
       clienteNombre,
+      // El rol con el que se creó ESTE pedido (guardado desde que existe
+      // ped_creado_rol) — no el rol de perfil del usuario, que puede no
+      // coincidir si tiene más de uno (ej. cajero + mesero). Pedidos de
+      // antes de esta columna no tienen el dato: se cae al de perfil.
       rol:           r.usu_id
-        ? (ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.rol ?? 'usuario')
+        ? (r.ped_creado_rol ?? ModuloAutenticacion.leerUsuarios().find(u => u.id === r.usu_id)?.rol ?? 'usuario')
         : 'invitado',
       hora:          r.ped_hora ? r.ped_hora.slice(0, 5) : '',
       fecha:         _isoFechaALocale(r.ped_fecha),
@@ -1492,7 +1496,7 @@
   const _PED_SELECT = `
     ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
-    usu_id, mes_id, ped_despachado,
+    usu_id, ped_creado_rol, mes_id, ped_despachado,
     mesas(mes_numero),
     detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre)), det_opciones_elegidas(grupo_id, grupo_nombre, opcion_id, opcion_nombre)),
     facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))

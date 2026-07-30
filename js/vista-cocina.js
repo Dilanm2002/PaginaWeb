@@ -9,7 +9,7 @@ window.VistaCocina = (function () {
 
   const PED_SEL = `
     ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
-    ped_created_at, usu_id, mes_id, ped_despachado,
+    ped_created_at, usu_id, ped_creado_rol, mes_id, ped_despachado,
     mesas(mes_numero),
     detalle_pedidos(detped_id, detped_cantidad, detped_para_llevar,
       platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre))
@@ -23,7 +23,8 @@ window.VistaCocina = (function () {
 
   function _rolNombre(users, p) {
     if (!p.usu_id) return 'invitado';
-    return users.find(u => u.id === p.usu_id)?.rol ?? 'usuario';
+    // Rol con que se creó ESTE pedido, no el de perfil (ver vista-admin.js).
+    return p.ped_creado_rol ?? users.find(u => u.id === p.usu_id)?.rol ?? 'usuario';
   }
   function _nombre(users, p) {
     if (!p.usu_id) return (p.ped_nombre_invitado || '').replace(/^PL:/, '') || 'Invitado';
