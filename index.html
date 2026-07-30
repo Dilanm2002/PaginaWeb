@@ -3304,8 +3304,8 @@
   cartOverlay.addEventListener('click', cerrarCarrito);
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
-    if (document.getElementById('postcobro-backdrop')?.classList.contains('open')) { document.getElementById('postcobro-backdrop').classList.remove('open'); document.getElementById('postcobro-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow=''; return; }
-    if (document.getElementById('pago-modal-backdrop')?.classList.contains('open')) { document.getElementById('pago-modal-backdrop').classList.remove('open'); document.getElementById('pago-modal-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow=''; return; }
+    if (document.getElementById('postcobro-backdrop')?.classList.contains('open')) { document.getElementById('postcobro-backdrop').classList.remove('open'); document.getElementById('postcobro-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow = document.documentElement.style.overflow = ''; return; }
+    if (document.getElementById('pago-modal-backdrop')?.classList.contains('open')) { document.getElementById('pago-modal-backdrop').classList.remove('open'); document.getElementById('pago-modal-backdrop').setAttribute('aria-hidden','true'); document.body.style.overflow = document.documentElement.style.overflow = ''; return; }
     if (modalBackdrop.classList.contains('open'))         { window.VistaMenu?.cerrarModalProducto(); return; }
     if (mesaBackdrop.classList.contains('open'))          { cerrarModalMesa(); return; }
     if (document.getElementById('prod-form-backdrop').classList.contains('open')) return; // handled in vista-admin.js
