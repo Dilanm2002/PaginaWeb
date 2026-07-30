@@ -1783,7 +1783,7 @@ window.VistaAdmin = (function () {
     }
     _dibujarChartVentas();
 
-    // ── Gráfica 2: top 5 productos ────────────────────────────────
+    // ── Gráfica 2: todos los productos vendidos ─────────────────────
     // conteo: solo unidades (para la gráfica). ventasPorProducto: unidades
     // + ingresos por producto, para el detalle completo del Excel.
     const conteo = {};
@@ -1798,15 +1798,20 @@ window.VistaAdmin = (function () {
         ventasPorProducto[nombre].ingresos += parseFloat(d.detped_subtotal) || 0;
       });
     });
-    const top5       = Object.entries(conteo).sort((a, b) => b[1] - a[1]).slice(0, 5);
+    // Todos los productos vendidos en el período, de mayor a menor —
+    // ya no se recorta a los primeros 5.
+    const top5       = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
     // Nombre completo (sin recortar) — el margen izquierdo es automático
-    // (automargin) así que se ajusta solo al nombre más largo del top 5.
+    // (automargin) así que se ajusta solo al nombre más largo.
     const topNombres = top5.map(([n]) => n);
     const topCants   = top5.map(([, c]) => c);
     const maxTop     = topCants.length ? Math.max(...topCants) : 1;
     // dtick fijo en 1 generaba una marca por unidad (ilegible con 30+ ventas);
     // se calcula para dejar como máximo ~6 marcas en el eje.
     const _dtickTop  = Math.max(1, Math.ceil(maxTop / 6));
+    // Alto dinámico — con un solo producto se ve tan aplastado como con 5,
+    // pero con muchos necesita crecer para que cada barra siga siendo legible.
+    if (divTop) divTop.style.height = Math.max(260, topNombres.length * 34 + 40) + 'px';
 
     function _dibujarChartTop() {
       if (!window.Plotly || !divTop) return;
