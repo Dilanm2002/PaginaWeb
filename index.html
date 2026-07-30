@@ -791,10 +791,12 @@
                 <span class="gastos-dolar">$</span>
                 <input type="number" id="gasto-monto" class="gastos-input-monto" placeholder="0.00" min="0.01" max="999.99" step="0.01" />
               </div>
-              <label class="gastos-caja-toggle" for="gasto-sale-caja" title="Desmárcalo si este gasto se pagó con dinero externo, no con el efectivo de la caja">
-                <input type="checkbox" id="gasto-sale-caja" checked />
-                <span>Sale de caja</span>
-              </label>
+              <label class="gastos-campo-label" for="gasto-metodo">Método</label>
+              <select id="gasto-metodo" class="gastos-input-categoria" aria-label="¿De dónde salió el dinero para este gasto?" title="¿De dónde salió el dinero para este gasto?">
+                <option value="efectivo">💵 Efectivo (caja)</option>
+                <option value="transferencia">🔄 Transferencia</option>
+                <option value="externo">💳 Externo</option>
+              </select>
               <button class="btn-add-gasto" id="btn-add-gasto">+ Registrar</button>
             </div>
             <div class="gastos-nueva-cat-fila" id="gastos-nueva-cat-fila" style="display:none">
@@ -1496,7 +1498,7 @@
     facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
   `;
 
-  const _GASTO_SELECT = 'gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id, gast_categoria_id, gast_sale_caja, categorias_gasto(catgast_nombre)';
+  const _GASTO_SELECT = 'gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id, gast_categoria_id, gast_metodo_pago, categorias_gasto(catgast_nombre)';
 
   function _mapGasto(r) {
     return {
@@ -1507,9 +1509,9 @@
       hora:        r.gast_hora ? r.gast_hora.slice(0, 5) : '',
       usuId:       r.usu_id ?? null,
       categoriaId: r.gast_categoria_id ?? null,
-      // sale de la caja física por defecto — solo la excepción (dinero
-      // externo al local) se marca explícitamente en false.
-      saleCaja:    r.gast_sale_caja !== false,
+      // 'efectivo' (sale de la caja física), 'transferencia' (sale de la
+      // cuenta) o 'externo' (dinero ajeno al negocio) — ver cerrar_caja.
+      metodoPago:  r.gast_metodo_pago || 'efectivo',
       // registrar_gasto (RPC) devuelve solo el id, sin el join — se
       // resuelve el nombre contra la caché ya cargada en ese caso.
       categoria:   r.categorias_gasto?.catgast_nombre
@@ -1746,7 +1748,7 @@
   }
   function guardarGastos(g) { _gastos = g; }
 
-  async function insertarGasto({ descripcion, monto, fecha, hora, categoriaId, saleCaja = true }) {
+  async function insertarGasto({ descripcion, monto, fecha, hora, categoriaId, metodoPago = 'efectivo' }) {
     const session = ModuloAutenticacion.getSession();
     try {
       // Evita el refresco redundante cuando este mismo INSERT vuelva por
@@ -1760,7 +1762,7 @@
         p_fecha:        _fechaLocalISO(),
         p_hora:         new Date().toTimeString().slice(0, 8),
         p_categoria_id: categoriaId || null,
-        p_sale_caja:    saleCaja !== false
+        p_metodo_pago:  metodoPago
       });
 
       if (error || !data) {

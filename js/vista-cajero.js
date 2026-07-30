@@ -189,7 +189,7 @@ window.VistaCajero = (function () {
         <tbody>
           ${gastosRev.map(g => `
             <tr>
-              <td class="td-desc">${SC.escapeHtml(g.descripcion)}${g.saleCaja === false ? '<span class="gasto-tag-externo" title="Este gasto NO salió del efectivo de la caja">💳 Externo</span>' : ''}</td>
+              <td class="td-desc">${SC.escapeHtml(g.descripcion)}${g.metodoPago === 'transferencia' ? '<span class="gasto-tag-externo" title="Este gasto se pagó por transferencia">🔄 Transferencia</span>' : g.metodoPago === 'externo' ? '<span class="gasto-tag-externo" title="Este gasto NO salió del dinero del negocio">💳 Externo</span>' : ''}</td>
               <td class="td-hora">${g.categoria ? SC.escapeHtml(g.categoria) : '<span style="color:var(--text-muted)">—</span>'}</td>
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
@@ -699,7 +699,7 @@ window.VistaCajero = (function () {
     // esperado porque ese dinero sí salió de la gaveta (no todo gasto sale
     // de ahí, a veces es dinero externo al local).
     const gastosCaja = SC.leerGastos()
-      .filter(g => g.fecha === hoy && g.saleCaja !== false)
+      .filter(g => g.fecha === hoy && g.metodoPago === 'efectivo')
       .reduce((s, g) => s + (g.monto || 0), 0);
 
     const [{ data: actual }, { data: ultimo }] = await Promise.all([

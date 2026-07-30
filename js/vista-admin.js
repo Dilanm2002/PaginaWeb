@@ -2154,13 +2154,25 @@ window.VistaAdmin = (function () {
     if (!cuadreEl) return;
     if (periodo !== 'hoy') { cuadreEl.innerHTML = ''; return; }
 
-    const { data: todosHoy } = await window.db
-      .from('pedidos')
-      .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
-      .eq('ped_fecha', fechaSel)
-      .order('ped_hora', { ascending: true });
+    const [{ data: todosHoy }, { data: gastosHoy }] = await Promise.all([
+      window.db
+        .from('pedidos')
+        .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
+        .eq('ped_fecha', fechaSel)
+        .order('ped_hora', { ascending: true }),
+      window.db.from('gastos').select('gast_monto, gast_metodo_pago').eq('gast_fecha', fechaSel)
+    ]);
 
     const todos         = todosHoy ?? [];
+    // Cuánto de lo gastado hoy salió de la caja física o de la cuenta por
+    // transferencia — informativo, para cuadrar a mano contra lo cobrado.
+    const gastosPorMetodo = { efectivo: { total: 0, cantidad: 0 }, transferencia: { total: 0, cantidad: 0 } };
+    (gastosHoy ?? []).forEach(g => {
+      if (gastosPorMetodo[g.gast_metodo_pago]) {
+        gastosPorMetodo[g.gast_metodo_pago].total    += parseFloat(g.gast_monto) || 0;
+        gastosPorMetodo[g.gast_metodo_pago].cantidad += 1;
+      }
+    });
     const cobrados      = todos.filter(p => p.ped_estado === 'cobrado');
     const pendientes    = todos.filter(p => p.ped_estado === 'pendiente');
     const anulados      = todos.filter(p => p.ped_estado === 'anulado');
@@ -2288,10 +2300,14 @@ window.VistaAdmin = (function () {
           // Informativo — su dinero ya está repartido dentro de Efectivo/
           // Transferencia arriba, no se suma aparte (evitaría contar doble).
           ...(pm['Mixto'] ? [{ lbl: 'Mixto (informativo)', color: '#a8441a', ...pm['Mixto'] }] : []),
-          ...otros.map(([m, info]) => ({ lbl: SC?.escapeHtml(m) ?? m, color: 'var(--text-muted)', ...info }))
+          ...otros.map(([m, info]) => ({ lbl: SC?.escapeHtml(m) ?? m, color: 'var(--text-muted)', ...info })),
+          // Cuánto de lo cobrado ya salió en gastos — no se resta de las
+          // píldoras de arriba (esas son lo COBRADO), solo informa.
+          ...(gastosPorMetodo.efectivo.cantidad ? [{ lbl: 'Gastos de caja', color: '#dc2626', total: -gastosPorMetodo.efectivo.total, cantidad: gastosPorMetodo.efectivo.cantidad }] : []),
+          ...(gastosPorMetodo.transferencia.cantidad ? [{ lbl: 'Gastos por transferencia', color: '#dc2626', total: -gastosPorMetodo.transferencia.total, cantidad: gastosPorMetodo.transferencia.cantidad }] : [])
         ];
         return `<div class="cuadre-metodos-strip">
-          ${pills.map(p => `<span class="cuadre-metodo-pill" style="--pill-c:${p.color}">${p.lbl}: <strong>$${(p.total || 0).toFixed(2)}</strong> <small>(${p.cantidad || 0})</small></span>`).join('')}
+          ${pills.map(p => `<span class="cuadre-metodo-pill" style="--pill-c:${p.color}">${p.lbl}: <strong>${(p.total || 0) < 0 ? '−$' + Math.abs(p.total).toFixed(2) : '$' + (p.total || 0).toFixed(2)}</strong> <small>(${p.cantidad || 0})</small></span>`).join('')}
         </div>`;
       })()}
       ${todos.length ? `
@@ -2444,20 +2460,20 @@ window.VistaAdmin = (function () {
       const desc  = document.getElementById('gasto-desc')?.value.trim();
       const monto = parseFloat(document.getElementById('gasto-monto')?.value);
       const categoriaId = document.getElementById('gasto-categoria')?.value;
-      const saleCaja = document.getElementById('gasto-sale-caja')?.checked !== false;
+      const metodoPago  = document.getElementById('gasto-metodo')?.value || 'efectivo';
       if (!desc)       { SC?.toast('Escribe una descripción.', 'error'); return; }
       if (!monto || monto <= 0) { SC?.toast('Ingresa un monto válido.', 'error'); return; }
       if (monto > _GASTO_MONTO_MAX) { SC?.toast(`Monto demasiado grande — máximo $${_GASTO_MONTO_MAX}.`, 'error'); return; }
       if (categoriaId === '__nueva__') { SC?.toast('Confirma la categoría nueva primero.', 'error'); return; }
       btn.disabled = true;
       // Reutiliza SC.insertarGasto (ya pasa por la RPC registrar_gasto, exige sesión de staff)
-      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto, categoriaId: categoriaId || null, saleCaja });
+      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto, categoriaId: categoriaId || null, metodoPago });
       btn.disabled = false;
       if (!nuevoGasto) return; // el error ya se mostró dentro de insertarGasto
       document.getElementById('gasto-desc').value  = '';
       document.getElementById('gasto-monto').value = '';
-      const chkCaja = document.getElementById('gasto-sale-caja');
-      if (chkCaja) chkCaja.checked = true;
+      const selMetodo = document.getElementById('gasto-metodo');
+      if (selMetodo) selMetodo.value = 'efectivo';
       SC?.toast('Gasto registrado ✓', 'success');
       _renderGastos();
     });
