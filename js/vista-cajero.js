@@ -177,7 +177,7 @@ window.VistaCajero = (function () {
         <tbody>
           ${gastosRev.map(g => `
             <tr>
-              <td class="td-desc">${SC.escapeHtml(g.descripcion)}</td>
+              <td class="td-desc">${SC.escapeHtml(g.descripcion)}${g.saleCaja === false ? '<span class="gasto-tag-externo" title="Este gasto NO salió del efectivo de la caja">💳 Externo</span>' : ''}</td>
               <td class="td-hora">${g.categoria ? SC.escapeHtml(g.categoria) : '<span style="color:var(--text-muted)">—</span>'}</td>
               <td class="td-hora">${g.fecha}</td>
               <td class="td-hora">${g.hora}</td>
@@ -663,7 +663,7 @@ window.VistaCajero = (function () {
      Solo trabaja sobre "hoy" (este panel no navega a días anteriores,
      eso lo hace el admin desde Reportes).
   ───────────────────────────────────────────────────── */
-  const _CC_SELECT = 'cierre_id, cierre_fecha, cierre_fondo_inicial, cierre_efectivo_ventas, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
+  const _CC_SELECT = 'cierre_id, cierre_fecha, cierre_fondo_inicial, cierre_efectivo_ventas, cierre_gastos_caja, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
   const _CC_MAX = 5000; // tope razonable para un negocio de este tamaño — evita números absurdos ("2.13e+25")
 
   async function _renderCierreCajaBox() {
@@ -675,6 +675,12 @@ window.VistaCajero = (function () {
     const efectivoVentas = SC.leerHistorial()
       .filter(h => h.fecha === hoy && (h.metodoPagoNombre || 'Efectivo') === 'Efectivo')
       .reduce((s, h) => s + (h.total || 0), 0);
+    // Gastos pagados con el efectivo físico de la caja hoy — se restan del
+    // esperado porque ese dinero sí salió de la gaveta (no todo gasto sale
+    // de ahí, a veces es dinero externo al local).
+    const gastosCaja = SC.leerGastos()
+      .filter(g => g.fecha === hoy && g.saleCaja !== false)
+      .reduce((s, g) => s + (g.monto || 0), 0);
 
     const [{ data: actual }, { data: ultimo }] = await Promise.all([
       window.db.from('cierres_caja').select(_CC_SELECT).eq('cierre_fecha', fechaISO).maybeSingle(),
@@ -684,7 +690,7 @@ window.VistaCajero = (function () {
     if (actual) {
       _cc_renderCerrado(box, actual);
     } else {
-      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '');
+      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '', null, gastosCaja);
     }
   }
 
@@ -701,6 +707,7 @@ window.VistaCajero = (function () {
         <div class="cierre-caja__resumen">
           <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
           <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
+          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos (salen de caja)</span><strong style="color:#dc2626">−$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
           <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
           <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
           <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
@@ -709,19 +716,20 @@ window.VistaCajero = (function () {
         <button class="cierre-caja__editar" id="btn-editar-cierre" type="button">Editar cierre</button>
       </div>`;
     document.getElementById('btn-editar-cierre')?.addEventListener('click', () => {
-      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c);
+      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c, parseFloat(c.cierre_gastos_caja) || 0);
     });
   }
 
-  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio) {
+  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio, gastosCaja = 0) {
     const SC = window.SC;
     const fondoInicial  = cierrePrevio ? cierrePrevio.cierre_fondo_inicial : fondoDefault;
     const contadoPrevio = cierrePrevio ? cierrePrevio.cierre_efectivo_contado : '';
     const notasPrevias  = cierrePrevio ? (cierrePrevio.cierre_notas ?? '') : '';
-    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas;
+    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas - gastosCaja;
     box.innerHTML = `
       <div class="cierre-caja">
         <div class="cierre-caja__header">💰 Cierre de caja — Hoy</div>
+        ${gastosCaja > 0 ? `<p class="cierre-caja__meta" style="margin-top:-.3rem">Se restaron $${gastosCaja.toFixed(2)} en gastos pagados con efectivo de la caja hoy.</p>` : ''}
         <div class="cierre-caja__form">
           <div class="cierre-caja__campo">
             <label for="cc-fondo">Fondo inicial</label>
@@ -744,7 +752,7 @@ window.VistaCajero = (function () {
     const esperadoEl = document.getElementById('cc-esperado');
     fondoInput?.addEventListener('input', () => {
       const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
-      const esperado = valor + efectivoVentas;
+      const esperado = valor + efectivoVentas - gastosCaja;
       if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
     });
 

@@ -2272,7 +2272,7 @@ window.VistaAdmin = (function () {
   // Solo lectura — el admin puede VER si ya se cerró la caja de ese día y
   // con qué diferencia, pero cerrarla (la acción) es tarea del cajero,
   // desde su propio panel.
-  const _CC_SELECT = 'cierre_fondo_inicial, cierre_efectivo_ventas, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
+  const _CC_SELECT = 'cierre_fondo_inicial, cierre_efectivo_ventas, cierre_gastos_caja, cierre_efectivo_esperado, cierre_efectivo_contado, cierre_diferencia, cierre_notas, cierre_usu_id, cierre_created_at';
 
   async function _renderCierreCajaEstado(fechaSel, labelDia, SC) {
     const el = document.getElementById('cierre-caja-estado');
@@ -2300,6 +2300,7 @@ window.VistaAdmin = (function () {
         <div class="cierre-caja__resumen">
           <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
           <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
+          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos (salen de caja)</span><strong style="color:#dc2626">−$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
           <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
           <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
           <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
@@ -2391,17 +2392,20 @@ window.VistaAdmin = (function () {
       const desc  = document.getElementById('gasto-desc')?.value.trim();
       const monto = parseFloat(document.getElementById('gasto-monto')?.value);
       const categoriaId = document.getElementById('gasto-categoria')?.value;
+      const saleCaja = document.getElementById('gasto-sale-caja')?.checked !== false;
       if (!desc)       { SC?.toast('Escribe una descripción.', 'error'); return; }
       if (!monto || monto <= 0) { SC?.toast('Ingresa un monto válido.', 'error'); return; }
       if (monto > _GASTO_MONTO_MAX) { SC?.toast(`Monto demasiado grande — máximo $${_GASTO_MONTO_MAX}.`, 'error'); return; }
       if (categoriaId === '__nueva__') { SC?.toast('Confirma la categoría nueva primero.', 'error'); return; }
       btn.disabled = true;
       // Reutiliza SC.insertarGasto (ya pasa por la RPC registrar_gasto, exige sesión de staff)
-      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto, categoriaId: categoriaId || null });
+      const nuevoGasto = await SC?.insertarGasto?.({ descripcion: desc, monto, categoriaId: categoriaId || null, saleCaja });
       btn.disabled = false;
       if (!nuevoGasto) return; // el error ya se mostró dentro de insertarGasto
       document.getElementById('gasto-desc').value  = '';
       document.getElementById('gasto-monto').value = '';
+      const chkCaja = document.getElementById('gasto-sale-caja');
+      if (chkCaja) chkCaja.checked = true;
       SC?.toast('Gasto registrado ✓', 'success');
       _renderGastos();
     });

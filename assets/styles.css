@@ -1258,6 +1258,20 @@
       font-size: .88rem; font-family: 'Inter', sans-serif; color: var(--text);
       background: #faf5f0; padding: 0 .7rem; width: 168px; flex-shrink: 0; cursor: pointer;
     }
+    .gastos-caja-toggle {
+      display: flex; align-items: center; gap: .4rem;
+      border-left: 1.5px solid var(--border); padding: 0 .9rem;
+      background: #faf5f0; font-size: .8rem; font-weight: 600;
+      color: var(--text-muted); white-space: nowrap; cursor: pointer; user-select: none;
+    }
+    .gastos-caja-toggle input { accent-color: var(--cinnamon); width: 15px; height: 15px; cursor: pointer; }
+    .gastos-caja-toggle input:checked ~ span { color: var(--brown-dark); }
+    .gasto-tag-externo {
+      display: inline-flex; align-items: center; gap: .25rem; margin-left: .5rem;
+      font-size: .68rem; font-weight: 700; text-transform: uppercase; letter-spacing: .03em;
+      color: #a8441a; background: #fff0e4; border: 1px solid #f3c89a;
+      border-radius: 999px; padding: .12rem .5rem; white-space: nowrap; vertical-align: middle;
+    }
     .gastos-nueva-cat-fila {
       display: flex; gap: 0; align-items: stretch; margin-top: .6rem;
       background: #fff8f0; border: 1.5px solid var(--cinnamon);
@@ -1370,6 +1384,11 @@
       .gastos-input-categoria { width: 100%; padding: .65rem .9rem; }
       .gastos-monto-wrap { padding: 0 .9rem; }
       .gastos-input-monto { width: 100%; text-align: left; padding: .65rem 0; }
+      .gastos-caja-toggle {
+        border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+        background: #fff; box-shadow: 0 1px 4px rgba(59,26,8,.05);
+        padding: .7rem .9rem; justify-content: space-between;
+      }
       .btn-add-gasto { border-radius: var(--radius-sm); padding: .8rem 1rem; margin-top: .1rem; }
 
       /* ── Formulario "categoría nueva": misma tarjeta apilada,
