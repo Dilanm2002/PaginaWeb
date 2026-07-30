@@ -1816,8 +1816,9 @@ window.VistaAdmin = (function () {
     const top5       = Object.entries(conteo).sort((a, b) => b[1] - a[1]);
     // Nombre completo (sin recortar) — el margen izquierdo es automático
     // (automargin) así que se ajusta solo al nombre más largo.
-    const topNombres = top5.map(([n]) => n);
-    const topCants   = top5.map(([, c]) => c);
+    const topNombres  = top5.map(([n]) => n);
+    const topCants    = top5.map(([, c]) => c);
+    const topIngresos = topNombres.map(n => ventasPorProducto[n]?.ingresos ?? 0);
     const maxTop     = topCants.length ? Math.max(...topCants) : 1;
     // dtick fijo en 1 generaba una marca por unidad (ilegible con 30+ ventas);
     // se calcula para dejar como máximo ~6 marcas en el eje.
@@ -1833,12 +1834,13 @@ window.VistaAdmin = (function () {
         orientation:   'h',
         x:             topCants.length  ? topCants   : [0],
         y:             topNombres.length? topNombres : ['Sin datos'],
+        customdata:    topIngresos.length ? topIngresos : [0],
         marker: {
           color:        'rgba(59,26,8,.75)',
           line:         { color: '#3B1A08', width: 1 },
           cornerradius: 4
         },
-        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><extra></extra>'
+        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata:.2f}</b><extra></extra>'
       }], {
         ..._layout,
         margin: { t: 10, r: 20, b: 30, l: 130 },
