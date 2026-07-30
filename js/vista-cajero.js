@@ -695,12 +695,6 @@ window.VistaCajero = (function () {
     const efectivoVentas = SC.leerHistorial()
       .filter(h => h.fecha === hoy)
       .reduce((s, h) => s + (h.montoEfectivo ?? (h.metodoPagoNombre === 'Efectivo' ? (h.total || 0) : 0)), 0);
-    // Gastos pagados con el efectivo físico de la caja hoy — se restan del
-    // esperado porque ese dinero sí salió de la gaveta (no todo gasto sale
-    // de ahí, a veces es dinero externo al local).
-    const gastosCaja = SC.leerGastos()
-      .filter(g => g.fecha === hoy && g.metodoPago === 'efectivo')
-      .reduce((s, g) => s + (g.monto || 0), 0);
 
     const [{ data: actual }, { data: ultimo }] = await Promise.all([
       window.db.from('cierres_caja').select(_CC_SELECT).eq('cierre_fecha', fechaISO).maybeSingle(),
@@ -710,7 +704,7 @@ window.VistaCajero = (function () {
     if (actual) {
       _cc_renderCerrado(box, actual);
     } else {
-      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '', null, gastosCaja);
+      _cc_renderForm(box, fechaISO, efectivoVentas, ultimo?.cierre_fondo_inicial ?? '', null);
     }
   }
 
@@ -727,7 +721,7 @@ window.VistaCajero = (function () {
         <div class="cierre-caja__resumen">
           <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
           <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
-          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos (salen de caja)</span><strong style="color:#dc2626">−$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
+          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos pagados en efectivo hoy (informativo)</span><strong style="color:var(--text-muted)">$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
           <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
           <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
           <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
@@ -736,20 +730,22 @@ window.VistaCajero = (function () {
         <button class="cierre-caja__editar" id="btn-editar-cierre" type="button">Editar cierre</button>
       </div>`;
     document.getElementById('btn-editar-cierre')?.addEventListener('click', () => {
-      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c, parseFloat(c.cierre_gastos_caja) || 0);
+      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c);
     });
   }
 
-  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio, gastosCaja = 0) {
+  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio) {
     const SC = window.SC;
     const fondoInicial  = cierrePrevio ? cierrePrevio.cierre_fondo_inicial : fondoDefault;
     const contadoPrevio = cierrePrevio ? cierrePrevio.cierre_efectivo_contado : '';
     const notasPrevias  = cierrePrevio ? (cierrePrevio.cierre_notas ?? '') : '';
-    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas - gastosCaja;
+    // Esperado = fondo inicial + lo cobrado en efectivo (incluida la pierna
+    // en efectivo de pagos mixtos). Los gastos NO se restan aquí — se
+    // registran aparte y no deben mezclarse con el cuadre físico de caja.
+    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas;
     box.innerHTML = `
       <div class="cierre-caja">
         <div class="cierre-caja__header">💰 Cierre de caja — Hoy</div>
-        ${gastosCaja > 0 ? `<p class="cierre-caja__meta" style="margin-top:-.3rem">Se restaron $${gastosCaja.toFixed(2)} en gastos pagados con efectivo de la caja hoy.</p>` : ''}
         <div class="cierre-caja__form">
           <div class="cierre-caja__campo">
             <label for="cc-fondo">Fondo inicial</label>
@@ -772,7 +768,7 @@ window.VistaCajero = (function () {
     const esperadoEl = document.getElementById('cc-esperado');
     fondoInput?.addEventListener('input', () => {
       const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
-      const esperado = valor + efectivoVentas - gastosCaja;
+      const esperado = valor + efectivoVentas;
       if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
     });
 

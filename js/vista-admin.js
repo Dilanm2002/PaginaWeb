@@ -2368,7 +2368,7 @@ window.VistaAdmin = (function () {
         <div class="cierre-caja__resumen">
           <div><span>Fondo inicial</span><strong>$${parseFloat(c.cierre_fondo_inicial).toFixed(2)}</strong></div>
           <div><span>Ventas en efectivo</span><strong>$${parseFloat(c.cierre_efectivo_ventas).toFixed(2)}</strong></div>
-          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos (salen de caja)</span><strong style="color:#dc2626">−$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
+          ${parseFloat(c.cierre_gastos_caja) > 0 ? `<div><span>Gastos pagados en efectivo hoy (informativo)</span><strong style="color:var(--text-muted)">$${parseFloat(c.cierre_gastos_caja).toFixed(2)}</strong></div>` : ''}
           <div><span>Esperado</span><strong>$${parseFloat(c.cierre_efectivo_esperado).toFixed(2)}</strong></div>
           <div><span>Contado</span><strong>$${parseFloat(c.cierre_efectivo_contado).toFixed(2)}</strong></div>
           <div><span>Diferencia</span><strong style="color:${dif === 0 ? '#16a34a' : '#dc2626'}">${difFmt}</strong></div>
