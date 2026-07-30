@@ -1193,22 +1193,25 @@
             <span class="pago-metodo-label"><span class="pago-metodo-icon">💵</span> Efectivo</span>
           </label>
           <label class="pago-metodo-opt">
-            <input type="radio" name="metodo-pago" value="met002">
-            <span class="pago-metodo-label"><span class="pago-metodo-icon">💳</span> Tarjeta de crédito</span>
-          </label>
-          <label class="pago-metodo-opt">
-            <input type="radio" name="metodo-pago" value="met003">
-            <span class="pago-metodo-label"><span class="pago-metodo-icon">💳</span> Tarjeta de débito</span>
-          </label>
-          <label class="pago-metodo-opt">
             <input type="radio" name="metodo-pago" value="met004">
             <span class="pago-metodo-label"><span class="pago-metodo-icon">🔄</span> Transferencia</span>
+          </label>
+          <label class="pago-metodo-opt">
+            <input type="radio" name="metodo-pago" value="mixto">
+            <span class="pago-metodo-label"><span class="pago-metodo-icon">🔀</span> Pago mixto</span>
           </label>
         </div>
         <div id="pago-efectivo-section" class="pago-efectivo-section">
           <label class="pago-section-label" for="pago-monto-recibido">Monto recibido ($)</label>
           <input type="number" id="pago-monto-recibido" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
           <div id="pago-cambio-display" class="pago-cambio-display"></div>
+        </div>
+        <div id="pago-mixto-section" class="pago-efectivo-section" style="display:none">
+          <label class="pago-section-label" for="pago-mixto-efectivo">💵 Efectivo ($)</label>
+          <input type="number" id="pago-mixto-efectivo" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
+          <label class="pago-section-label" for="pago-mixto-transferencia">🔄 Transferencia ($)</label>
+          <input type="number" id="pago-mixto-transferencia" class="pago-monto-input" min="0" step="0.01" placeholder="0.00">
+          <div id="pago-mixto-restante" class="pago-cambio-display"></div>
         </div>
         <div id="pago-correo-section" class="pago-efectivo-section">
           <label class="pago-checkbox-label" for="pago-enviar-correo">
@@ -1421,7 +1424,16 @@
       ? (esParaLlevar ? llevarNombreDB : (r.ped_nombre_invitado || null))
       : null;
     const factura = Array.isArray(r.facturas) ? r.facturas[0] : r.facturas;
-    const pago    = factura ? (Array.isArray(factura.pagos) ? factura.pagos[0] : factura.pagos) : null;
+    const pagosRaw = factura ? (Array.isArray(factura.pagos) ? factura.pagos : (factura.pagos ? [factura.pagos] : [])) : [];
+    const pagos = pagosRaw.map(pg => ({
+      metodoId:     pg.metodo_id ?? null,
+      metodoNombre: pg.metodos_pago?.metodo_nombre ?? null,
+      monto:        parseFloat(pg.pago_monto  ?? 0),
+      cambio:       parseFloat(pg.pago_cambio ?? 0)
+    }));
+    // Más de una fila de pago = pago mixto (ej. parte efectivo, parte
+    // transferencia) — ver cobrarPedido().
+    const esMixto = pagos.length > 1;
     return {
       id:            r.ped_id,
       mesa:          esParaLlevar ? 'Para llevar' : (r.mesas?.mes_numero ?? null),
@@ -1466,7 +1478,12 @@
       createdAt: r.ped_created_at ?? null,
       factNumero:       factura?.fact_numero ?? null,
       factEmail:        factura?.fact_email  ?? null,
-      metodoPagoNombre: pago?.metodos_pago?.metodo_nombre ?? null
+      pagos,
+      metodoPagoNombre: esMixto ? 'Mixto' : (pagos[0]?.metodoNombre ?? null),
+      // Neto que quedó en la gaveta física (monto - cambio) sumado solo
+      // sobre las filas en Efectivo — para pedidos mixtos, solo cuenta la
+      // porción efectivo; ver cerrar_caja (RPC) para el mismo cálculo server-side.
+      montoEfectivo:    pagos.filter(p => p.metodoNombre === 'Efectivo').reduce((s, p) => s + (p.monto - p.cambio), 0)
     };
   }
 
@@ -1476,7 +1493,7 @@
     usu_id, mes_id, ped_despachado,
     mesas(mes_numero),
     detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre)), det_opciones_elegidas(grupo_id, grupo_nombre, opcion_id, opcion_nombre)),
-    facturas(fact_numero, fact_email, pagos(metodos_pago(metodo_nombre)))
+    facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
   `;
 
   const _GASTO_SELECT = 'gast_id, gast_descripcion, gast_monto, gast_fecha, gast_hora, usu_id, gast_categoria_id, gast_sale_caja, categorias_gasto(catgast_nombre)';
@@ -1955,7 +1972,7 @@
     met004: 'Transferencia'
   };
 
-  async function cobrarPedido(id, metodoPagoId, montoPagado, cambio, email) {
+  async function cobrarPedido(id, metodoPagoId, montoPagado, cambio, email, pagosMixtos = null) {
     clearTimeout(_pedidoUpdateTimers[id]);
     delete _pedidoUpdateTimers[id];
     _cobrando.add(String(id));
@@ -1976,10 +1993,11 @@
     const { data: resultado, error: cobroError } = await db.rpc('cobrar_pedido', {
       p_token:     session?.token ?? null,
       p_ped_id:    String(id),
-      p_metodo_id: metodoPagoId ?? null,
-      p_monto:     montoFinal,
-      p_cambio:    cambioFinal,
-      p_email:     email || null
+      p_metodo_id: pagosMixtos ? null : (metodoPagoId ?? null),
+      p_monto:     pagosMixtos ? null : montoFinal,
+      p_cambio:    pagosMixtos ? null : cambioFinal,
+      p_email:     email || null,
+      p_pagos:     pagosMixtos ? pagosMixtos.map(p => ({ metodo_id: p.metodoId, monto: p.monto, cambio: 0 })) : null
     });
 
     if (cobroError || !resultado) {
@@ -1997,6 +2015,10 @@
     _skipNextRealtime = true;
 
     // Actualizar caché local
+    const pagos = pagosMixtos
+      ? pagosMixtos.map(p => ({ metodoId: p.metodoId, metodoNombre: _METODO_NOMBRE[p.metodoId] || p.metodoId, monto: p.monto, cambio: 0 }))
+      : [{ metodoId: metodoPagoId, metodoNombre: _METODO_NOMBRE[metodoPagoId] || 'Efectivo', monto: montoFinal, cambio: cambioFinal }];
+    const esMixto = pagos.length > 1;
     const entrada = {
       ...cobrado,
       fecha:            _isoFechaALocale(fechaISO),
@@ -2004,7 +2026,9 @@
       estado:           'cobrado',
       factNumero:       resultado.fact_numero,
       factEmail:        email || null,
-      metodoPagoNombre: _METODO_NOMBRE[metodoPagoId] || 'Efectivo'
+      pagos,
+      metodoPagoNombre: esMixto ? 'Mixto' : (pagos[0]?.metodoNombre || 'Efectivo'),
+      montoEfectivo:    pagos.filter(p => p.metodoNombre === 'Efectivo').reduce((s, p) => s + (p.monto - p.cambio), 0)
     };
     _historial.unshift(entrada);
     _caja = _caja.filter(x => String(x.id) !== String(id));

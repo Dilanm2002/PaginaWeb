@@ -350,10 +350,20 @@ window.VistaAdmin = (function () {
       return t ? new Date(t).toLocaleString('es-EC', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' }) : '—';
     };
     const _factura = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
-    const _metodoNombre = p => {
+    const _pagosDe = p => {
       const factura = _factura(p);
-      const pago    = Array.isArray(factura?.pagos) ? factura.pagos[0] : factura?.pagos;
-      return pago?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+      const raw = Array.isArray(factura?.pagos) ? factura.pagos : (factura?.pagos ? [factura.pagos] : []);
+      return raw;
+    };
+    // Más de una fila de pago = pago mixto (parte efectivo, parte
+    // transferencia) — se muestra con su desglose en vez de un solo método.
+    const _metodoNombre = p => {
+      const pagos = _pagosDe(p);
+      if (!pagos.length) return 'Sin registrar';
+      if (pagos.length > 1) {
+        return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${(parseFloat(pg.pago_monto) || 0).toFixed(2)}`).join(' + ') + ')';
+      }
+      return pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
     };
 
     if (!pedidos.length) {
@@ -1853,18 +1863,41 @@ window.VistaAdmin = (function () {
       return clienteNombre || users.find(u => u.id === p.usu_id)?.nombre || 'Usuario';
     };
     const _facturaDe = p => Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
-    const _pagoDe    = p => { const f = _facturaDe(p); return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null; };
-    const _metodoDe  = p => _pagoDe(p)?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+    const _pagosDe   = p => { const f = _facturaDe(p); const raw = f ? f.pagos : null; return Array.isArray(raw) ? raw : (raw ? [raw] : []); };
+    // Más de una fila de pago = pago mixto (parte efectivo, parte
+    // transferencia) — se muestra con su desglose en vez de un solo método.
+    const _metodoDe  = p => {
+      const pagos = _pagosDe(p);
+      if (!pagos.length) return 'Sin registrar';
+      if (pagos.length > 1) return 'Mixto (' + pagos.map(pg => `${pg.metodos_pago?.metodo_nombre ?? '?'} $${(parseFloat(pg.pago_monto) || 0).toFixed(2)}`).join(' + ') + ')';
+      return pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+    };
 
     // Desglose por método de pago — clave para cuadrar caja/tarjeta/
-    // transferencia en una auditoría.
+    // transferencia en una auditoría. Un pedido mixto reparte su dinero
+    // real entre Efectivo/Transferencia (no el total completo en ambos) y
+    // además suma aparte en un bucket "Mixto" informativo (cuántos pedidos
+    // y por cuánto se cobraron así) sin duplicar esos montos.
     const porMetodo = {};
+    let totalMixtos = 0, cantidadMixtos = 0;
     data.forEach(p => {
-      const m = _metodoDe(p);
-      if (!porMetodo[m]) porMetodo[m] = { total: 0, cantidad: 0 };
-      porMetodo[m].total    += parseFloat(p.ped_total) || 0;
-      porMetodo[m].cantidad += 1;
+      const pagos = _pagosDe(p);
+      if (pagos.length > 1) {
+        cantidadMixtos++;
+        totalMixtos += parseFloat(p.ped_total) || 0;
+        pagos.forEach(pg => {
+          const m = pg.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+          if (!porMetodo[m]) porMetodo[m] = { total: 0, cantidad: 0 };
+          porMetodo[m].total += parseFloat(pg.pago_monto) || 0;
+        });
+      } else {
+        const m = pagos[0]?.metodos_pago?.metodo_nombre ?? 'Sin registrar';
+        if (!porMetodo[m]) porMetodo[m] = { total: 0, cantidad: 0 };
+        porMetodo[m].total    += parseFloat(p.ped_total) || 0;
+        porMetodo[m].cantidad += 1;
+      }
     });
+    if (cantidadMixtos > 0) porMetodo['Mixto'] = { total: totalMixtos, cantidad: cantidadMixtos };
     // ped_id → método de pago, para mostrarlo también en la tabla del
     // Control de Caja (mismo `data` que ya trae el join a facturas/pagos).
     const metodoPorPedido = new Map(data.map(p => [p.ped_id, _metodoDe(p)]));
@@ -2115,7 +2148,7 @@ window.VistaAdmin = (function () {
 
     const { data: todosHoy } = await window.db
       .from('pedidos')
-      .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(pago_monto))')
+      .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
       .eq('ped_fecha', fechaSel)
       .order('ped_hora', { ascending: true });
 
@@ -2152,22 +2185,22 @@ window.VistaAdmin = (function () {
     // caja lo cobró o anuló (nunca el mismo que lo creó, salvo que sea
     // cajero/admin tomando su propio pedido).
     const _METODO_COLOR_CUADRE = { 'Efectivo': '#16a34a', 'Transferencia': '#5b7fa6', 'Tarjeta de crédito': 'var(--brown-dark)', 'Tarjeta de débito': 'var(--brown-dark)' };
-    // pago_monto es lo que el cliente entregó en mano (ej. $20 por una
-    // cuenta de $3.50) — solo tiene sentido mostrarlo para efectivo, ya
-    // que ahí sí puede diferir del total (da pie al vuelto); en los demás
-    // métodos siempre es igual al total y no aporta nada nuevo.
-    const _pagoDeCuadre = p => {
+    const _pagosDeCuadre = p => {
       const f = Array.isArray(p.facturas) ? p.facturas[0] : p.facturas;
-      return f ? (Array.isArray(f.pagos) ? f.pagos[0] : f.pagos) : null;
+      const raw = f ? f.pagos : null;
+      return Array.isArray(raw) ? raw : (raw ? [raw] : []);
     };
     // Agrupar por método (opcional, ver _cuadreOrdenMetodo) — junta todo el
     // efectivo, luego transferencias, etc., para poder cuadrar a mano más
     // rápido en vez de ir saltando entre métodos en orden cronológico.
+    // Los pagos mixtos ("Mixto (...)") van al final — son los que más
+    // tiempo toman cuadrar a mano, mejor dejarlos para el final.
     const _ORDEN_METODO_PRIORIDAD = { 'Efectivo': 0, 'Transferencia': 1, 'Tarjeta de crédito': 2, 'Tarjeta de débito': 3 };
+    const _prioridadMetodo = m => m?.startsWith('Mixto') ? 4 : (_ORDEN_METODO_PRIORIDAD[m] ?? 99);
     const todosParaTabla = _cuadreOrdenMetodo
       ? [...todos].sort((a, b) => {
-          const pa = _ORDEN_METODO_PRIORIDAD[metodoPorPedido?.get(a.ped_id)] ?? 99;
-          const pb = _ORDEN_METODO_PRIORIDAD[metodoPorPedido?.get(b.ped_id)] ?? 99;
+          const pa = _prioridadMetodo(metodoPorPedido?.get(a.ped_id));
+          const pb = _prioridadMetodo(metodoPorPedido?.get(b.ped_id));
           return pa - pb || (a.ped_hora ?? '').localeCompare(b.ped_hora ?? '');
         })
       : todos;
@@ -2180,11 +2213,19 @@ window.VistaAdmin = (function () {
           ? '<span style="color:#dc2626;font-weight:700">✕ Anulado</span>'
           : '<span style="color:var(--cinnamon);font-weight:700">⏳ Pendiente</span>';
       const metodo = metodoPorPedido?.get(p.ped_id);
+      const esMixto = metodo?.startsWith('Mixto');
       const metodoTxt = p.ped_estado === 'cobrado' && metodo
-        ? `<strong style="color:${_METODO_COLOR_CUADRE[metodo] ?? 'var(--text-muted)'}">${SC?.escapeHtml(metodo) ?? metodo}</strong>`
+        ? `<strong style="color:${esMixto ? '#a8441a' : (_METODO_COLOR_CUADRE[metodo] ?? 'var(--text-muted)')}" title="${SC?.escapeHtml(metodo) ?? metodo}">${esMixto ? 'Mixto' : (SC?.escapeHtml(metodo) ?? metodo)}</strong>`
         : '—';
-      const montoRecibido = p.ped_estado === 'cobrado' && metodo === 'Efectivo' ? _pagoDeCuadre(p)?.pago_monto : null;
-      const recibidoTxt = montoRecibido != null ? `$${parseFloat(montoRecibido).toFixed(2)}` : '—';
+      // pago_monto es lo que el cliente entregó en mano (ej. $20 por una
+      // cuenta de $3.50) — solo tiene sentido mostrarlo para efectivo, ya
+      // que ahí sí puede diferir del total (da pie al vuelto); en los demás
+      // métodos siempre es igual al total y no aporta nada nuevo. En un
+      // pago mixto se suma solo la pierna en Efectivo.
+      const montoEfectivo = p.ped_estado === 'cobrado'
+        ? _pagosDeCuadre(p).filter(pg => pg.metodos_pago?.metodo_nombre === 'Efectivo').reduce((s, pg) => s + (parseFloat(pg.pago_monto) || 0), 0)
+        : 0;
+      const recibidoTxt = montoEfectivo > 0 ? `$${montoEfectivo.toFixed(2)}` : '—';
       return `<tr>
         <td data-label="Pedido">${SC?.escapeHtml(mesaTxt) ?? mesaTxt}${p.ped_hora ? ` <small style="color:var(--text-muted)">${p.ped_hora.slice(0,5)}</small>` : ''}</td>
         <td data-label="Monto" style="text-align:right">$${(parseFloat(p.ped_total) || 0).toFixed(2)}</td>
@@ -2231,11 +2272,14 @@ window.VistaAdmin = (function () {
         // transferencia; el detalle completo sigue en el Excel exportado.
         const tarjetas = { total: (pm['Tarjeta de crédito']?.total || 0) + (pm['Tarjeta de débito']?.total || 0),
                            cantidad: (pm['Tarjeta de crédito']?.cantidad || 0) + (pm['Tarjeta de débito']?.cantidad || 0) };
-        const otros = Object.entries(pm).filter(([m]) => !_ORDEN_METODOS_CUADRE.includes(m));
+        const otros = Object.entries(pm).filter(([m]) => !_ORDEN_METODOS_CUADRE.includes(m) && m !== 'Mixto');
         const pills = [
           { lbl: 'Efectivo en caja', color: '#16a34a', ...pm['Efectivo'] },
           { lbl: 'Transferencia',    color: '#5b7fa6', ...pm['Transferencia'] },
           { lbl: 'Tarjetas',         color: 'var(--brown-dark)', ...tarjetas },
+          // Informativo — su dinero ya está repartido dentro de Efectivo/
+          // Transferencia arriba, no se suma aparte (evitaría contar doble).
+          ...(pm['Mixto'] ? [{ lbl: 'Mixto (informativo)', color: '#a8441a', ...pm['Mixto'] }] : []),
           ...otros.map(([m, info]) => ({ lbl: SC?.escapeHtml(m) ?? m, color: 'var(--text-muted)', ...info }))
         ];
         return `<div class="cuadre-metodos-strip">

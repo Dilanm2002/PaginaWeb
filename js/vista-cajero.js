@@ -31,6 +31,16 @@ window.VistaCajero = (function () {
     met004: 'Transferencia'
   };
 
+  // Descripción completa del método, con desglose si fue pago mixto —
+  // única fuente de verdad para recibos/notas/tablas, en vez de confiar en
+  // que el string ya venga formateado desde donde se llamó.
+  function _fmtMetodoPago(pedido, fallback) {
+    if (pedido?.pagos?.length > 1) {
+      return 'Mixto (' + pedido.pagos.map(p => `${p.metodoNombre} $${p.monto.toFixed(2)}`).join(' + ') + ')';
+    }
+    return fallback || 'Efectivo';
+  }
+
   function _getFecha(offset) {
     const d = new Date();
     d.setDate(d.getDate() + offset);
@@ -608,10 +618,14 @@ window.VistaCajero = (function () {
         <button class="btn-cobrado-correo" data-hid="${h.id}">✉️ Enviar</button>
       </div>`;
 
+    const _metodoBadge = h => h.pagos?.length > 1
+      ? `<span class="rol-pill" style="background:#5b7fa6" title="${SC.escapeHtml(_fmtMetodoPago(h))}">Mixto</span>`
+      : (h.metodoPagoNombre || 'Efectivo');
+
     wrap.innerHTML = `
       <table class="resumen-tabla">
         <thead>
-          <tr><th>Mesa</th><th>Cliente</th><th>Hora</th><th style="text-align:right">Total</th><th>Acciones</th></tr>
+          <tr><th>Mesa</th><th>Cliente</th><th>Hora</th><th>Método</th><th style="text-align:right">Total</th><th>Acciones</th></tr>
         </thead>
         <tbody>
           ${cobrados.map(h => `
@@ -619,6 +633,7 @@ window.VistaCajero = (function () {
               <td><strong>${h.paraLlevar || h.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${h.mesa}`}</strong></td>
               <td>${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}</td>
               <td class="td-hora">${_hora(h)}</td>
+              <td class="td-hora">${_metodoBadge(h)}</td>
               <td class="td-total">$${h.total.toFixed(2)}</td>
               <td style="white-space:nowrap">${_acciones(h)}</td>
             </tr>`).join('')}
@@ -633,7 +648,7 @@ window.VistaCajero = (function () {
             </div>
             <div class="resumen-card__body">
               <div class="resumen-card__cliente">${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}</div>
-              <div class="resumen-card__hora">${_hora(h)}</div>
+              <div class="resumen-card__hora">${_hora(h)} · ${_metodoBadge(h)}</div>
               <div style="display:flex;gap:.5rem;margin-top:.5rem">${_acciones(h)}</div>
             </div>
           </div>`).join('')}
@@ -643,7 +658,7 @@ window.VistaCajero = (function () {
       btn.onclick = () => {
         const h = cobrados.find(x => String(x.id) === String(btn.dataset.hid));
         if (!h) return;
-        imprimirNotaVenta(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn);
+        imprimirNotaVenta(h, h.factNumero || 'FACT-000000', _fmtMetodoPago(h, h.metodoPagoNombre), h.cobradoEn);
       };
     });
 
@@ -651,7 +666,7 @@ window.VistaCajero = (function () {
       btn.onclick = () => {
         const h = cobrados.find(x => String(x.id) === String(btn.dataset.hid));
         if (!h) return;
-        abrirModalCorreoNota(h, h.factNumero || 'FACT-000000', h.metodoPagoNombre || 'Efectivo', h.cobradoEn, h.factEmail || '');
+        abrirModalCorreoNota(h, h.factNumero || 'FACT-000000', _fmtMetodoPago(h, h.metodoPagoNombre), h.cobradoEn, h.factEmail || '');
       };
     });
 
@@ -672,9 +687,12 @@ window.VistaCajero = (function () {
     const SC = window.SC;
     const fechaISO = _fechaISOHoy();
     const hoy = _getFecha(0);
+    // montoEfectivo ya viene neto (recibido − cambio) por pedido, e incluye
+    // solo la porción efectivo de un pago mixto — no filtrar por método,
+    // porque un pedido "Mixto" no es 'Efectivo' pero sí aporta esa porción.
     const efectivoVentas = SC.leerHistorial()
-      .filter(h => h.fecha === hoy && (h.metodoPagoNombre || 'Efectivo') === 'Efectivo')
-      .reduce((s, h) => s + (h.total || 0), 0);
+      .filter(h => h.fecha === hoy)
+      .reduce((s, h) => s + (h.montoEfectivo ?? (h.metodoPagoNombre === 'Efectivo' ? (h.total || 0) : 0)), 0);
     // Gastos pagados con el efectivo físico de la caja hoy — se restan del
     // esperado porque ese dinero sí salió de la gaveta (no todo gasto sale
     // de ahí, a veces es dinero externo al local).
@@ -820,14 +838,22 @@ window.VistaCajero = (function () {
     const montoInp  = document.getElementById('pago-monto-recibido');
     const cambioEl  = document.getElementById('pago-cambio-display');
     const efectivoSec = document.getElementById('pago-efectivo-section');
+    const mixtoSec     = document.getElementById('pago-mixto-section');
+    const mixtoEfInp   = document.getElementById('pago-mixto-efectivo');
+    const mixtoTrInp   = document.getElementById('pago-mixto-transferencia');
+    const mixtoRestEl  = document.getElementById('pago-mixto-restante');
 
     if (totalDisp) totalDisp.innerHTML = `Total a cobrar: <strong>$${pedido.total.toFixed(2)}</strong>`;
     if (montoInp)  { montoInp.value = ''; montoInp.min = pedido.total.toFixed(2); }
     if (cambioEl)  cambioEl.textContent = '';
+    if (mixtoEfInp) mixtoEfInp.value = '';
+    if (mixtoTrInp) mixtoTrInp.value = '';
+    if (mixtoRestEl) mixtoRestEl.textContent = '';
 
     const radioEfectivo = document.querySelector('input[name="metodo-pago"][value="met001"]');
     if (radioEfectivo) radioEfectivo.checked = true;
     if (efectivoSec) efectivoSec.style.display = '';
+    if (mixtoSec) mixtoSec.style.display = 'none';
 
     // Correo para la Nota de Venta: siempre es opcional (checkbox), nunca
     // se manda sin que alguien lo decida. Si el cliente está registrado,
@@ -1073,6 +1099,10 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     const montoRecibidoInp = document.getElementById('pago-monto-recibido');
     const cambioDisp       = document.getElementById('pago-cambio-display');
     const efectivoSec      = document.getElementById('pago-efectivo-section');
+    const mixtoSec         = document.getElementById('pago-mixto-section');
+    const mixtoEfInp       = document.getElementById('pago-mixto-efectivo');
+    const mixtoTrInp       = document.getElementById('pago-mixto-transferencia');
+    const mixtoRestEl      = document.getElementById('pago-mixto-restante');
 
     if (btnCerrarPago)  btnCerrarPago.addEventListener('click',  cerrarModalPago);
     if (btnCancelarPago) btnCancelarPago.addEventListener('click', cerrarModalPago);
@@ -1081,8 +1111,32 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     document.querySelectorAll('input[name="metodo-pago"]').forEach(radio => {
       radio.addEventListener('change', () => {
         if (efectivoSec) efectivoSec.style.display = radio.value === 'met001' ? '' : 'none';
+        if (mixtoSec)    mixtoSec.style.display    = radio.value === 'mixto'  ? '' : 'none';
         if (cambioDisp)  cambioDisp.textContent = '';
+        if (mixtoRestEl) mixtoRestEl.textContent = '';
       });
+    });
+
+    const _actualizarRestanteMixto = () => {
+      const SC     = window.SC;
+      const pedido = SC.leerCaja().find(p => String(p.id) === String(_pedidoParaCobrar));
+      if (!pedido || !mixtoRestEl) return;
+      const ef = parseFloat(mixtoEfInp?.value) || 0;
+      const tr = parseFloat(mixtoTrInp?.value) || 0;
+      const restante = Math.round((pedido.total - ef - tr) * 100) / 100;
+      if (ef <= 0 && tr <= 0) { mixtoRestEl.textContent = ''; return; }
+      if (restante === 0) {
+        mixtoRestEl.textContent = '✓ Cuadra con el total';
+        mixtoRestEl.style.color = '#15803d';
+      } else {
+        mixtoRestEl.textContent = restante > 0 ? `Falta $${restante.toFixed(2)}` : `Sobra $${Math.abs(restante).toFixed(2)}`;
+        mixtoRestEl.style.color = '#dc2626';
+      }
+    };
+    mixtoEfInp?.addEventListener('input', _actualizarRestanteMixto);
+    mixtoTrInp?.addEventListener('input', _actualizarRestanteMixto);
+    [mixtoEfInp, mixtoTrInp].forEach(inp => {
+      inp?.addEventListener('keydown', e => { if (e.key === 'Enter') btnConfirmarPago?.click(); });
     });
 
     const correoCheckbox = document.getElementById('pago-enviar-correo');
@@ -1121,10 +1175,12 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         if (!pedido) return;
 
         const metodoPagoId     = document.querySelector('input[name="metodo-pago"]:checked')?.value || 'met001';
-        const metodoPagoNombre = METODO_NOMBRE[metodoPagoId] || 'Efectivo';
+        const esMixto          = metodoPagoId === 'mixto';
+        let metodoPagoNombre   = METODO_NOMBRE[metodoPagoId] || 'Efectivo';
 
         let montoPagado = pedido.total;
         let cambio      = 0;
+        let pagosMixtos = null;
         if (metodoPagoId === 'met001') {
           montoPagado = parseFloat(montoRecibidoInp?.value) || 0;
           if (montoPagado < pedido.total) {
@@ -1133,6 +1189,26 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
             return;
           }
           cambio = Math.max(0, montoPagado - pedido.total);
+        } else if (esMixto) {
+          const montoEfectivo      = parseFloat(mixtoEfInp?.value) || 0;
+          const montoTransferencia = parseFloat(mixtoTrInp?.value) || 0;
+          if (montoEfectivo <= 0 || montoTransferencia <= 0) {
+            SC.toast('Ingresa un monto en efectivo Y en transferencia, o elige un solo método.', 'error');
+            (montoEfectivo <= 0 ? mixtoEfInp : mixtoTrInp)?.focus();
+            return;
+          }
+          const restante = Math.round((pedido.total - montoEfectivo - montoTransferencia) * 100) / 100;
+          if (restante !== 0) {
+            SC.toast(restante > 0 ? `Falta $${restante.toFixed(2)} para completar el total.` : `Sobran $${Math.abs(restante).toFixed(2)} — la suma no puede pasar el total.`, 'error');
+            return;
+          }
+          pagosMixtos = [
+            { metodoId: 'met001', monto: montoEfectivo },
+            { metodoId: 'met004', monto: montoTransferencia }
+          ];
+          montoPagado = pedido.total;
+          cambio = 0;
+          metodoPagoNombre = `Mixto (Efectivo $${montoEfectivo.toFixed(2)} + Transferencia $${montoTransferencia.toFixed(2)})`;
         }
 
         // Correo para la nota: siempre depende del checkbox — si está
@@ -1161,7 +1237,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         btnConfirmarPago.disabled    = true;
         btnConfirmarPago.textContent = 'Procesando…';
 
-        const resultado = await SC.cobrarPedido(String(_pedidoParaCobrar), metodoPagoId, montoPagado, cambio, email);
+        const resultado = await SC.cobrarPedido(String(_pedidoParaCobrar), metodoPagoId, montoPagado, cambio, email, pagosMixtos);
 
         btnConfirmarPago.disabled    = false;
         btnConfirmarPago.textContent = '✓ Cobrar';
