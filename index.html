@@ -1867,6 +1867,12 @@
     const { data: pedData, error: pedError } = await db.from('pedidos').insert({
       mes_id:              mesaData?.mes_id ?? null,
       usu_id:              idUsuario || null,
+      // Rol con el que se creó el pedido en ESE momento (no el rol "por
+      // defecto" del usuario) — un empleado con doble rol (ej. cajero +
+      // mesero) puede crear pedidos en cualquiera de los dos modos, y el
+      // panel de admin necesita saber cuál para no atribuírselo siempre
+      // a su rol de perfil.
+      ped_creado_rol:      rol || null,
       ped_nombre_invitado: paraLlevar ? `PL:${nombreUsuario}` : (clienteNombre || (idUsuario ? null : nombreUsuario)),
       ped_estado:          'pendiente',
       ped_hora:            hora,

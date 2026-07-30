@@ -2175,7 +2175,7 @@ window.VistaAdmin = (function () {
     const [{ data: todosHoy }, { data: gastosHoy }] = await Promise.all([
       window.db
         .from('pedidos')
-        .select('ped_id, ped_estado, ped_total, usu_id, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
+        .select('ped_id, ped_estado, ped_total, usu_id, ped_creado_rol, ped_cobrado_por, ped_anulado_por, ped_hora, mes_id, mesas(mes_numero), facturas(pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
         .eq('ped_fecha', fechaSel)
         .order('ped_hora', { ascending: true }),
       window.db.from('gastos').select('gast_monto, gast_metodo_pago').eq('gast_fecha', fechaSel)
@@ -2211,10 +2211,15 @@ window.VistaAdmin = (function () {
       const u = usuariosCache.find(u => u.id === usuId);
       return u ? { nombre: u.nombre, rol: u.rol } : { nombre: usuId, rol: 'usuario' };
     };
-    const _pill = (usuId, fallbackRol) => {
+    const _pill = (usuId, fallbackRol, rolOverride) => {
       const info = _nombreDe(usuId);
       if (!info) return '—';
-      const rol = info.rol ?? fallbackRol;
+      // rolOverride = con qué rol se hizo ESA acción puntual (ej.
+      // ped_creado_rol) — un empleado con doble rol puede haber actuado
+      // como mesero aunque su perfil general diga "cajero". Solo cuando
+      // no viene ese dato (pedidos creados antes de este cambio) se cae
+      // al rol de perfil.
+      const rol = rolOverride ?? info.rol ?? fallbackRol;
       return `<span class="rol-pill ${rol}">${ROL_LABEL_CUADRE[rol] ?? rol}</span> ${SC?.escapeHtml(info.nombre) ?? info.nombre}`;
     };
 
@@ -2243,7 +2248,7 @@ window.VistaAdmin = (function () {
         })
       : todos;
     const filasPedidos = todosParaTabla.map(p => {
-      const creador = p.usu_id ? _pill(p.usu_id, 'usuario') : `<span class="rol-pill invitado">Invitado</span>`;
+      const creador = p.usu_id ? _pill(p.usu_id, 'usuario', p.ped_creado_rol) : `<span class="rol-pill invitado">Invitado</span>`;
       const mesaTxt = p.mes_id && p.mesas?.mes_numero ? `Mesa ${p.mesas.mes_numero}` : 'Para llevar';
       const estadoTxt = p.ped_estado === 'cobrado'
         ? '<span style="color:#16a34a;font-weight:700">✓ Cobrado</span>'
