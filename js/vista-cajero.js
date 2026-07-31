@@ -711,6 +711,12 @@ window.VistaCajero = (function () {
       .filter(h => h.fecha === hoy)
       .reduce((s, h) => s + (h.montoEfectivo ?? (h.metodoPagoNombre === 'Efectivo' ? (h.total || 0) : 0)), 0);
 
+    // Gastos pagados con el efectivo de la caja física (no transferencia
+    // ni externos) — esos sí salen del cajón y deben restarse del esperado.
+    const gastosCaja = SC.leerGastos()
+      .filter(g => g.fecha === hoy && g.metodoPago === 'efectivo')
+      .reduce((s, g) => s + (g.monto || 0), 0);
+
     const [{ data: actual }, { data: ultimo }] = await Promise.all([
       window.db.from('cierres_caja').select(_CC_SELECT).eq('cierre_fecha', fechaISO).maybeSingle(),
       window.db.from('cierres_caja').select('cierre_fondo_inicial').order('cierre_fecha', { ascending: false }).limit(1).maybeSingle()
@@ -720,7 +726,7 @@ window.VistaCajero = (function () {
       _cc_renderCerrado(box, actual);
     } else {
       const fondoGuardado = _leerFondoGuardado();
-      _cc_renderForm(box, fechaISO, efectivoVentas, fondoGuardado ?? (ultimo?.cierre_fondo_inicial ?? ''), null);
+      _cc_renderForm(box, fechaISO, efectivoVentas, gastosCaja, fondoGuardado ?? (ultimo?.cierre_fondo_inicial ?? ''), null);
     }
   }
 
@@ -746,19 +752,19 @@ window.VistaCajero = (function () {
         <button class="cierre-caja__editar" id="btn-editar-cierre" type="button">Editar cierre</button>
       </div>`;
     document.getElementById('btn-editar-cierre')?.addEventListener('click', () => {
-      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, c.cierre_fondo_inicial, c);
+      _cc_renderForm(box, c.cierre_fecha, parseFloat(c.cierre_efectivo_ventas) || 0, parseFloat(c.cierre_gastos_caja) || 0, c.cierre_fondo_inicial, c);
     });
   }
 
-  function _cc_renderForm(box, fechaISO, efectivoVentas, fondoDefault, cierrePrevio) {
+  function _cc_renderForm(box, fechaISO, efectivoVentas, gastosCaja, fondoDefault, cierrePrevio) {
     const SC = window.SC;
     const fondoInicial  = cierrePrevio ? cierrePrevio.cierre_fondo_inicial : fondoDefault;
     const contadoPrevio = cierrePrevio ? cierrePrevio.cierre_efectivo_contado : '';
     const notasPrevias  = cierrePrevio ? (cierrePrevio.cierre_notas ?? '') : '';
     // Esperado = fondo inicial + lo cobrado en efectivo (incluida la pierna
-    // en efectivo de pagos mixtos). Los gastos NO se restan aquí — se
-    // registran aparte y no deben mezclarse con el cuadre físico de caja.
-    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas;
+    // en efectivo de pagos mixtos) − los gastos pagados con ese mismo
+    // efectivo de caja (transferencia y externos no tocan el cajón físico).
+    const esperadoInicial = (parseFloat(fondoInicial) || 0) + efectivoVentas - gastosCaja;
     box.innerHTML = `
       <div class="cierre-caja">
         <div class="cierre-caja__header">💰 Cierre de caja — Hoy</div>
@@ -773,6 +779,7 @@ window.VistaCajero = (function () {
           <div class="cierre-caja__campo">
             <label>Efectivo esperado</label>
             <div class="cierre-caja__esperado" id="cc-esperado">$${esperadoInicial.toFixed(2)}</div>
+            ${gastosCaja > 0 ? `<small style="color:var(--text-muted)">Ya descuenta $${gastosCaja.toFixed(2)} en gastos pagados desde la caja hoy</small>` : ''}
           </div>
           <div class="cierre-caja__campo">
             <label for="cc-contado">Efectivo contado</label>
@@ -787,7 +794,7 @@ window.VistaCajero = (function () {
     const esperadoEl = document.getElementById('cc-esperado');
     fondoInput?.addEventListener('input', () => {
       const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
-      const esperado = valor + efectivoVentas;
+      const esperado = valor + efectivoVentas - gastosCaja;
       if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
     });
 
