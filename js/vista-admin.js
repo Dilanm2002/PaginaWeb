@@ -23,11 +23,26 @@ window.VistaAdmin = (function () {
     const [d, m, y] = (fechaLocale || '').split('/');
     return (d && m && y) ? `${y}-${m}-${d}` : '';
   }
+  // Solo cuenta gastos pagados con dinero del negocio (efectivo de caja o
+  // transferencia del día) — los externos no salen de la caja ni de las
+  // cuentas del negocio, así que no deben restar de la ganancia neta.
   function _totalGastosRango(desdeStr, hastaStr) {
     const gastos = window.SC?.leerGastos?.() ?? [];
     return gastos.reduce((s, g) => {
       const iso = _gastoFechaISO(g.fecha);
-      return (iso && iso >= desdeStr && iso <= hastaStr) ? s + (g.monto || 0) : s;
+      if (!iso || iso < desdeStr || iso > hastaStr) return s;
+      if (g.metodoPago === 'externo') return s;
+      return s + (g.monto || 0);
+    }, 0);
+  }
+
+  // Gastos externos del rango (informativo) — no descuentan de la ganancia
+  // neta, pero se muestran aparte para que quede registro de ellos.
+  function _totalGastosExternosRango(desdeStr, hastaStr) {
+    const gastos = window.SC?.leerGastos?.() ?? [];
+    return gastos.reduce((s, g) => {
+      const iso = _gastoFechaISO(g.fecha);
+      return (iso && iso >= desdeStr && iso <= hastaStr && g.metodoPago === 'externo') ? s + (g.monto || 0) : s;
     }, 0);
   }
 
@@ -1678,6 +1693,7 @@ window.VistaAdmin = (function () {
     const numPedidos   = data.length;
     const promedio     = numPedidos ? totalVentas / numPedidos : 0;
     const totalGastos  = _totalGastosRango(desdeStr, hastaStr);
+    const totalExternos = _totalGastosExternosRango(desdeStr, hastaStr);
     const gananciaNeta = totalVentas - totalGastos;
 
     kpisEl.innerHTML = `
@@ -1701,7 +1717,14 @@ window.VistaAdmin = (function () {
         </div>
         <div class="reportes-kpi__val" style="color:${gananciaNeta >= 0 ? '#16a34a' : '#dc2626'}">$${gananciaNeta.toFixed(2)}</div>
         <div class="reportes-kpi__lbl">Ganancia neta (${periodoLabel})</div>
-      </div>`;
+      </div>${totalExternos > 0 ? `
+      <div class="reportes-kpi rep-kpi--iva">
+        <div class="rep-kpi__icon-wrap rep-kpi__icon-wrap--iva">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
+        </div>
+        <div class="reportes-kpi__val">$${totalExternos.toFixed(2)}</div>
+        <div class="reportes-kpi__lbl">Gastos externos (${periodoLabel}) — informativo, no afecta la ganancia</div>
+      </div>` : ''}`;
 
     // El dibujo de las gráficas necesita Plotly, pero los datos que
     // calculan (y que también usa la tabla/Excel de abajo) no — así que
