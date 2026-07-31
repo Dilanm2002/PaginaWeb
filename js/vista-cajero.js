@@ -561,8 +561,12 @@ window.VistaCajero = (function () {
           return;
         }
 
+        // El pedido ya descontó este stock al enviarse a caja — al quitar
+        // la línea entera hay que devolver toda su cantidad.
+        const itemQuitado = ped.items[idx];
         ped.items.splice(idx, 1);
         SC.actualizarPedido(pid, ped.items);
+        SC.reponerStock(itemQuitado.id, itemQuitado.cantidad);
         renderCajeroView();
         window.VistaAdmin?.renderAdminPedidos?.();
         return;
@@ -593,6 +597,12 @@ window.VistaCajero = (function () {
           if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
           return;
         }
+
+        // El stock ya se descontó al enviar el pedido a caja — sumar una
+        // unidad aquí consume una más, y restar una la devuelve.
+        const itemIdQty = ped.items[idx].id;
+        if (action === 'inc') SC.actualizarStock(itemIdQty, 1);
+        else SC.reponerStock(itemIdQty, 1);
 
         ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
         if (ped.items[idx].cantidad <= 0) {
