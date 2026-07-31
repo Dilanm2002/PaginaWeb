@@ -2657,20 +2657,31 @@
 
     // Ingredientes — ya resueltos/creados en paralelo arriba; solo falta
     // enlazarlos al plato, en un solo insert por lote.
-    const ingredientesConId = [];
+    let ingredientesConId = [];
     if (nombresIngUnicos.length > 0) {
       await db.from('plato_ingredientes').delete().eq('plat_id', platId);
 
       const filas = [];
+      const candidatos = [];
       nombresIngUnicos.forEach((nombre, i) => {
         if (ingIds[i]) {
           filas.push({ plat_id: platId, ing_id: ingIds[i] });
-          ingredientesConId.push({ id: ingIds[i], nombre });
+          candidatos.push({ id: ingIds[i], nombre });
         }
       });
       if (filas.length) {
         const { error: ingError } = await db.from('plato_ingredientes').insert(filas);
-        if (ingError) console.error('Supabase insert plato_ingredientes:', ingError);
+        // Antes esto quedaba en silencio (solo console.error) — el admin veía
+        // "Guardado" aunque los ingredientes no se hubieran vinculado de verdad
+        // (ej. dos nombres distintos resolviendo al mismo ing_id ya existente
+        // hacen fallar el insert completo por llave duplicada). Mismo criterio
+        // que gruposConError más abajo: si falla, no se reporta como vinculado.
+        if (ingError) {
+          console.error('Supabase insert plato_ingredientes:', ingError);
+          toast('El plato se guardó, pero hubo un error guardando los ingredientes. Ábrelo y guárdalo de nuevo.', 'error');
+        } else {
+          ingredientesConId = candidatos;
+        }
       }
     }
 
