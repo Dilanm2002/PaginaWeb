@@ -1077,11 +1077,25 @@ window.VistaMenu = (function () {
   function getMesaTarget() { return meseroMesaTarget; }
   function setMesaTarget(val) { meseroMesaTarget = val; }
 
+  // Ítems agregados/editados a una mesa activa que el mesero aún NO
+  // guardó con "Guardar ✓" — viven solo en memoria (SC.leerCaja()) hasta
+  // ese click. Un recargarCaja() disparado por tiempo real (por CUALQUIER
+  // otro pedido, no el que se está editando) reemplaza _caja entera desde
+  // la base y borraría esta edición en curso sin avisar. index.html usa
+  // esto para reaplicarla después de cada recarga.
+  function getEdicionPendiente() {
+    if (!meseroMesaTarget || _meseroOriginalItems === null) return null;
+    const ped = window.SC?.leerCaja()?.find(p => String(p.id) === String(meseroMesaTarget.id));
+    if (!ped) return null;
+    if (JSON.stringify(ped.items) === JSON.stringify(_meseroOriginalItems)) return null;
+    return { id: meseroMesaTarget.id, items: JSON.parse(JSON.stringify(ped.items)) };
+  }
+
   return {
     renderProductos, renderFiltros, setFiltroActivo, actualizarTitulo, getListaByCat,
     abrirModalProducto, cerrarModalProducto,
     renderMesasActivas, renderProductosMesero, renderMenuCajero, syncQtys,
-    getMesaTarget, setMesaTarget, getFiltroActivo: () => window.SC?.getFiltroSesion(),
+    getMesaTarget, setMesaTarget, getEdicionPendiente, getFiltroActivo: () => window.SC?.getFiltroSesion(),
     init
   };
 })();

@@ -1394,6 +1394,11 @@
   let _menuItems = [];
   let _categoriasColores = {}; // { [cat_nombre]: '#rrggbb' } — para pintar cada categoría con su propio color en todo el sitio
   const _pedidoUpdateTimers = {}; // debounce timers para actualizarPedido
+  // IDs de pedidos con una edición local (qty/eliminar ítem en Caja) ya
+  // aplicada en _caja pero aún no confirmada en la BD (actualizarPedido la
+  // escribe recién 600ms después). Mientras un id esté aquí, recargarCaja()
+  // no debe pisar sus items/total con lo que todavía diga la BD.
+  const _pedidosEditandoLocal = new Set();
   const _cobrando = new Set();    // IDs de pedidos en proceso de cobro (evita flash realtime)
 
   function _isoFechaALocale(isoDate) {
@@ -1625,7 +1630,44 @@
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
         db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true })
       ]);
-      if (!rCaja.error)   _caja      = (rCaja.data   || []).map(_rowAPedido).filter(p => !_cobrando.has(String(p.id)));
+      if (!rCaja.error) {
+        // Pedidos con una edición local (qty/eliminar ítem en Caja, o el
+        // pedido entero borrándose) todavía sin confirmar en la BD —
+        // ver _pedidosEditandoLocal. Se guarda el estado ACTUAL antes de
+        // reemplazar _caja para poder preservarlo después.
+        const _cajaAnterior = _caja;
+        _caja = (rCaja.data || []).map(_rowAPedido).filter(p => !_cobrando.has(String(p.id)));
+        _pedidosEditandoLocal.forEach(pid => {
+          const anterior = _cajaAnterior.find(x => String(x.id) === String(pid));
+          const idxNuevo = _caja.findIndex(x => String(x.id) === String(pid));
+          if (anterior) {
+            // Edición en curso (qty/borrar ítem): la BD todavía no la
+            // refleja — mantener la versión local en vez de la recién
+            // llegada de la BD.
+            if (idxNuevo >= 0) _caja[idxNuevo] = anterior;
+            else _caja.push(anterior);
+          } else if (idxNuevo >= 0) {
+            // El pedido se está borrando por completo y la BD todavía lo
+            // devuelve (delete en curso) — no dejar que reaparezca.
+            _caja.splice(idxNuevo, 1);
+          }
+        });
+        // Un mesero puede tener ítems agregados a una mesa que aún no
+        // guardó con "Guardar ✓" (viven solo en memoria). Este refresco
+        // (disparado por CUALQUIER pedido, no necesariamente el suyo)
+        // acaba de reemplazar _caja entera desde la BD, perdiendo esa
+        // edición — se reaplica encima si sigue en curso.
+        const pendiente = window.VistaMenu?.getEdicionPendiente?.();
+        if (pendiente) {
+          const p = _caja.find(x => String(x.id) === String(pendiente.id));
+          if (p) {
+            p.items    = pendiente.items;
+            p.total    = pendiente.items.reduce((s, i) => s + i.precio * i.cantidad, 0);
+            p.iva      = p.total * (IVA / (1 + IVA));
+            p.subtotal = p.total - p.iva;
+          }
+        }
+      }
       if (!rHist.error)   _historial = (rHist.data   || []).map(_rowAPedido);
       if (!rGastos.error) _gastos    = (rGastos.data || []).map(_mapGasto);
       return !rCaja.error;
@@ -2096,9 +2138,13 @@
 
     if (!nuevoItems.length) {
       _caja.splice(idx, 1);
+      _pedidosEditandoLocal.add(pedidoId);
       db.from('detalle_pedidos').delete().eq('ped_id', pedidoId)
         .then(() => db.from('pedidos').delete().eq('ped_id', pedidoId))
-        .then(({ error }) => { if (error) console.error('Supabase delete pedido:', error); });
+        .then(({ error }) => {
+          if (error) console.error('Supabase delete pedido:', error);
+          _pedidosEditandoLocal.delete(pedidoId);
+        });
       return;
     }
 
@@ -2114,6 +2160,7 @@
     // marca hasta que se vuelva a despachar.
     _caja[idx].despachado = false;
 
+    _pedidosEditandoLocal.add(pedidoId);
     clearTimeout(_pedidoUpdateTimers[pedidoId]);
     _pedidoUpdateTimers[pedidoId] = setTimeout(async () => {
       // Reemplazar detalle_pedidos: eliminar y reinsertar. Antes de borrar
@@ -2181,6 +2228,10 @@
         ped_despachado:  false
       }).eq('ped_id', pedidoId);
       if (error) console.error('Supabase update pedido:', error);
+      // Recién ahora quedó reflejado en la BD (o falló de forma terminal) —
+      // hasta este punto, recargarCaja() debía seguir protegiendo esta
+      // edición local de un refresco por tiempo real de OTRO pedido.
+      _pedidosEditandoLocal.delete(pedidoId);
     }, 600);
   }
 
