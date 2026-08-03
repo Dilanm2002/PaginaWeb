@@ -2672,7 +2672,13 @@
 
       let huboError = false;
       for (const c of candidatos) {
-        const { error: ingError } = await db.from('plato_ingredientes').insert({ plat_id: platId, ing_id: c.id });
+        let { error: ingError } = await db.from('plato_ingredientes').insert({ plat_id: platId, ing_id: c.id });
+        // Reintento único ante choque de llave duplicada (23505) — puede pasar
+        // si otro admin guarda un plato al mismo tiempo y el generador de id
+        // interno calcula el mismo valor para ambas filas casi simultáneas.
+        if (ingError?.code === '23505') {
+          ({ error: ingError } = await db.from('plato_ingredientes').insert({ plat_id: platId, ing_id: c.id }));
+        }
         if (ingError) { console.error('Supabase insert plato_ingredientes:', ingError); huboError = true; }
       }
       // Antes esto quedaba en silencio (solo console.error) — el admin veía
