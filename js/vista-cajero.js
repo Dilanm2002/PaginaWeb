@@ -430,24 +430,6 @@ window.VistaCajero = (function () {
     };
   }
 
-  function updatePedidoDisplay(pid, items) {
-    const SC = window.SC;
-    items.forEach((it, idx) => {
-      const qEl = document.getElementById(`qty-${pid}-${idx}`);
-      const pEl = document.getElementById(`item-price-${pid}-${idx}`);
-      if (qEl) qEl.textContent = it.cantidad;
-      if (pEl) pEl.textContent = `$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}`;
-    });
-    const total   = items.reduce((s, i) => s + i.precio * i.cantidad, 0);
-    const totalEl = document.getElementById(`card-total-${pid}`);
-    if (totalEl) totalEl.textContent = `$${total.toFixed(2)}`;
-    /* actualizar el total global del header */
-    const allPedidos  = SC.leerCaja();
-    const totalGlobal = allPedidos.reduce((s, p) => s + p.total, 0);
-    const statTotal   = document.getElementById('stat-total');
-    if (statTotal) statTotal.textContent = `$${totalGlobal.toFixed(2)}`;
-  }
-
   function renderCajeroView() {
     const SC = window.SC;
     const pedidos        = SC.leerCaja().sort((a, b) => new Date(a.createdAt || 0) - new Date(b.createdAt || 0));
@@ -500,16 +482,11 @@ window.VistaCajero = (function () {
           <div class="cajero-order-time">🕐 ${p.hora}</div>
         </div>
         <div class="cajero-order-items">
-          ${items.map((it, idx) => `
+          ${items.map((it) => `
             <div class="cajero-order-item">
               <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${it.opcionesElegidas?.length ? `<span class="cajero-excl"> ${_fmtOpcionesElegidas(it.opcionesElegidas)}</span>` : ''}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
-              <div class="caj-qty">
-                <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="dec">−</button>
-                <span class="caj-qty__val" id="qty-${p.id}-${idx}">${it.cantidad}</span>
-                <button class="caj-qty__btn" data-pid="${p.id}" data-idx="${idx}" data-action="inc">+</button>
-              </div>
-              <span class="cajero-order-item__price" id="item-price-${p.id}-${idx}">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
-              <button class="caj-del" data-pid="${p.id}" data-idx="${idx}" title="Eliminar ítem">✕</button>
+              <span class="cajero-order-item__qty">${it.cantidad}×</span>
+              <span class="cajero-order-item__price">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
             </div>
           `).join('')}
           ${!items.length ? '<p style="color:var(--text-muted);font-size:.85rem;padding:.25rem 0">Sin detalle de ítems</p>' : ''}
@@ -541,79 +518,6 @@ window.VistaCajero = (function () {
         if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
         else btnAnular.disabled = false;
         return;
-      }
-      const btnDel = e.target.closest('.caj-del');
-      if (btnDel) {
-        const pid = btnDel.dataset.pid;
-        const idx = Number(btnDel.dataset.idx);
-        const peds = SC.leerCaja();
-        const ped = peds.find(p => String(p.id) === String(pid));
-        if (!ped || !Array.isArray(ped.items)) return;
-
-        // Eliminar el único ítem del pedido lo vaciaría por completo —
-        // eso se trata como anular el pedido entero (con confirmación y
-        // motivo, repone stock), no como un borrado silencioso de línea.
-        if (ped.items.length === 1) {
-          const motivo = await _confirmarAnularPedido(ped);
-          if (motivo === false) return; // canceló
-          const ok = await SC.anularPedido(ped.id, motivo);
-          if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
-          return;
-        }
-
-        // El pedido ya descontó este stock al enviarse a caja — al quitar
-        // la línea entera hay que devolver toda su cantidad.
-        const itemQuitado = ped.items[idx];
-        ped.items.splice(idx, 1);
-        SC.actualizarPedido(pid, ped.items);
-        SC.reponerStock(itemQuitado.id, itemQuitado.cantidad);
-        renderCajeroView();
-        window.VistaAdmin?.renderAdminPedidos?.();
-        return;
-      }
-      const btnQty = e.target.closest('.caj-qty__btn');
-      if (btnQty) {
-        const pid    = btnQty.dataset.pid;
-        const idx    = Number(btnQty.dataset.idx);
-        const action = btnQty.dataset.action;
-        const peds   = SC.leerCaja();
-        const ped    = peds.find(p => String(p.id) === String(pid));
-        if (!ped || !Array.isArray(ped.items) || !ped.items[idx]) return;
-        if (action === 'inc') {
-          const s = SC.getStock(ped.items[idx].id);
-          if (ped.items[idx].cantidad >= s.stock) {
-            SC.toast(`Stock máximo: ${s.stock} unidades`, 'error');
-            return;
-          }
-        }
-
-        // Bajar a cero el único ítem del pedido lo vaciaría por completo —
-        // eso se trata como anular el pedido entero (con confirmación y
-        // motivo, repone stock), no como un borrado silencioso de línea.
-        if (action === 'dec' && ped.items[idx].cantidad === 1 && ped.items.length === 1) {
-          const motivo = await _confirmarAnularPedido(ped);
-          if (motivo === false) return; // canceló
-          const ok = await SC.anularPedido(ped.id, motivo);
-          if (ok) { renderCajeroView(); window.VistaAdmin?.renderAdminPedidos?.(); }
-          return;
-        }
-
-        // El stock ya se descontó al enviar el pedido a caja — sumar una
-        // unidad aquí consume una más, y restar una la devuelve.
-        const itemIdQty = ped.items[idx].id;
-        if (action === 'inc') SC.actualizarStock(itemIdQty, 1);
-        else SC.reponerStock(itemIdQty, 1);
-
-        ped.items[idx].cantidad += action === 'inc' ? 1 : -1;
-        if (ped.items[idx].cantidad <= 0) {
-          ped.items.splice(idx, 1);
-          SC.actualizarPedido(pid, ped.items);
-          renderCajeroView();
-          window.VistaAdmin?.renderAdminPedidos?.();
-          return;
-        }
-        SC.actualizarPedido(pid, ped.items);
-        updatePedidoDisplay(pid, ped.items);
       }
     };
 
@@ -881,14 +785,14 @@ window.VistaCajero = (function () {
     const efectivoSec = document.getElementById('pago-efectivo-section');
     const mixtoSec     = document.getElementById('pago-mixto-section');
     const mixtoEfInp   = document.getElementById('pago-mixto-efectivo');
-    const mixtoTrInp   = document.getElementById('pago-mixto-transferencia');
+    const mixtoTrMonto = document.getElementById('pago-mixto-transferencia-monto');
     const mixtoRestEl  = document.getElementById('pago-mixto-restante');
 
     if (totalDisp) totalDisp.innerHTML = `Total a cobrar: <strong>$${pedido.total.toFixed(2)}</strong>`;
     if (montoInp)  { montoInp.value = ''; montoInp.min = pedido.total.toFixed(2); }
     if (cambioEl)  cambioEl.textContent = '';
     if (mixtoEfInp) mixtoEfInp.value = '';
-    if (mixtoTrInp) mixtoTrInp.value = '';
+    if (mixtoTrMonto) mixtoTrMonto.textContent = '$0.00';
     if (mixtoRestEl) mixtoRestEl.textContent = '';
 
     const radioEfectivo = document.querySelector('input[name="metodo-pago"][value="met001"]');
@@ -1142,7 +1046,7 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
     const efectivoSec      = document.getElementById('pago-efectivo-section');
     const mixtoSec         = document.getElementById('pago-mixto-section');
     const mixtoEfInp       = document.getElementById('pago-mixto-efectivo');
-    const mixtoTrInp       = document.getElementById('pago-mixto-transferencia');
+    const mixtoTrMonto     = document.getElementById('pago-mixto-transferencia-monto');
     const mixtoRestEl      = document.getElementById('pago-mixto-restante');
 
     if (btnCerrarPago)  btnCerrarPago.addEventListener('click',  cerrarModalPago);
@@ -1158,38 +1062,31 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
       });
     });
 
-    // La transferencia es un monto exacto (no hay vuelto posible ahí); el
-    // efectivo sí puede ser mayor a lo que falta cubrir y dar cambio —
-    // igual que en el cobro 100% efectivo.
+    // Solo se escribe el efectivo — la transferencia es siempre el resto
+    // exacto del total, calculada sola (pensado para cajeros de la
+    // tercera edad: un solo campo, sin tener que sacar la cuenta a mano).
     const _restanteMixto = pedido => {
       const efectivoRecibido = parseFloat(mixtoEfInp?.value) || 0;
-      const transferencia    = parseFloat(mixtoTrInp?.value) || 0;
-      const faltaCubrir = Math.round((pedido.total - transferencia) * 100) / 100;
-      return { efectivoRecibido, transferencia, faltaCubrir };
+      const transferencia = Math.max(0, Math.round((pedido.total - efectivoRecibido) * 100) / 100);
+      return { efectivoRecibido, transferencia };
     };
     const _actualizarRestanteMixto = () => {
       const SC     = window.SC;
       const pedido = SC.leerCaja().find(p => String(p.id) === String(_pedidoParaCobrar));
       if (!pedido || !mixtoRestEl) return;
-      const { efectivoRecibido, transferencia, faltaCubrir } = _restanteMixto(pedido);
-      if (efectivoRecibido <= 0 && transferencia <= 0) { mixtoRestEl.textContent = ''; return; }
-      if (transferencia > pedido.total) {
-        mixtoRestEl.textContent = 'La transferencia no puede superar el total';
-        mixtoRestEl.style.color = '#dc2626';
-      } else if (efectivoRecibido < faltaCubrir) {
-        mixtoRestEl.textContent = `Falta $${(faltaCubrir - efectivoRecibido).toFixed(2)}`;
+      const { efectivoRecibido, transferencia } = _restanteMixto(pedido);
+      if (mixtoTrMonto) mixtoTrMonto.textContent = `$${transferencia.toFixed(2)}`;
+      if (efectivoRecibido <= 0) { mixtoRestEl.textContent = ''; return; }
+      if (efectivoRecibido >= pedido.total) {
+        mixtoRestEl.textContent = 'Ya cubre todo — usa el método "Efectivo" en vez de mixto';
         mixtoRestEl.style.color = '#dc2626';
       } else {
-        const cambio = Math.round((efectivoRecibido - faltaCubrir) * 100) / 100;
-        mixtoRestEl.textContent = cambio > 0 ? `Cambio: $${cambio.toFixed(2)}` : '✓ Cuadra con el total';
+        mixtoRestEl.textContent = '✓ Listo para cobrar';
         mixtoRestEl.style.color = '#15803d';
       }
     };
     mixtoEfInp?.addEventListener('input', _actualizarRestanteMixto);
-    mixtoTrInp?.addEventListener('input', _actualizarRestanteMixto);
-    [mixtoEfInp, mixtoTrInp].forEach(inp => {
-      inp?.addEventListener('keydown', e => { if (e.key === 'Enter') btnConfirmarPago?.click(); });
-    });
+    mixtoEfInp?.addEventListener('keydown', e => { if (e.key === 'Enter') btnConfirmarPago?.click(); });
 
     const correoCheckbox = document.getElementById('pago-enviar-correo');
     const correoInput    = document.getElementById('pago-correo-input');
@@ -1242,30 +1139,24 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
           }
           cambio = Math.max(0, montoPagado - pedido.total);
         } else if (esMixto) {
-          const { efectivoRecibido, transferencia, faltaCubrir } = _restanteMixto(pedido);
-          if (efectivoRecibido <= 0 || transferencia <= 0) {
-            SC.toast('Ingresa un monto en efectivo Y en transferencia, o elige un solo método.', 'error');
-            (efectivoRecibido <= 0 ? mixtoEfInp : mixtoTrInp)?.focus();
-            return;
-          }
-          if (transferencia > pedido.total) {
-            SC.toast('La transferencia no puede superar el total del pedido.', 'error');
-            mixtoTrInp?.focus();
-            return;
-          }
-          if (efectivoRecibido < faltaCubrir) {
-            SC.toast(`Falta $${(faltaCubrir - efectivoRecibido).toFixed(2)} en efectivo para cubrir el total.`, 'error');
+          const { efectivoRecibido, transferencia } = _restanteMixto(pedido);
+          if (efectivoRecibido <= 0) {
+            SC.toast('Ingresa cuánto pagó en efectivo.', 'error');
             mixtoEfInp?.focus();
             return;
           }
-          const cambioEfectivo = Math.round((efectivoRecibido - faltaCubrir) * 100) / 100;
+          if (efectivoRecibido >= pedido.total) {
+            SC.toast('El efectivo ya cubre todo el total — usa el método "Efectivo" en vez de mixto.', 'error');
+            mixtoEfInp?.focus();
+            return;
+          }
           pagosMixtos = [
-            { metodoId: 'met001', monto: efectivoRecibido, cambio: cambioEfectivo },
+            { metodoId: 'met001', monto: efectivoRecibido, cambio: 0 },
             { metodoId: 'met004', monto: transferencia, cambio: 0 }
           ];
           montoPagado = pedido.total;
-          cambio = cambioEfectivo;
-          metodoPagoNombre = `Mixto (Efectivo $${faltaCubrir.toFixed(2)}${cambioEfectivo > 0 ? ` recibido $${efectivoRecibido.toFixed(2)}, cambio $${cambioEfectivo.toFixed(2)}` : ''} + Transferencia $${transferencia.toFixed(2)})`;
+          cambio = 0;
+          metodoPagoNombre = `Mixto (Efectivo $${efectivoRecibido.toFixed(2)} + Transferencia $${transferencia.toFixed(2)})`;
         }
 
         // Correo para la nota: siempre depende del checkbox — si está

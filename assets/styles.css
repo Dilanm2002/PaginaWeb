@@ -686,27 +686,9 @@
     }
     .cajero-order-item:last-child { border-bottom: none; }
     .cajero-order-item__name { flex: 1; color: var(--text); font-weight: 600; }
+    .cajero-order-item__qty { font-size: .82rem; font-weight: 700; color: var(--brown-dark); }
     .cajero-order-item__price { font-size: .82rem; color: var(--cinnamon); font-weight: 700; min-width: 54px; text-align: right; }
-    .caj-qty {
-      display: flex; align-items: center; gap: .25rem;
-    }
-    .caj-qty__btn {
-      width: 22px; height: 22px; border-radius: 50%;
-      border: 1.5px solid var(--border); background: var(--cream-dk);
-      color: var(--brown-dark); font-size: .85rem; font-weight: 700;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: all .15s; flex-shrink: 0; line-height: 1;
-    }
-    .caj-qty__btn:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
     .caj-qty__val { min-width: 20px; text-align: center; font-size: .84rem; font-weight: 700; color: var(--brown-dark); }
-    .caj-del {
-      width: 22px; height: 22px; border-radius: 50%;
-      border: 1.5px solid #e0b0b0; background: #fdf0f0;
-      color: #c0392b; font-size: .75rem;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      transition: all .15s; flex-shrink: 0;
-    }
-    .caj-del:hover { background: #c0392b; color: #fff; border-color: #c0392b; }
 
     .cajero-order-subtotals {
       padding: .5rem 1.1rem .2rem;
@@ -2776,6 +2758,15 @@
     margin-top: .5rem; font-size: 1.05rem; font-weight: 700; min-height: 1.5rem;
     text-align: center;
   }
+  /* Recuadro de solo lectura — el resto por transferencia se calcula solo,
+     no hay que escribirlo (pensado para cajeros de la tercera edad que
+     usan el sistema: menos campos y menos teclado). */
+  .pago-mixto-transferencia-box {
+    margin-top: .9rem; padding: .7rem .9rem; border-radius: .6rem;
+    background: #eef4fb; border: 1.5px solid #cddced;
+    display: flex; align-items: center; justify-content: space-between; gap: .6rem;
+  }
+  .pago-mixto-transferencia-monto { font-size: 1.35rem; font-weight: 800; color: #2f5d8a; }
   .pago-checkbox-label {
     display: flex; align-items: center; gap: .5rem; font-size: .9rem;
     font-weight: 500; cursor: pointer;
