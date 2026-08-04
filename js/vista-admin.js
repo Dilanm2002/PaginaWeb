@@ -1517,24 +1517,35 @@ window.VistaAdmin = (function () {
       if (errStock)     { document.getElementById('pf-stock').focus(); return; }
       if (errGrupos)    return;
 
-      /* Verificar nombre duplicado — primero local, luego en Supabase */
+      /* Verificar nombre duplicado — primero local, luego en Supabase.
+         Además del nombre completo ("Almuerzo #4 (Milanesa De Pollo)"),
+         se compara el plato real entre paréntesis contra el de TODOS los
+         demás productos — dos números de almuerzo distintos no deben
+         esconder el mismo plato (ej. "Almuerzo #4" y "Almuerzo #18" con
+         "(Milanesa De Pollo)" los dos). */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      const duplicadoLocal = SC.getProductosMergeados().find(p =>
-        p.id !== (_prodFormEditId ?? -1) && normStr(p.nombre) === normStr(nombre)
-      );
+      const _nombrePlatoInterno = s => {
+        const m = /\(([^)]+)\)\s*$/.exec(s || '');
+        return m ? normStr(m[1].trim()) : null;
+      };
+      const innerNombre = _nombrePlatoInterno(nombre);
+      const _esDuplicado = (id, nombreOtro) => {
+        if (String(id) === String(_prodFormEditId ?? -1)) return false;
+        if (normStr(nombreOtro) === normStr(nombre)) return true;
+        return !!(innerNombre && _nombrePlatoInterno(nombreOtro) === innerNombre);
+      };
+
+      const duplicadoLocal = SC.getProductosMergeados().find(p => _esDuplicado(p.id, p.nombre));
       if (duplicadoLocal) {
         _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoLocal.nombre}".`);
         document.getElementById('pf-nombre').focus();
         return;
       }
-      /* Consulta directa a Supabase para detectar duplicados de otras sesiones */
-      const { data: dbRows } = await window.db.from('platos')
-        .select('plat_id, plat_nombre')
-        .ilike('plat_nombre', nombre);
-      const duplicadoDB = (dbRows || []).find(r =>
-        r.plat_id !== _prodFormEditId &&
-        normStr(r.plat_nombre) === normStr(nombre)
-      );
+      /* Consulta directa a Supabase (todos los platos, tabla chica) para
+         detectar duplicados creados desde otra sesión que el caché local
+         todavía no tiene. */
+      const { data: dbRows } = await window.db.from('platos').select('plat_id, plat_nombre');
+      const duplicadoDB = (dbRows || []).find(r => _esDuplicado(r.plat_id, r.plat_nombre));
       if (duplicadoDB) {
         _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoDB.plat_nombre}".`);
         document.getElementById('pf-nombre').focus();
