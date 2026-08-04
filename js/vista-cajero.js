@@ -1071,6 +1071,10 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
       return { efectivoRecibido, transferencia };
     };
     const _actualizarRestanteMixto = () => {
+      // Mismo tope que el cierre de caja — evita registrar un pago con un
+      // monto absurdo si se teclea de más por error.
+      const valorTecleado = parseFloat(mixtoEfInp?.value);
+      if (mixtoEfInp && !isNaN(valorTecleado) && valorTecleado > _CC_MAX) mixtoEfInp.value = _CC_MAX;
       const SC     = window.SC;
       const pedido = SC.leerCaja().find(p => String(p.id) === String(_pedidoParaCobrar));
       if (!pedido || !mixtoRestEl) return;
@@ -1104,6 +1108,10 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 
     if (montoRecibidoInp) {
       montoRecibidoInp.addEventListener('input', () => {
+        // Mismo tope que el cierre de caja — evita números absurdos
+        // ("Cambio: $1.23e+30") si se teclea de más por error.
+        const valor = parseFloat(montoRecibidoInp.value);
+        if (!isNaN(valor) && valor > _CC_MAX) montoRecibidoInp.value = _CC_MAX;
         const SC     = window.SC;
         const pedido = SC.leerCaja().find(p => String(p.id) === String(_pedidoParaCobrar));
         if (!pedido || !cambioDisp) return;
@@ -1137,11 +1145,21 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
             montoRecibidoInp?.focus();
             return;
           }
+          if (montoPagado > _CC_MAX) {
+            SC.toast(`Ese monto es demasiado grande — máximo $${_CC_MAX}.`, 'error');
+            montoRecibidoInp?.focus();
+            return;
+          }
           cambio = Math.max(0, montoPagado - pedido.total);
         } else if (esMixto) {
           const { efectivoRecibido, transferencia } = _restanteMixto(pedido);
           if (efectivoRecibido <= 0) {
             SC.toast('Ingresa cuánto pagó en efectivo.', 'error');
+            mixtoEfInp?.focus();
+            return;
+          }
+          if (efectivoRecibido > _CC_MAX) {
+            SC.toast(`Ese monto es demasiado grande — máximo $${_CC_MAX}.`, 'error');
             mixtoEfInp?.focus();
             return;
           }
