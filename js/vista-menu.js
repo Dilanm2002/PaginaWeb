@@ -768,7 +768,10 @@ window.VistaMenu = (function () {
       </div>`;
 
     const todosProds = SC.getProductosMergeados().filter(p => p.activo !== false);
-    const cats = [...new Set(todosProds.map(p => p.categoria))];
+    // "Almuerzos" siempre primero — es lo que más pide el mesero durante
+    // el almuerzo, no debería tener que bajar a buscarlo.
+    const cats = [...new Set(todosProds.map(p => p.categoria))]
+      .sort((a, b) => (a === 'Almuerzos' ? -1 : b === 'Almuerzos' ? 1 : 0));
     grid.innerHTML = mesasHTML + cats.map(cat => {
       const prods = todosProds.filter(p => p.categoria === cat);
       return `
