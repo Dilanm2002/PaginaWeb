@@ -80,6 +80,12 @@ window.VistaAdmin = (function () {
 
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
+  // Nombre que tenía el producto ANTES de abrir el form de edición — si el
+  // admin guarda sin tocar el nombre, no debe bloquearlo la validación de
+  // duplicados aunque ese nombre ya choque con otro plato (ej. quiere
+  // ocultar un "Almuerzo #15 (Guatita)" duplicado sin tener que
+  // renombrarlo primero). Solo bloquea si el nombre SÍ cambió.
+  let _prodFormNombreOriginal = null;
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
@@ -962,6 +968,7 @@ window.VistaAdmin = (function () {
   function abrirFormProducto(p) {
     const SC = window.SC;
     _prodFormEditId    = p ? p.id : null;
+    _prodFormNombreOriginal = p ? p.nombre : null;
     _prodFormImgBase64 = null;
 
     document.getElementById('prod-form-title').textContent = p ? 'Editar Producto' : 'Agregar Producto';
@@ -1089,6 +1096,7 @@ window.VistaAdmin = (function () {
     document.body.style.overflow = '';
     _prodFormImgBase64 = null;
     _prodFormEditId    = null;
+    _prodFormNombreOriginal = null;
     _mostrarErrorNombre('');
     _mostrarErrorCategoria('');
     _mostrarErrorPrecio('');
@@ -1524,32 +1532,39 @@ window.VistaAdmin = (function () {
          esconder el mismo plato (ej. "Almuerzo #4" y "Almuerzo #18" con
          "(Milanesa De Pollo)" los dos). */
       const normStr = s => s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'');
-      const _nombrePlatoInterno = s => {
-        const m = /\(([^)]+)\)\s*$/.exec(s || '');
-        return m ? normStr(m[1].trim()) : null;
-      };
-      const innerNombre = _nombrePlatoInterno(nombre);
-      const _esDuplicado = (id, nombreOtro) => {
-        if (String(id) === String(_prodFormEditId ?? -1)) return false;
-        if (normStr(nombreOtro) === normStr(nombre)) return true;
-        return !!(innerNombre && _nombrePlatoInterno(nombreOtro) === innerNombre);
-      };
+      // Si es una edición y el nombre no cambió, no hay nada nuevo que
+      // validar — el admin debe poder seguir guardando otros cambios
+      // (ej. ocultarlo desmarcando "Visible") sin verse obligado a
+      // renombrar un duplicado que ya existía de antes.
+      const nombreSinCambios = _prodFormEditId && normStr(nombre) === normStr(_prodFormNombreOriginal || '');
+      if (!nombreSinCambios) {
+        const _nombrePlatoInterno = s => {
+          const m = /\(([^)]+)\)\s*$/.exec(s || '');
+          return m ? normStr(m[1].trim()) : null;
+        };
+        const innerNombre = _nombrePlatoInterno(nombre);
+        const _esDuplicado = (id, nombreOtro) => {
+          if (String(id) === String(_prodFormEditId ?? -1)) return false;
+          if (normStr(nombreOtro) === normStr(nombre)) return true;
+          return !!(innerNombre && _nombrePlatoInterno(nombreOtro) === innerNombre);
+        };
 
-      const duplicadoLocal = SC.getProductosMergeados().find(p => _esDuplicado(p.id, p.nombre));
-      if (duplicadoLocal) {
-        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoLocal.nombre}".`);
-        document.getElementById('pf-nombre').focus();
-        return;
-      }
-      /* Consulta directa a Supabase (todos los platos, tabla chica) para
-         detectar duplicados creados desde otra sesión que el caché local
-         todavía no tiene. */
-      const { data: dbRows } = await window.db.from('platos').select('plat_id, plat_nombre');
-      const duplicadoDB = (dbRows || []).find(r => _esDuplicado(r.plat_id, r.plat_nombre));
-      if (duplicadoDB) {
-        _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoDB.plat_nombre}".`);
-        document.getElementById('pf-nombre').focus();
-        return;
+        const duplicadoLocal = SC.getProductosMergeados().find(p => _esDuplicado(p.id, p.nombre));
+        if (duplicadoLocal) {
+          _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoLocal.nombre}".`);
+          document.getElementById('pf-nombre').focus();
+          return;
+        }
+        /* Consulta directa a Supabase (todos los platos, tabla chica) para
+           detectar duplicados creados desde otra sesión que el caché local
+           todavía no tiene. */
+        const { data: dbRows } = await window.db.from('platos').select('plat_id, plat_nombre');
+        const duplicadoDB = (dbRows || []).find(r => _esDuplicado(r.plat_id, r.plat_nombre));
+        if (duplicadoDB) {
+          _mostrarErrorNombre(`Ya existe un plato con el nombre "${duplicadoDB.plat_nombre}".`);
+          document.getElementById('pf-nombre').focus();
+          return;
+        }
       }
 
       const saveBtn = document.getElementById('btn-prod-save');
