@@ -156,8 +156,13 @@ window.VistaAdmin = (function () {
 
   function _pedRolNombre(users, p) {
     if (!p.usu_id) return 'invitado';
+    // Rol con que se creó ESTE pedido, no el de perfil — un empleado con
+    // doble rol (ej. mesero + cajero) puede haber creado el pedido en
+    // modo mesero y luego estar viendo este historial ya como cajero;
+    // el de perfil solo sirve de respaldo para pedidos de antes de esta
+    // columna (ver mismo criterio en index.html/_rowAPedido).
     const u = users.find(u => u.id === p.usu_id);
-    return u?.rol ?? 'usuario';
+    return p.ped_creado_rol ?? u?.rol ?? 'usuario';
   }
   function _pedNombre(users, p) {
     if (!p.usu_id) return p.ped_nombre_invitado ?? 'Invitado';
@@ -265,7 +270,7 @@ window.VistaAdmin = (function () {
 
     const PED_SEL = `
       ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
-      ped_subtotal, ped_iva, ped_total, ped_created_at, usu_id, mes_id,
+      ped_subtotal, ped_iva, ped_total, ped_created_at, usu_id, ped_creado_rol, mes_id,
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre))
@@ -345,7 +350,7 @@ window.VistaAdmin = (function () {
     const PED_SEL = `
       ped_id, ped_estado, ped_nombre_invitado, ped_cobrado_en,
       ped_anulado_en, ped_motivo_anulacion,
-      ped_subtotal, ped_iva, ped_total, usu_id, mes_id,
+      ped_subtotal, ped_iva, ped_total, usu_id, ped_creado_rol, mes_id,
       mesas(mes_numero),
       detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar,
         platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre)),
