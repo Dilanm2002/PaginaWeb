@@ -1069,6 +1069,10 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         if (mixtoSec)    mixtoSec.style.display    = radio.value === 'mixto'  ? '' : 'none';
         if (cambioDisp)  cambioDisp.textContent = '';
         if (mixtoRestEl) mixtoRestEl.textContent = '';
+        // Al elegir un método que necesita escribir un monto, el foco va
+        // directo al campo — no debería hacer falta tocarlo con el mouse.
+        if (radio.value === 'mixto')  mixtoEfInp?.focus();
+        else if (radio.value === 'met001') montoRecibidoInp?.focus();
       });
     });
 
