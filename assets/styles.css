@@ -575,6 +575,31 @@
       pointer-events: none; text-align: center;
     }
 
+    /* Pedido prioritario (cliente con urgencia) — debe notarse de un
+       vistazo, incluso desde lejos en la pantalla de cocina. */
+    .cajero-order-card--prioridad {
+      border-color: #dc2626; border-width: 3px;
+      box-shadow: 0 0 0 3px rgba(220,38,38,.15), 0 4px 18px rgba(220,38,38,.25);
+      animation: prioridadPulso 1.8s ease-in-out infinite;
+    }
+    .cocina-prioridad-banner {
+      background: #dc2626; color: #fff; text-align: center;
+      font-weight: 900; font-size: 1rem; letter-spacing: .1em;
+      padding: .4rem; animation: prioridadParpadeo 1.4s ease-in-out infinite;
+    }
+    @keyframes prioridadPulso {
+      0%, 100% { box-shadow: 0 0 0 3px rgba(220,38,38,.15), 0 4px 18px rgba(220,38,38,.25); }
+      50%      { box-shadow: 0 0 0 7px rgba(220,38,38,.06), 0 4px 26px rgba(220,38,38,.4); }
+    }
+    @keyframes prioridadParpadeo {
+      0%, 100% { opacity: 1; }
+      50%      { opacity: .78; }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .cajero-order-card--prioridad,
+      .cocina-prioridad-banner { animation: none; }
+    }
+
     .cajero-header {
       display: flex; align-items: center; justify-content: space-between;
       margin-bottom: 2rem; flex-wrap: wrap; gap: 1rem;
@@ -1505,10 +1530,21 @@
     .mesero-mesa-card.selected .mesero-mesa-card__badge { display: inline; }
     .mesero-mesa-empty { color: var(--text-muted); font-size: .84rem; font-style: italic; }
 
+    /* Pedido marcado como prioritario (cliente con urgencia) — se nota
+       en la propia lista del mesero, no solo en cocina. */
+    .mesero-mesa-card.prioridad { border-color: #dc2626; }
+    .mesero-mesa-card.prioridad::after { background: #dc2626; }
+    .mesero-mesa-card__prioridad-tag {
+      background: #dc2626; color: #fff; align-self: flex-start;
+      font-size: .6rem; font-weight: 800; letter-spacing: .03em;
+      padding: .12rem .5rem; border-radius: 999px; margin-bottom: .15rem;
+    }
+
+    .mesero-mesa-card__acciones { display: flex; align-items: center; gap: .4rem; margin-top: .35rem; }
+
     /* Botón "Despachado" — el mesero lo aprieta al recoger el plato de
        cocina; cocina lo ve como marca de agua en su propia pantalla. */
     .mesero-mesa-card__despachar {
-      margin-top: .35rem; align-self: flex-start;
       border: 1.5px solid var(--border); border-radius: 999px;
       background: var(--white); color: var(--text-muted);
       font-size: .68rem; font-weight: 700; padding: .18rem .6rem;
@@ -1517,6 +1553,19 @@
     .mesero-mesa-card__despachar:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
     .mesero-mesa-card__despachar.despachado {
       background: #16a34a; border-color: #16a34a; color: #fff;
+    }
+
+    /* Botón 🔥 — marca/desmarca el pedido como prioritario */
+    .mesero-mesa-card__prioridad-btn {
+      width: 26px; height: 26px; flex-shrink: 0; padding: 0; line-height: 1;
+      border: 1.5px solid var(--border); border-radius: 50%;
+      background: var(--white); font-size: .85rem; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      transition: all .15s; filter: grayscale(1); opacity: .55;
+    }
+    .mesero-mesa-card__prioridad-btn:hover { border-color: #dc2626; filter: none; opacity: 1; }
+    .mesero-mesa-card__prioridad-btn.activa {
+      background: #fef2f2; border-color: #dc2626; filter: none; opacity: 1;
     }
 
     /* Panel de detalle de la mesa seleccionada */

@@ -1450,6 +1450,7 @@
       mesId:         r.mes_id,
       estado:        r.ped_estado,
       despachado:    r.ped_despachado === true,
+      prioridad:     r.ped_prioridad === true,
       idUsuario:     r.usu_id ?? null,
       nombreUsuario,
       clienteNombre,
@@ -1503,7 +1504,7 @@
   const _PED_SELECT = `
     ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
     ped_subtotal, ped_iva, ped_total, ped_cobrado_en, ped_created_at,
-    usu_id, ped_creado_rol, mes_id, ped_despachado,
+    usu_id, ped_creado_rol, mes_id, ped_despachado, ped_prioridad,
     mesas(mes_numero),
     detalle_pedidos(detped_id, detped_cantidad, detped_precio_unit, detped_subtotal, detped_para_llevar, plat_id, platos(plat_nombre, plat_imagen), det_exclusiones(ingredientes(ing_id, ing_nombre)), det_opciones_elegidas(grupo_id, grupo_nombre, opcion_id, opcion_nombre)),
     facturas(fact_numero, fact_email, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))
@@ -2255,6 +2256,24 @@
     return true;
   }
 
+  // El mesero marca un pedido como prioritario (cliente con urgencia) —
+  // cocina lo muestra primero y resaltado. No toca items ni totales.
+  async function marcarPrioridad(pedidoId, prioridad) {
+    const idx = _caja.findIndex(p => String(p.id) === String(pedidoId));
+    if (idx < 0) return false;
+    _caja[idx].prioridad = prioridad;
+    const { error } = await db.from('pedidos')
+      .update({ ped_prioridad: prioridad })
+      .eq('ped_id', pedidoId);
+    if (error) {
+      console.error('Supabase marcarPrioridad:', error);
+      _caja[idx].prioridad = !prioridad; // revertir el optimista si falló
+      toast('No se pudo actualizar. Intenta de nuevo.', 'error');
+      return false;
+    }
+    return true;
+  }
+
   /* ══════════════════════════════════════════════════
      REFERENCIAS DOM
   ══════════════════════════════════════════════════ */
@@ -2853,7 +2872,7 @@
     insertarGasto, eliminarGasto,
     leerCategoriasGasto, crearCategoriaGasto, recargarCategoriasGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido,
+    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad,
     guardarMenuItemDB, eliminarMenuItemDB,
     getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,

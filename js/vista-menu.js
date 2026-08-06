@@ -489,7 +489,9 @@ window.VistaMenu = (function () {
 
   function renderMesasActivas() {
     const SC      = window.SC;
-    const pedidos = SC.leerCaja();
+    // Copia (no mutar _caja) ordenada con las prioritarias primero — un
+    // cliente con urgencia no debería quedar perdido más abajo en la lista.
+    const pedidos = SC.leerCaja().slice().sort((a, b) => (b.prioridad ? 1 : 0) - (a.prioridad ? 1 : 0));
     const seccion = document.getElementById('mesero-mesas-activas');
     if (!seccion) return;
 
@@ -503,20 +505,29 @@ window.VistaMenu = (function () {
       const chips = pedidos.map(p => {
         const seleccionada = meseroMesaTarget && String(meseroMesaTarget.id) === String(p.id);
         return `
-        <div class="mesero-mesa-card${seleccionada ? ' selected' : ''}"
+        <div class="mesero-mesa-card${seleccionada ? ' selected' : ''}${p.prioridad ? ' prioridad' : ''}"
              data-pedido-id="${p.id}" data-mesa="${p.mesa}"
              role="button" tabindex="0"
              aria-pressed="${seleccionada ? 'true' : 'false'}"
-             aria-label="${p.paraLlevar || p.mesa === 'Para llevar' ? 'Para llevar' : `Mesa ${p.mesa}`}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
+             aria-label="${p.prioridad ? 'Prioritario — ' : ''}${p.paraLlevar || p.mesa === 'Para llevar' ? 'Para llevar' : `Mesa ${p.mesa}`}, ${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}, $${p.total.toFixed(2)}">
+          ${p.prioridad ? '<span class="mesero-mesa-card__prioridad-tag">🔥 Prioridad</span>' : ''}
           <span class="mesero-mesa-card__num">${p.paraLlevar || p.mesa === 'Para llevar' ? '🛍 Para llevar' : `🍽️ Mesa ${p.mesa}`}</span>
           ${p.clienteNombre ? `<span class="mesero-mesa-card__cliente">👤 ${SC.escapeHtml(p.clienteNombre)}</span>` : ''}
           <span class="mesero-mesa-card__items">${p.items.length} ítem${p.items.length !== 1 ? 's' : ''}</span>
           <span class="mesero-mesa-card__total">$${p.total.toFixed(2)}</span>
           <span class="mesero-mesa-card__badge">✓ Seleccionada</span>
-          <button class="mesero-mesa-card__despachar${p.despachado ? ' despachado' : ''}" type="button"
-            data-pedido-id="${p.id}" data-despachado="${p.despachado ? 'true' : 'false'}">
-            ${p.despachado ? '✓ Despachado' : 'Despachado'}
-          </button>
+          <div class="mesero-mesa-card__acciones">
+            <button class="mesero-mesa-card__prioridad-btn${p.prioridad ? ' activa' : ''}" type="button"
+              data-pedido-id="${p.id}" data-prioridad="${p.prioridad ? 'true' : 'false'}"
+              title="${p.prioridad ? 'Quitar prioridad' : 'Marcar como prioritario — cliente con urgencia'}"
+              aria-label="${p.prioridad ? 'Quitar prioridad' : 'Marcar como prioritario'}" aria-pressed="${p.prioridad ? 'true' : 'false'}">
+              🔥
+            </button>
+            <button class="mesero-mesa-card__despachar${p.despachado ? ' despachado' : ''}" type="button"
+              data-pedido-id="${p.id}" data-despachado="${p.despachado ? 'true' : 'false'}">
+              ${p.despachado ? '✓ Despachado' : 'Despachado'}
+            </button>
+          </div>
         </div>`;
       }).join('');
 
@@ -602,6 +613,21 @@ window.VistaMenu = (function () {
           const ok = await SC.despacharPedido(pid, !actual);
           btn.disabled = false;
           if (ok) renderMesasActivas();
+        });
+      });
+
+      seccion.querySelector('.mesero-mesas-chips').querySelectorAll('.mesero-mesa-card__prioridad-btn').forEach(btn => {
+        btn.addEventListener('click', async e => {
+          e.stopPropagation();
+          const pid    = btn.dataset.pedidoId;
+          const actual = btn.dataset.prioridad === 'true';
+          btn.disabled = true;
+          const ok = await SC.marcarPrioridad(pid, !actual);
+          btn.disabled = false;
+          if (ok) {
+            renderMesasActivas();
+            SC.toast(actual ? 'Prioridad quitada' : '🔥 Pedido marcado como prioritario', 'success');
+          }
         });
       });
     }

@@ -9,7 +9,7 @@ window.VistaCocina = (function () {
 
   const PED_SEL = `
     ped_id, ped_estado, ped_nombre_invitado, ped_fecha, ped_hora,
-    ped_created_at, usu_id, ped_creado_rol, mes_id, ped_despachado,
+    ped_created_at, usu_id, ped_creado_rol, mes_id, ped_despachado, ped_prioridad,
     mesas(mes_numero),
     detalle_pedidos(detped_id, detped_cantidad, detped_para_llevar,
       platos(plat_nombre), det_exclusiones(ingredientes(ing_nombre)), det_opciones_elegidas(grupo_nombre, opcion_nombre))
@@ -89,7 +89,9 @@ window.VistaCocina = (function () {
       return;
     }
 
-    const pedidos = data ?? [];
+    // Prioritarios primero (orden estable: dentro de cada grupo se
+    // conserva el orden por hora de creación que ya trae la consulta).
+    const pedidos = (data ?? []).slice().sort((a, b) => (b.ped_prioridad ? 1 : 0) - (a.ped_prioridad ? 1 : 0));
     const users   = window.ModuloAutenticacion.leerUsuarios();
 
     const statEl = document.getElementById('cocina-stat-pedidos');
@@ -110,7 +112,8 @@ window.VistaCocina = (function () {
       const rol = _rolNombre(users, p);
       const clienteNombre = _clienteNombre(p);
       return `
-        <div class="cajero-order-card${p.ped_despachado ? ' cajero-order-card--despachado' : ''}" data-pid="${p.ped_id}">
+        <div class="cajero-order-card${p.ped_despachado ? ' cajero-order-card--despachado' : ''}${p.ped_prioridad ? ' cajero-order-card--prioridad' : ''}" data-pid="${p.ped_id}">
+          ${p.ped_prioridad ? '<div class="cocina-prioridad-banner">🔥 PRIORIDAD</div>' : ''}
           <div class="cajero-order-card__head">
             <div class="cajero-order-meta">
               <div class="cajero-order-mesa">${_mesaTxt(p)}</div>
