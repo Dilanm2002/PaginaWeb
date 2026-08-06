@@ -704,12 +704,22 @@ window.VistaCajero = (function () {
         <input type="text" id="cc-notas" class="cierre-caja__notas" placeholder="Notas (opcional) — ej. explicación de una diferencia" maxlength="200" value="${SC.escapeHtml(notasPrevias)}">
       </div>`;
 
-    const fondoInput = document.getElementById('cc-fondo');
-    const esperadoEl = document.getElementById('cc-esperado');
+    const fondoInput   = document.getElementById('cc-fondo');
+    const contadoInput = document.getElementById('cc-contado');
+    const esperadoEl   = document.getElementById('cc-esperado');
     fondoInput?.addEventListener('input', () => {
+      // Recorta el valor tecleado (no solo el cálculo interno) — si no,
+      // el campo se queda mostrando el número absurdo aunque "Esperado"
+      // ya esté bien.
+      const crudo = parseFloat(fondoInput.value);
+      if (!isNaN(crudo) && crudo > _CC_MAX) fondoInput.value = _CC_MAX;
       const valor = Math.min(parseFloat(fondoInput.value) || 0, _CC_MAX);
       const esperado = valor + efectivoVentas - gastosCaja;
       if (esperadoEl) esperadoEl.textContent = `$${esperado.toFixed(2)}`;
+    });
+    contadoInput?.addEventListener('input', () => {
+      const crudo = parseFloat(contadoInput.value);
+      if (!isNaN(crudo) && crudo > _CC_MAX) contadoInput.value = _CC_MAX;
     });
 
     document.getElementById('btn-guardar-fondo')?.addEventListener('click', () => {
