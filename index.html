@@ -3429,6 +3429,7 @@
   if (btnCajeroVerMenu) {
     btnCajeroVerMenu.addEventListener('click', () => {
       const mostrando = menuView.style.display !== 'none';
+      const _mswCaja = document.getElementById('mobile-search-wrap');
       if (mostrando) {
         menuView.style.display = 'none';
         cajeroView.classList.add('visible');
@@ -3440,6 +3441,9 @@
         menuView.style.display = '';
         document.querySelector('.filter-bar-wrap').style.display = 'none';
         document.querySelector('.hero').style.display = 'none';
+        // El cajero no filtra/busca en su propio menú de referencia —
+        // mismo criterio que ya se aplica en la vista del mesero.
+        if (_mswCaja) _mswCaja.style.display = 'none';
         window.VistaMenu?.renderMenuCajero();
         btnCajeroVerMenu.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg> Volver a Caja`;
         btnCajeroVerMenu.style.cssText = '';
@@ -4076,8 +4080,16 @@
       // Siempre resetear el botón al estado correcto (puede quedar en "Volver a Caja" por un toggle previo)
       const _btnVM = document.getElementById('btn-cajero-ver-menu');
       if (_btnVM) {
-        _btnVM.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Ver Menú`;
-        _btnVM.style.cssText = 'background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)';
+        // Si el empleado también tiene rol mesero, ya tiene "Cambiar a
+        // Mesero" para ver el menú en esa vista — el botón "Ver Menú"
+        // (menú de cliente) sobra y solo confunde.
+        const _tieneMeseroTambien = (session.roles ?? [session.rol]).includes('mesero');
+        if (_tieneMeseroTambien) {
+          _btnVM.style.display = 'none';
+        } else {
+          _btnVM.innerHTML = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M3 6h18M3 12h18M3 18h18"/></svg> Ver Menú`;
+          _btnVM.style.cssText = 'background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)';
+        }
       }
       window.VistaCajero?.renderCajeroView();
     } else {
