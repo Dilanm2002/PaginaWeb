@@ -75,9 +75,12 @@ window.VistaMenu = (function () {
     const s = SC.getStock(prod.id);
     if (!s.disponible || s.stock <= 0) { SC.toast(`"${prod.nombre}" está agotado`, 'error'); return false; }
 
-    const msg = exclusiones.length
-      ? `"${prod.nombre}" sin: ${exclusiones.map(e => e.nombre).join(', ')}`
-      : `"${prod.nombre}" agregado`;
+    const { individual, resto } = LogicaCarrito.formatoExclusiones(exclusiones);
+    const msg = individual
+      ? `"${prod.nombre}" (Individual)${resto.length ? ` sin: ${resto.join(', ')}` : ''}`
+      : resto.length
+        ? `"${prod.nombre}" sin: ${resto.join(', ')}`
+        : `"${prod.nombre}" agregado`;
 
     if (meseroMesaTarget) {
       const ped = SC.leerCaja().find(x => String(x.id) === String(meseroMesaTarget.id));

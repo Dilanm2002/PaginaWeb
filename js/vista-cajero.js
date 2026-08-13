@@ -140,11 +140,14 @@ window.VistaCajero = (function () {
                 ${SC.escapeHtml(h.clienteNombre || h.nombreUsuario)}
               </div>
               <div class="resumen-card__items">
-                ${Array.isArray(h.items) ? h.items.map(i => `
+                ${Array.isArray(h.items) ? h.items.map(i => {
+                  const { individual, resto } = LogicaCarrito.formatoExclusiones(i.exclusiones);
+                  return `
                   <div class="resumen-card__item-row">
                     <span class="resumen-card__item-qty">${i.cantidad}×</span>
-                    <span>${i.nombre}${i.exclusiones?.length ? `<span class="cajero-excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
-                  </div>`).join('') : ''}
+                    <span>${i.nombre}${individual ? '<span class="tag-individual">Individual</span>' : ''}${resto.length ? `<span class="cajero-excl">sin: ${resto.join(', ')}</span>` : ''}</span>
+                  </div>`;
+                }).join('') : ''}
               </div>
               <div class="resumen-card__hora">${new Date(h.cobradoEn).toLocaleTimeString('es-EC', {hour:'2-digit', minute:'2-digit'})}</div>
             </div>
@@ -482,13 +485,16 @@ window.VistaCajero = (function () {
           <div class="cajero-order-time">🕐 ${p.hora}</div>
         </div>
         <div class="cajero-order-items">
-          ${items.map((it) => `
+          ${items.map((it) => {
+            const { individual, resto } = LogicaCarrito.formatoExclusiones(it.exclusiones);
+            return `
             <div class="cajero-order-item">
-              <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${it.opcionesElegidas?.length ? `<span class="cajero-excl"> ${_fmtOpcionesElegidas(it.opcionesElegidas)}</span>` : ''}${it.exclusiones?.length ? `<span class="cajero-excl"> sin: ${it.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>` : ''}</span>
+              <span class="cajero-order-item__name">${it.nombre}${it.paraLlevar && !p.paraLlevar ? ' <span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}${individual ? '<span class="tag-individual">Individual</span>' : ''}${it.opcionesElegidas?.length ? `<span class="cajero-excl"> ${_fmtOpcionesElegidas(it.opcionesElegidas)}</span>` : ''}${resto.length ? `<span class="cajero-excl"> sin: ${resto.join(', ')}</span>` : ''}</span>
               <span class="cajero-order-item__qty">${it.cantidad}×</span>
               <span class="cajero-order-item__price">$${((it.precio || 0) * (it.cantidad || 0)).toFixed(2)}</span>
             </div>
-          `).join('')}
+          `;
+          }).join('')}
           ${!items.length ? '<p style="color:var(--text-muted);font-size:.85rem;padding:.25rem 0">Sin detalle de ítems</p>' : ''}
         </div>
         <div class="cajero-order-subtotals">
@@ -892,10 +898,13 @@ td{padding:2px 0;font-size:11px;vertical-align:top}
 <div class="fn">${factNumero} · ${new Date().toLocaleString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'})}</div>
 <hr class="sep">
 <table><thead><tr><th>Descripción</th><th class="tr">Cant</th><th class="tr">$U</th><th class="tr">$Total</th></tr></thead>
-<tbody>${items.map(i=>`<tr>
-<td>${i.nombre}${i.opcionesElegidas?.length?`<br><span class="excl">${_fmtOpcionesElegidas(i.opcionesElegidas)}</span>`:''}${i.exclusiones?.length?`<br><span class="excl">sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</span>`:''}
+<tbody>${items.map(i=>{
+const { individual, resto } = LogicaCarrito.formatoExclusiones(i.exclusiones);
+return `<tr>
+<td>${i.nombre}${i.opcionesElegidas?.length?`<br><span class="excl">${_fmtOpcionesElegidas(i.opcionesElegidas)}</span>`:''}${individual?`<br><span class="excl"><b>Individual</b></span>`:''}${resto.length?`<br><span class="excl">sin: ${resto.join(', ')}</span>`:''}
 </td><td class="tr">${i.cantidad}</td><td class="tr">${i.precio.toFixed(2)}</td>
-<td class="tr">${(i.precio*i.cantidad).toFixed(2)}</td></tr>`).join('')}</tbody>
+<td class="tr">${(i.precio*i.cantidad).toFixed(2)}</td></tr>`;
+}).join('')}</tbody>
 <tbody class="big"><tr><td colspan="3">TOTAL:</td><td class="tr">$${pedido.total.toFixed(2)}</td></tr></tbody>
 </table>
 <div class="mt">Método: ${metodoPagoNombre}</div>
@@ -990,13 +999,16 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
   <th class="tc">#</th><th>Descripción</th><th class="tc">Cant.</th>
   <th class="tr">P. Unitario</th><th class="tr">Total</th>
 </tr></thead>
-<tbody>${items.map((i,idx)=>`<tr>
+<tbody>${items.map((i,idx)=>{
+  const { individual, resto } = LogicaCarrito.formatoExclusiones(i.exclusiones);
+  return `<tr>
   <td class="tc">${idx+1}</td>
-  <td>${i.nombre}${i.paraLlevar && !pedido.paraLlevar?' <em>(para llevar)</em>':''}${i.opcionesElegidas?.length?` <em>(${_fmtOpcionesElegidas(i.opcionesElegidas)})</em>`:''}${i.exclusiones?.length?` <em>(sin: ${i.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')})</em>`:''}</td>
+  <td>${i.nombre}${i.paraLlevar && !pedido.paraLlevar?' <em>(para llevar)</em>':''}${i.opcionesElegidas?.length?` <em>(${_fmtOpcionesElegidas(i.opcionesElegidas)})</em>`:''}${individual?' <em><b>(Individual)</b></em>':''}${resto.length?` <em>(sin: ${resto.join(', ')})</em>`:''}</td>
   <td class="tc">${i.cantidad}</td>
   <td class="tr">$${i.precio.toFixed(2)}</td>
   <td class="tr">$${(i.precio*i.cantidad).toFixed(2)}</td>
-</tr>`).join('')}</tbody>
+</tr>`;
+}).join('')}</tbody>
 </table>
 </div>
 <div class="tots"><table>

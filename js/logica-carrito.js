@@ -68,6 +68,24 @@ window.LogicaCarrito = (function () {
   );
 
   /**
+   * Texto a mostrar para las exclusiones de un ítem de pedido. "Individual"
+   * es el término del negocio para un almuerzo sin sopa (solo el segundo) —
+   * se muestra en vez de listar "sin: Sopa del día", igual en todas las
+   * vistas (carrito, caja, cocina, notas de venta). El resto de las
+   * exclusiones, si las hay, se listan como siempre.
+   * @param {Array} exclusiones — ingredientes excluidos ({id, nombre} o string).
+   * @returns {{ individual: boolean, resto: string[] }}
+   */
+  const formatoExclusiones = (exclusiones = []) => {
+    const nombres = (exclusiones || [])
+      .map(e => (typeof e === 'string' ? e : e?.nombre))
+      .filter(Boolean);
+    const individual = nombres.some(_esSopa);
+    const resto = individual ? nombres.filter(n => !_esSopa(n)) : nombres;
+    return { individual, resto };
+  };
+
+  /**
    * Precio final de un producto según las exclusiones elegidas.
    * @param {Object} producto — debe tener .precio y .categoria.
    * @param {Array} exclusiones — ingredientes excluidos ({id, nombre} o string).
@@ -185,6 +203,7 @@ window.LogicaCarrito = (function () {
     cambiarParaLlevar,
     vaciarCarrito,
     calcularTotales,
-    calcularPrecioConExclusiones
+    calcularPrecioConExclusiones,
+    formatoExclusiones
   };
 })();

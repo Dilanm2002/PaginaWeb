@@ -189,13 +189,15 @@ window.VistaAdmin = (function () {
     return det.map(d => {
       const excl = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
       const opciones = (d.det_opciones_elegidas ?? []).filter(o => o.opcion_nombre).map(o => o.grupo_nombre ? `${o.grupo_nombre}: ${o.opcion_nombre}` : o.opcion_nombre);
+      const { individual, resto } = window.LogicaCarrito.formatoExclusiones(excl);
       return `
         <div class="cajero-order-item">
           <span class="cajero-order-item__name">
             ${SC.escapeHtml(d.platos?.plat_nombre ?? '?')}
             ${d.detped_para_llevar && !pedidoEsParaLlevar ? '<span class="cajero-item-llevar">🥡 Para llevar</span>' : ''}
+            ${individual ? '<span class="tag-individual">Individual</span>' : ''}
             ${opciones.length ? `<span class="cajero-excl"> ${opciones.join(', ')}</span>` : ''}
-            ${excl.length ? `<span class="cajero-excl"> sin: ${excl.join(', ')}</span>` : ''}
+            ${resto.length ? `<span class="cajero-excl"> sin: ${resto.join(', ')}</span>` : ''}
           </span>
           <span class="caj-qty__val">${d.detped_cantidad}</span>
           <span class="cajero-order-item__price">$${(parseFloat(d.detped_subtotal)||0).toFixed(2)}</span>

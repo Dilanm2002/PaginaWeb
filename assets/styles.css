@@ -1923,6 +1923,17 @@
       border-radius: 999px; padding: .1rem .55rem; margin: .25rem .35rem 0 0;
       vertical-align: middle;
     }
+    /* "Individual" — término del negocio para un almuerzo sin sopa (solo
+       el segundo). Mismo estilo de pastilla que "Para llevar" para que
+       se lea como una etiqueta informativa, no como una queja tipo
+       "sin: X" en rojo. */
+    .tag-individual {
+      display: inline-flex; align-items: center; font-size: .68rem; font-weight: 700;
+      color: var(--cinnamon); background: #fef5eb; border: 1px solid #f6d9b8;
+      border-radius: 999px; padding: .1rem .55rem; margin: .25rem .35rem 0 0;
+      vertical-align: middle;
+    }
+    #cocina-view .tag-individual { font-size: .74rem; padding: .18rem .6rem; }
     .modal-footer { display: flex; align-items: center; justify-content: space-between; padding-top: 1rem; border-top: 1px solid var(--border); gap: 1rem; }
     .modal-price { font-size: 1.4rem; font-weight: 700; color: var(--cinnamon); }
     .modal-price small { font-size: .72rem; color: var(--text-muted); font-weight: 400; }

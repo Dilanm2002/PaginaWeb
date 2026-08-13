@@ -2482,12 +2482,14 @@
         // carrito, sumando todas sus líneas (puede haber más de una con
         // distintas exclusiones), no solo esta línea.
         const totalProducto = items.filter(x => x.id === item.id).reduce((s, x) => s + x.cantidad, 0);
+        const { individual, resto } = LogicaCarrito.formatoExclusiones(item.exclusiones);
         return `
         <div class="cart-item" role="listitem">
           <img class="cart-item__img" src="${item.imagen}" alt="${item.nombre}" loading="lazy" decoding="async" onerror="${_IMG_FALLBACK}">
           <div>
             <p class="cart-item__name">${item.nombre}</p>
-            ${item.exclusiones?.length ? `<p class="cart-item__excl">sin: ${item.exclusiones.map(e => typeof e === 'string' ? e : e.nombre).join(', ')}</p>` : ''}
+            ${individual ? '<span class="tag-individual">Individual</span>' : ''}
+            ${resto.length ? `<p class="cart-item__excl">sin: ${resto.join(', ')}</p>` : ''}
             ${item.opcionesElegidas?.length ? `<p class="cart-item__excl">${item.opcionesElegidas.map(o => o.grupoNombre ? `${o.grupoNombre}: ${o.opcionNombre}` : o.opcionNombre).join(', ')}</p>` : ''}
             <p class="cart-item__price">$${(item.precio * item.cantidad).toFixed(2)}</p>
             <button class="cart-item__llevar-toggle${item.paraLlevar ? ' active' : ''}" data-action="llevar" data-id="${lineId}" title="Cambiar a ${item.paraLlevar ? 'para la mesa' : 'para llevar'}">
