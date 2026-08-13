@@ -689,7 +689,14 @@
               <button class="md-btn-cancelar" id="btn-cancelar-menudia" type="button" style="display:none">Cancelar</button>
             </div>
             <p style="font-size:.78rem;color:var(--text-muted);margin:-.8rem 0 1rem">Puedes elegir un plato ya existente del catálogo o escribir uno nuevo que no esté en el menú.</p>
-            <h3 class="md-registro-titulo">Registro de menús — últimos y próximos 14 días</h3>
+            <div class="md-registro-head">
+              <h3 class="md-registro-titulo">Registro de menús</h3>
+              <div class="resumen-fecha-nav" id="md-mes-nav">
+                <button class="btn-fecha-nav" id="md-mes-ant" aria-label="Mes anterior">‹</button>
+                <span id="md-mes-label"></span>
+                <button class="btn-fecha-nav" id="md-mes-sig" aria-label="Mes siguiente" disabled>›</button>
+              </div>
+            </div>
             <div class="md-tabla-wrap">
               <table class="adm-tabla md-tabla">
                 <thead>

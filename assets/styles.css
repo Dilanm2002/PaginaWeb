@@ -3865,9 +3865,13 @@
   }
   .md-btn-cancelar:hover { border-color: #dc2626; color: #dc2626; }
 
+  .md-registro-head {
+    display: flex; align-items: center; justify-content: space-between;
+    flex-wrap: wrap; gap: .5rem; margin: 1.75rem 0 .85rem;
+  }
   .md-registro-titulo {
     font-size: .95rem; font-weight: 800; color: var(--brown-dark);
-    margin: 1.75rem 0 .85rem;
+    margin: 0;
   }
   .md-tabla-wrap {
     background: #fff; border: 1px solid rgba(224,201,176,.6);
@@ -3878,6 +3882,13 @@
   .md-tabla thead th:last-child { width: 84px; }
   .md-fila { transition: background .12s; }
   .md-fila--hoy { background: #fff8f0 !important; }
+  /* Fila separadora entre semanas — el mes completo se lee de un vistazo
+     sin confundir a qué semana pertenece cada día. */
+  .md-semana-header td {
+    background: var(--brown-dark); color: #fff;
+    font-size: .74rem; font-weight: 800; letter-spacing: .04em;
+    text-transform: uppercase; padding: .5rem 1rem;
+  }
   .md-fila--hoy:hover { background: #fef0e0 !important; }
   .md-td-dia { font-weight: 700; color: var(--brown-dark); text-transform: capitalize; white-space: nowrap; }
   .md-td-fecha { color: var(--text-muted); white-space: nowrap; }

@@ -94,6 +94,7 @@ window.VistaAdmin = (function () {
   // rápido el cuadre manual (todo el efectivo junto, luego transferencias...).
   let _cuadreOrdenMetodo = false;
   let _pedHistDiaOffset  = 0; // navegación día a día en Pedidos → Historial
+  let _mdMesOffset       = 0; // navegación mes a mes en Menú del Día (0 = mes actual)
 
   // Catálogo estándar del negocio (coincide con _CAT_PREFIX en index.html) —
   // se ofrece siempre en el selector de categoría del formulario de producto,
@@ -552,6 +553,7 @@ window.VistaAdmin = (function () {
   async function _renderMenuDia() {
     _md_poblarDatalists();
     _md_toggleCancelar(false);
+    _mdMesOffset = 0; // siempre arranca en el mes actual al entrar a la pestaña
     const fechaInput = document.getElementById('md-fecha');
     if (fechaInput && !fechaInput.value) fechaInput.value = _fechaLocalISO();
     // El formulario siempre arranca vacío al entrar a la pestaña, aunque ya
@@ -593,6 +595,18 @@ window.VistaAdmin = (function () {
 
   function _md_initHandlers() {
     const SC = window.SC;
+    const mesAntBtn = document.getElementById('md-mes-ant');
+    if (mesAntBtn && !mesAntBtn._mdBound) {
+      mesAntBtn._mdBound = true;
+      mesAntBtn.addEventListener('click', () => { _mdMesOffset--; _md_renderProximos(); });
+    }
+    const mesSigBtn = document.getElementById('md-mes-sig');
+    if (mesSigBtn && !mesSigBtn._mdBound) {
+      mesSigBtn._mdBound = true;
+      mesSigBtn.addEventListener('click', () => {
+        if (_mdMesOffset < 0) { _mdMesOffset++; _md_renderProximos(); }
+      });
+    }
     // Nota: la fecha NO recarga los campos automáticamente al cambiarla —
     // solo decide a qué día se va a guardar. Si recargara sola, cambiar la
     // fecha mientras se está escribiendo un plato nuevo borraba todo sin
@@ -650,42 +664,73 @@ window.VistaAdmin = (function () {
     if (btn) btn.style.display = mostrar ? '' : 'none';
   }
 
-  // Lista de los próximos 14 días que ya tienen algo planificado — clic en
-  // cualquiera carga esa fecha en el editor de arriba para modificarla.
-  // Funciona como un registro: incluye los últimos 14 días (lo que ya se
-  // sirvió) y los próximos 14 (lo planificado), con hoy marcado aparte.
+  // Registro del mes completo (navegable con ‹ › vía _mdMesOffset),
+  // agrupado por semana — clic en cualquier día carga esa fecha en el
+  // editor de arriba para modificarla.
   async function _md_renderProximos() {
     const el = document.getElementById('md-semana-lista');
     if (!el) return;
     const SC = window.SC;
     const hoyISO = _fechaLocalISO();
     const hoy = new Date();
-    const desdeDate = new Date(hoy); desdeDate.setDate(desdeDate.getDate() - 13);
-    const hastaDate  = new Date(hoy); hastaDate.setDate(hastaDate.getDate() + 13);
+
+    // Mes calendario objetivo según _mdMesOffset (0 = actual, -1 = anterior, ...).
+    const mesObjetivo = new Date(hoy.getFullYear(), hoy.getMonth() + _mdMesOffset, 1);
+    const desdeDate = mesObjetivo;
+    const hastaDate  = new Date(mesObjetivo.getFullYear(), mesObjetivo.getMonth() + 1, 0);
+
+    const mesLabelEl = document.getElementById('md-mes-label');
+    if (mesLabelEl) {
+      const mesLabel = mesObjetivo.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
+      mesLabelEl.textContent = mesLabel.charAt(0).toUpperCase() + mesLabel.slice(1);
+    }
+    const mesSigBtn = document.getElementById('md-mes-sig');
+    if (mesSigBtn) mesSigBtn.disabled = _mdMesOffset >= 0;
+
     const { data, error } = await window.db.from('menu_dia').select(_MD_SELECT)
       .gte('mendia_fecha', _fechaLocalISO(desdeDate)).lte('mendia_fecha', _fechaLocalISO(hastaDate))
-      .order('mendia_fecha', { ascending: false });
+      .order('mendia_fecha', { ascending: true });
     if (error || !data?.length) {
-      el.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);font-size:.85rem;padding:1.25rem;text-align:center">Todavía no hay ningún menú registrado.</td></tr>';
+      el.innerHTML = '<tr><td colspan="7" style="color:var(--text-muted);font-size:.85rem;padding:1.25rem;text-align:center">No hay ningún menú registrado para ese mes.</td></tr>';
       return;
     }
-    el.innerHTML = data.map(d => {
-      const esHoy = d.mendia_fecha === hoyISO;
-      const diaSemana = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long' });
-      const diaMes    = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
-      const celdaPlato = c => {
-        const nombre = _md_nombreCampo(d, c);
-        return nombre ? `<td data-label="${c.lbl}">${SC.escapeHtml(nombre)}</td>` : `<td class="md-td-vacio" data-label="${c.lbl}">Sin definir</td>`;
-      };
-      return `<tr class="md-fila${esHoy ? ' md-fila--hoy' : ''}" data-fecha="${d.mendia_fecha}">
-        <td class="md-td-dia" data-label="Día">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
-        <td class="md-td-fecha" data-label="Fecha">${SC.escapeHtml(diaMes)}</td>
-        ${_MD_CAMPOS.map(celdaPlato).join('')}
-        <td class="md-td-acciones" data-label="Acciones">
-          <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
-          <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
-        </td>
-      </tr>`;
+
+    // Agrupar por semana laboral (lunes de cada semana como clave) para
+    // separarlas visualmente — así se puede planificar el mes de un
+    // vistazo en vez de ver una sola lista larga sin cortes.
+    const semanas = new Map();
+    data.forEach(d => {
+      const lunesKey = _fechaLocalISO(_lunesDeSemana(new Date(d.mendia_fecha + 'T00:00:00')));
+      if (!semanas.has(lunesKey)) semanas.set(lunesKey, []);
+      semanas.get(lunesKey).push(d);
+    });
+
+    const celdaPlato = (d, c) => {
+      const nombre = _md_nombreCampo(d, c);
+      return nombre ? `<td data-label="${c.lbl}">${SC.escapeHtml(nombre)}</td>` : `<td class="md-td-vacio" data-label="${c.lbl}">Sin definir</td>`;
+    };
+
+    el.innerHTML = [...semanas.entries()].map(([lunesKey, dias]) => {
+      const lunes   = new Date(lunesKey + 'T00:00:00');
+      const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
+      const rangoLbl = `Semana del ${lunes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} al ${viernes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}`;
+
+      const filas = dias.map(d => {
+        const esHoy = d.mendia_fecha === hoyISO;
+        const diaSemana = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long' });
+        const diaMes    = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
+        return `<tr class="md-fila${esHoy ? ' md-fila--hoy' : ''}" data-fecha="${d.mendia_fecha}">
+          <td class="md-td-dia" data-label="Día">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
+          <td class="md-td-fecha" data-label="Fecha">${SC.escapeHtml(diaMes)}</td>
+          ${_MD_CAMPOS.map(c => celdaPlato(d, c)).join('')}
+          <td class="md-td-acciones" data-label="Acciones">
+            <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
+            <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+      return `<tr class="md-semana-header"><td colspan="7">${SC.escapeHtml(rangoLbl)}</td></tr>${filas}`;
     }).join('');
     el.querySelectorAll('.md-semana-item__edit').forEach(btn => {
       btn.addEventListener('click', async () => {
