@@ -3885,7 +3885,7 @@
   /* Fila separadora entre semanas — el mes completo se lee de un vistazo
      sin confundir a qué semana pertenece cada día. */
   .md-semana-header td {
-    background: var(--brown-dark); color: #fff;
+    background: var(--brown-dark) !important; color: #fff !important;
     font-size: .74rem; font-weight: 800; letter-spacing: .04em;
     text-transform: uppercase; padding: .5rem 1rem;
   }
