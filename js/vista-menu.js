@@ -36,25 +36,28 @@ window.VistaMenu = (function () {
     return color ? ` style="--cat-c:${color}"` : '';
   };
 
-  // En móvil el popover de ingredientes se ancla cerca del botón que se
-  // tocó (no al centro de la pantalla) pero con límites para que nunca
-  // se corte contra los bordes del viewport. En escritorio se deja el
-  // anclaje normal por CSS (junto al botón), sin tocar sus estilos.
+  // El popover de ingredientes se ancla cerca del botón que se tocó (no
+  // al centro de la pantalla) pero con límites para que nunca se corte
+  // contra los bordes del viewport — un ítem cerca del borde de arriba
+  // (ej. el primero de la lista) se abre hacia ABAJO en vez de taparse
+  // contra el header. Antes esto solo pasaba en móvil; en escritorio se
+  // dejaba el anclaje fijo de siempre (arriba del botón) sin chequear si
+  // realmente había espacio, así que se cortaba igual.
   function _posicionarPopoverMovil(pop, trigger) {
-    if (window.innerWidth > 600) {
-      pop.style.position = pop.style.left = pop.style.right = '';
-      pop.style.top = pop.style.bottom = pop.style.width = pop.style.transform = '';
-      return;
-    }
     const r = trigger.getBoundingClientRect();
     const margen = 16;
-    const popW = Math.min(260, window.innerWidth - margen * 2);
+    // Ancho natural del popover (el que ya define su propio CSS, ej. 220px
+    // para el de exclusiones) — solo se recorta si no cabe en pantallas
+    // angostas, no se fuerza un ancho fijo en escritorio.
+    const anchoNatural = pop.offsetWidth || 220;
+    const popW = Math.min(anchoNatural, window.innerWidth - margen * 2);
     let left = r.left + r.width / 2 - popW / 2;
     left = Math.max(margen, Math.min(left, window.innerWidth - popW - margen));
 
     const popH = pop.offsetHeight || 150;
     const arriba = r.top - popH - 10;
-    const top = arriba >= margen ? arriba : Math.min(r.bottom + 10, window.innerHeight - popH - margen);
+    let top = arriba >= margen ? arriba : Math.min(r.bottom + 10, window.innerHeight - popH - margen);
+    top = Math.max(margen, top); // último resorte: si tampoco cabe abajo, no lo saques de pantalla
 
     pop.style.position  = 'fixed';
     pop.style.left      = `${left}px`;
