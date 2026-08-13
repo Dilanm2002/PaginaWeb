@@ -713,7 +713,7 @@ window.VistaAdmin = (function () {
     el.innerHTML = [...semanas.entries()].map(([lunesKey, dias]) => {
       const lunes   = new Date(lunesKey + 'T00:00:00');
       const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
-      const rangoLbl = `Semana del ${lunes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} al ${viernes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}`;
+      const rangoLbl = `📅 Semana del ${lunes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} al ${viernes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}`;
 
       const filas = dias.map(d => {
         const esHoy = d.mendia_fecha === hoyISO;
