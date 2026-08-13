@@ -3882,11 +3882,12 @@
   .md-tabla thead th:last-child { width: 84px; }
   .md-fila { transition: background .12s; }
   .md-fila--hoy { background: #fff8f0 !important; }
-  /* Fila separadora entre semanas — color canela (el mismo acento que ya
-     usa el resto de la app, ej. badge "HOY") para que se distinga del
-     encabezado café oscuro de la tabla en vez de fundirse con él. */
+  /* Fila separadora entre semanas — beige suave (el mismo tono de fondo
+     de la app), con texto café oscuro. Se distingue de las filas blancas
+     de datos y del encabezado café sin resultar tan fuerte como el acento
+     canela. */
   .md-semana-header td {
-    background: var(--cinnamon) !important; color: #fff !important;
+    background: var(--cream-dk) !important; color: var(--brown-dark) !important;
     font-size: .74rem; font-weight: 800; letter-spacing: .04em;
     text-transform: uppercase; padding: .55rem 1rem;
     border-top: 2px solid var(--brown-dark);
