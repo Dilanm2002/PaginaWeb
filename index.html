@@ -3663,20 +3663,28 @@
   const llamarMeseroBackdrop = document.getElementById('llamar-mesero-backdrop');
   const llamarMeseroLista    = document.getElementById('llamar-mesero-lista');
 
-  function _abrirModalLlamarMesero() {
-    const meseros = (ModuloAutenticacion.leerUsuarios() || []).filter(u => u.rol === 'mesero');
+  async function _abrirModalLlamarMesero() {
+    llamarMeseroLista.innerHTML = '<p class="mesero-lista__vacio">Cargando meseros…</p>';
+    llamarMeseroBackdrop.classList.add('open');
+    llamarMeseroBackdrop.setAttribute('aria-hidden', 'false');
+
+    // listar_empleados() (no listar_usuarios) porque un empleado puede
+    // tener doble rol (ej. cajero + mesero) — rol_ids es un arreglo, así
+    // que filtrar por un solo "rol" se comía a esos casos.
+    const { data, error } = await db.rpc('listar_empleados');
+    const meseros = (error ? [] : (data || []))
+      .filter(e => e.emp_activo !== false && (e.rol_ids || []).includes('rol003'));
+
     if (!meseros.length) {
-      toast('No hay meseros registrados', 'error');
+      llamarMeseroLista.innerHTML = '<p class="mesero-lista__vacio">No hay meseros registrados</p>';
       return;
     }
     llamarMeseroLista.innerHTML = meseros.map(m => {
-      const nombre = `${m.nombre}${m.apellido ? ' ' + m.apellido : ''}`;
-      return `<button type="button" class="mesero-lista__btn" data-usu-id="${m.id}">
-        <span class="mesero-lista__avatar">${m.nombre.charAt(0).toUpperCase()}</span> ${nombre}
+      const nombre = `${m.usu_nombre}${m.usu_apellido ? ' ' + m.usu_apellido : ''}`;
+      return `<button type="button" class="mesero-lista__btn" data-usu-id="${m.usu_id}">
+        <span class="mesero-lista__avatar">${m.usu_nombre.charAt(0).toUpperCase()}</span> ${nombre}
       </button>`;
     }).join('');
-    llamarMeseroBackdrop.classList.add('open');
-    llamarMeseroBackdrop.setAttribute('aria-hidden', 'false');
   }
 
   function _cerrarModalLlamarMesero() {
