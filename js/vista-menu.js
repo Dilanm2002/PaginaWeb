@@ -544,7 +544,8 @@ window.VistaMenu = (function () {
         <div class="mesero-mesa-detalle">
           <div class="mesero-mesa-detalle__head">
             <div class="mesero-mesa-detalle__head-left">
-              <span class="mesero-mesa-detalle__title">${pedidoSeleccionado.paraLlevar || pedidoSeleccionado.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${pedidoSeleccionado.mesa}`}</span>
+              <span class="mesero-mesa-detalle__title">${pedidoSeleccionado.paraLlevar || pedidoSeleccionado.mesa === 'Para llevar' ? '🛍 Para llevar' : `Mesa ${pedidoSeleccionado.mesa}`}${(!pedidoSeleccionado.paraLlevar && pedidoSeleccionado.mesa !== 'Para llevar') ? `
+                <button class="mesero-mesa-detalle__editar-mesa" id="btn-editar-num-mesa" type="button" title="Cambiar número de mesa" aria-label="Cambiar número de mesa">✏️</button>` : ''}</span>
               <span class="mesero-mesa-detalle__cliente">👤 ${SC.escapeHtml(pedidoSeleccionado.clienteNombre || pedidoSeleccionado.nombreUsuario)}</span>
             </div>
             <span class="mesero-mesa-detalle__total">$${pedidoSeleccionado.total.toFixed(2)}</span>
@@ -686,6 +687,14 @@ window.VistaMenu = (function () {
       btnToggleLlevar.onclick = () => {
         _meseroItemParaLlevar = !_meseroItemParaLlevar;
         renderMesasActivas();
+      };
+    }
+
+    const btnEditarNumMesa = document.getElementById('btn-editar-num-mesa');
+    if (btnEditarNumMesa) {
+      btnEditarNumMesa.onclick = e => {
+        e.stopPropagation();
+        if (meseroMesaTarget) SC.abrirModalCambiarMesa?.(meseroMesaTarget.id);
       };
     }
 

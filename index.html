@@ -1184,6 +1184,28 @@
     </div>
   </div>
 
+  <!-- ══ MODAL: CAMBIAR NÚMERO DE MESA ══
+       Para cuando el mesero se equivocó de número al crear el pedido —
+       solo cambia a qué mesa está asociado, no toca los ítems. -->
+  <div id="cambiar-mesa-backdrop" class="mesa-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="cambiar-mesa-titulo">
+    <div class="mesa-modal-box" style="max-width:380px">
+      <div class="mesa-modal-head">
+        <h2 id="cambiar-mesa-titulo">Cambiar número de mesa</h2>
+        <button id="btn-close-cambiar-mesa" class="btn-close" aria-label="Cerrar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="mesa-modal-body">
+        <div class="mesa-field">
+          <label>Elige la mesa correcta</label>
+          <div class="mesa-grid" id="cambiar-mesa-grid" role="group" aria-label="Elige la mesa correcta"></div>
+          <span id="cambiar-mesa-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+        </div>
+        <button id="btn-confirmar-cambiar-mesa" class="btn-confirmar-mesa">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ MODAL PAGO ══ -->
   <div id="pago-modal-backdrop" class="pago-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pago-modal-title">
     <div class="pago-modal-box">
@@ -2281,6 +2303,43 @@
     return true;
   }
 
+  // El mesero corrige el número de mesa de un pedido ya enviado (se
+  // equivocó al elegirlo) — solo cambia a qué mesa física está asociado,
+  // no toca ítems ni totales. No aplica a pedidos "para llevar".
+  async function cambiarMesaPedido(pedidoId, nuevoNumero) {
+    const idx = _caja.findIndex(p => String(p.id) === String(pedidoId));
+    if (idx < 0) return { ok: false, msg: 'Pedido no encontrado.' };
+    if (_caja[idx].paraLlevar) return { ok: false, msg: 'Un pedido "para llevar" no tiene número de mesa.' };
+    if (Number(_caja[idx].mesa) === Number(nuevoNumero)) return { ok: true }; // sin cambios
+
+    const { data: mesaData, error: mesaError } = await db.from('mesas')
+      .select('mes_id').eq('mes_numero', nuevoNumero).single();
+    if (mesaError || !mesaData?.mes_id) {
+      return { ok: false, msg: `No se encontró la mesa ${nuevoNumero}.` };
+    }
+
+    // No permitir moverlo a una mesa que ya tiene OTRO pedido pendiente —
+    // eso mezclaría dos cuentas distintas bajo el mismo número.
+    const ocupada = _caja.some(p => String(p.id) !== String(pedidoId) && Number(p.mesa) === Number(nuevoNumero));
+    if (ocupada) {
+      return { ok: false, msg: `La mesa ${nuevoNumero} ya tiene un pedido activo.` };
+    }
+
+    const mesaAnterior = _caja[idx].mesa;
+    const mesIdAnterior = _caja[idx].mesId;
+    _caja[idx].mesa  = nuevoNumero;
+    _caja[idx].mesId = mesaData.mes_id;
+
+    const { error } = await db.from('pedidos').update({ mes_id: mesaData.mes_id }).eq('ped_id', pedidoId);
+    if (error) {
+      console.error('Supabase cambiarMesaPedido:', error);
+      _caja[idx].mesa  = mesaAnterior; // revertir el optimista si falló
+      _caja[idx].mesId = mesIdAnterior;
+      return { ok: false, msg: 'No se pudo actualizar. Intenta de nuevo.' };
+    }
+    return { ok: true };
+  }
+
   /* ══════════════════════════════════════════════════
      REFERENCIAS DOM
   ══════════════════════════════════════════════════ */
@@ -2408,6 +2467,83 @@
     const err = document.getElementById('mesa-input-error');
     if (err) { err.textContent = ''; err.style.display = 'none'; }
   });
+
+  // ── Modal: cambiar número de mesa de un pedido ya enviado ──────────
+  // Reutiliza el mismo grid de 12 mesas del modal de checkout, pero
+  // aislado (su propio contenedor y estado) para no interferir con ese
+  // flujo — este solo cambia a qué mesa está asociado el pedido.
+  const cambiarMesaBackdrop     = document.getElementById('cambiar-mesa-backdrop');
+  const cambiarMesaGrid         = document.getElementById('cambiar-mesa-grid');
+  const cambiarMesaErrorEl      = document.getElementById('cambiar-mesa-error');
+  const btnCloseCambiarMesa     = document.getElementById('btn-close-cambiar-mesa');
+  const btnConfirmarCambiarMesa = document.getElementById('btn-confirmar-cambiar-mesa');
+  let _cambiarMesaPedidoId  = null;
+  let _cambiarMesaSeleccion = null;
+
+  function _renderCambiarMesaGrid(ocupadas) {
+    if (!cambiarMesaGrid) return;
+    cambiarMesaGrid.innerHTML = Array.from({ length: MESAS_FISICAS }, (_, i) => i + 1).map(n => {
+      const sel = _cambiarMesaSeleccion === n;
+      const ocupada = !sel && ocupadas.has(n);
+      return `<button type="button" class="mesa-grid__btn${sel ? ' selected' : ''}${ocupada ? ' ocupada' : ''}"
+        data-mesa="${n}" ${ocupada ? 'disabled' : ''} aria-pressed="${sel}">${n}</button>`;
+    }).join('');
+  }
+
+  async function abrirModalCambiarMesa(pedidoId) {
+    const ped = leerCaja().find(p => String(p.id) === String(pedidoId));
+    if (!ped || ped.paraLlevar || !cambiarMesaBackdrop) return;
+    _cambiarMesaPedidoId  = pedidoId;
+    _cambiarMesaSeleccion = Number(ped.mesa) || null;
+    if (cambiarMesaErrorEl) { cambiarMesaErrorEl.textContent = ''; cambiarMesaErrorEl.style.display = 'none'; }
+    // Excluye este mismo pedido de "ocupadas" — su propia mesa actual no
+    // debe verse deshabilitada (es una opción válida, aunque no cambie nada).
+    const ocupadas = await _mesasOcupadas();
+    ocupadas.delete(_cambiarMesaSeleccion);
+    _renderCambiarMesaGrid(ocupadas);
+    cambiarMesaBackdrop.classList.add('open');
+    cambiarMesaBackdrop.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = document.documentElement.style.overflow = 'hidden';
+    setTimeout(function() { trapCambiarMesa.activar(); }, 50);
+  }
+
+  function cerrarModalCambiarMesa() {
+    if (!cambiarMesaBackdrop) return;
+    cambiarMesaBackdrop.classList.remove('open');
+    cambiarMesaBackdrop.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = document.documentElement.style.overflow = '';
+    trapCambiarMesa.desactivar();
+    _cambiarMesaPedidoId = null;
+  }
+
+  cambiarMesaGrid?.addEventListener('click', e => {
+    const btn = e.target.closest('.mesa-grid__btn');
+    if (!btn || btn.disabled) return;
+    _cambiarMesaSeleccion = Number(btn.dataset.mesa);
+    cambiarMesaGrid.querySelectorAll('.mesa-grid__btn').forEach(b => {
+      b.classList.toggle('selected', b === btn);
+      b.setAttribute('aria-pressed', String(b === btn));
+    });
+  });
+
+  btnCloseCambiarMesa?.addEventListener('click', cerrarModalCambiarMesa);
+
+  btnConfirmarCambiarMesa?.addEventListener('click', async () => {
+    if (!_cambiarMesaPedidoId || !_cambiarMesaSeleccion) return;
+    btnConfirmarCambiarMesa.disabled = true;
+    const res = await cambiarMesaPedido(_cambiarMesaPedidoId, _cambiarMesaSeleccion);
+    btnConfirmarCambiarMesa.disabled = false;
+    if (!res.ok) {
+      if (cambiarMesaErrorEl) { cambiarMesaErrorEl.textContent = res.msg; cambiarMesaErrorEl.style.display = 'block'; }
+      return;
+    }
+    toast('Número de mesa actualizado ✓', 'success');
+    cerrarModalCambiarMesa();
+    window.VistaMenu?.renderMesasActivas();
+    window.VistaCajero?.renderCajeroView();
+    window.VistaAdmin?.renderAdminView();
+  });
+
   const cajeroView      = document.getElementById('cajero-view');
   const cocinaView      = document.getElementById('cocina-view');
   const menuView        = document.getElementById('menu-view');
@@ -2881,7 +3017,7 @@
     insertarGasto, eliminarGasto,
     leerCategoriasGasto, crearCategoriaGasto, recargarCategoriasGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad,
+    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad, cambiarMesaPedido, abrirModalCambiarMesa,
     guardarMenuItemDB, eliminarMenuItemDB,
     getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,
@@ -3387,6 +3523,7 @@
   var trapProducto = crearFocusTrap(document.getElementById('product-modal-backdrop'));
   window._trapProducto = trapProducto;
   var trapMesa     = crearFocusTrap(document.getElementById('mesa-modal-backdrop'));
+  var trapCambiarMesa = crearFocusTrap(document.getElementById('cambiar-mesa-backdrop'));
   var trapAuth     = crearFocusTrap(document.getElementById('auth-backdrop'));
   var trapProdForm      = crearFocusTrap(document.getElementById('prod-form-backdrop'));
   window._trapProdForm  = trapProdForm;

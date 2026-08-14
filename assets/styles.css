@@ -1587,6 +1587,14 @@
     }
     .mesero-mesa-detalle__head-left { display: flex; flex-direction: column; gap: .15rem; }
     .mesero-mesa-detalle__title { font-size: 1rem; font-weight: 800; letter-spacing: .02em; }
+    /* Lápiz para corregir el número de mesa si el mesero se equivocó al
+       crear el pedido — no toca ítems, solo a qué mesa está asociado. */
+    .mesero-mesa-detalle__editar-mesa {
+      background: none; border: none; cursor: pointer;
+      font-size: .8rem; padding: .1rem .3rem; margin-left: .3rem;
+      opacity: .6; transition: opacity .15s; vertical-align: middle;
+    }
+    .mesero-mesa-detalle__editar-mesa:hover { opacity: 1; }
     .mesero-mesa-detalle__cliente { font-size: .73rem; color: rgba(253,246,238,.6); }
     .mesero-mesa-detalle__total { color: var(--cinnamon-lt); font-size: 1.15rem; font-weight: 800; }
     .mesero-mesa-detalle__modo { padding: .55rem 1.1rem 0; }
