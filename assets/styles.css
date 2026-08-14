@@ -2087,6 +2087,30 @@
     .btn-confirmar-mesa { width: 100%; padding: .9rem; background: var(--cinnamon); color: #fff; border: none; border-radius: var(--radius-sm); font-size: .95rem; font-weight: 700; cursor: pointer; transition: background .2s; }
     .btn-confirmar-mesa:hover { background: var(--cinnamon-lt); }
 
+    /* Lista de meseros para elegir a quién llamar — filas apiladas en vez
+       del grid numérico de mesas, porque acá el dato es un nombre. */
+    .mesero-lista { display: flex; flex-direction: column; gap: .5rem; }
+    .mesero-lista__btn {
+      -webkit-appearance: none; appearance: none;
+      display: flex; align-items: center; gap: .6rem;
+      width: 100%; padding: .75rem .9rem;
+      border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm);
+      background: var(--cream);
+      color: var(--brown-dark);
+      font-size: .95rem; font-weight: 700; font-family: inherit;
+      cursor: pointer; text-align: left;
+      transition: all .15s;
+    }
+    .mesero-lista__btn:hover:not(:disabled) { border-color: #dc2626; background: rgba(220,38,38,.08); }
+    .mesero-lista__btn:disabled { opacity: .5; cursor: not-allowed; }
+    .mesero-lista__avatar {
+      flex: 0 0 auto; width: 2rem; height: 2rem; border-radius: 50%;
+      background: #dc2626; color: #fff; font-size: .85rem; font-weight: 800;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .mesero-lista__vacio { color: var(--text-muted); font-size: .88rem; text-align: center; padding: 1rem 0; }
+
     /* ════════════════════════════════════════
        TOASTS
     ════════════════════════════════════════ */

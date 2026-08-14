@@ -32,7 +32,7 @@ Deno.serve(async (req: Request) => {
   if (req.method !== 'POST') return jsonResponse({ error: 'Método no permitido' }, 405)
 
   try {
-    const { token } = await req.json()
+    const { token, mesero_id } = await req.json()
     if (!token || typeof token !== 'string') return jsonResponse({ error: 'Falta token' }, 400)
     if (!VAPID_PUBLIC_KEY || !VAPID_PRIVATE_KEY) {
       return jsonResponse({ error: 'VAPID no configurado en el servidor' }, 500)
@@ -52,9 +52,12 @@ Deno.serve(async (req: Request) => {
     const rolValido = sesion?.rol === 'cajero' || sesion?.rol === 'cocinero' || sesion?.rol === 'administrador'
     if (!vigente || !rolValido) return jsonResponse({ error: 'No autorizado' }, 401)
 
-    const { data: subs, error: subsError } = await supabase
-      .from('push_subscripciones')
-      .select('id, endpoint, p256dh, auth')
+    // Si viene mesero_id, el llamado va dirigido solo a ese mesero (elegido
+    // en el modal de caja/cocina) — si no viene, se manda a todos (fallback
+    // por compatibilidad, no debería usarse desde la UI actual).
+    let subsQuery = supabase.from('push_subscripciones').select('id, endpoint, p256dh, auth')
+    if (mesero_id && typeof mesero_id === 'string') subsQuery = subsQuery.eq('usu_id', mesero_id)
+    const { data: subs, error: subsError } = await subsQuery
     if (subsError) throw subsError
     if (!subs || subs.length === 0) return jsonResponse({ ok: true, enviados: 0 })
 
@@ -72,7 +75,8 @@ Deno.serve(async (req: Request) => {
       try {
         await webpush.sendNotification(
           { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload
+          payload,
+          { urgency: 'high' }
         )
         enviados++
       } catch (e) {

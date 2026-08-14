@@ -1218,6 +1218,21 @@
     </div>
   </div>
 
+  <!-- ══ MODAL ELEGIR MESERO A LLAMAR ══ -->
+  <div id="llamar-mesero-backdrop" class="mesa-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="llamar-mesero-titulo">
+    <div class="mesa-modal-box" style="max-width:380px">
+      <div class="mesa-modal-head">
+        <h2 id="llamar-mesero-titulo">¿A qué mesero llamar?</h2>
+        <button id="btn-close-llamar-mesero" class="btn-close" aria-label="Cerrar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="mesa-modal-body">
+        <div class="mesero-lista" id="llamar-mesero-lista" role="group" aria-label="Elige un mesero"></div>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ MODAL PAGO ══ -->
   <div id="pago-modal-backdrop" class="pago-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pago-modal-title">
     <div class="pago-modal-box">
@@ -3630,19 +3645,60 @@
   }
 
   // Mismo botón "Llamar mesero" en Caja y en Cocina — cualquiera de los
-  // dos puede necesitar avisarle que se acerque al despacho.
+  // dos puede necesitar avisarle a un mesero puntual que se acerque al
+  // despacho. Al tocarlo se abre un modal para elegir a cuál (no se avisa
+  // a todos a la vez).
+  let _llamarMeseroBtnActivo = null;
   function _wireLlamarMeseroBtn(id) {
     const btn = document.getElementById(id);
     if (!btn) return;
     btn.addEventListener('click', () => {
-      const ok = llamarMesero();
-      if (!ok) return; // en enfriamiento, ya sonó hace poco
-      btn.disabled = true;
-      setTimeout(() => { btn.disabled = false; }, 8000);
+      _llamarMeseroBtnActivo = btn;
+      _abrirModalLlamarMesero();
     });
   }
   _wireLlamarMeseroBtn('btn-llamar-mesero');
   _wireLlamarMeseroBtn('btn-llamar-mesero-cocina');
+
+  const llamarMeseroBackdrop = document.getElementById('llamar-mesero-backdrop');
+  const llamarMeseroLista    = document.getElementById('llamar-mesero-lista');
+
+  function _abrirModalLlamarMesero() {
+    const meseros = (ModuloAutenticacion.leerUsuarios() || []).filter(u => u.rol === 'mesero');
+    if (!meseros.length) {
+      toast('No hay meseros registrados', 'error');
+      return;
+    }
+    llamarMeseroLista.innerHTML = meseros.map(m => {
+      const nombre = `${m.nombre}${m.apellido ? ' ' + m.apellido : ''}`;
+      return `<button type="button" class="mesero-lista__btn" data-usu-id="${m.id}">
+        <span class="mesero-lista__avatar">${m.nombre.charAt(0).toUpperCase()}</span> ${nombre}
+      </button>`;
+    }).join('');
+    llamarMeseroBackdrop.classList.add('open');
+    llamarMeseroBackdrop.setAttribute('aria-hidden', 'false');
+  }
+
+  function _cerrarModalLlamarMesero() {
+    llamarMeseroBackdrop.classList.remove('open');
+    llamarMeseroBackdrop.setAttribute('aria-hidden', 'true');
+  }
+
+  document.getElementById('btn-close-llamar-mesero')?.addEventListener('click', _cerrarModalLlamarMesero);
+  llamarMeseroBackdrop?.addEventListener('click', e => { if (e.target === llamarMeseroBackdrop) _cerrarModalLlamarMesero(); });
+
+  llamarMeseroLista?.addEventListener('click', e => {
+    const btn = e.target.closest('.mesero-lista__btn');
+    if (!btn) return;
+    const ok = llamarMesero(btn.dataset.usuId);
+    _cerrarModalLlamarMesero();
+    if (!ok) return; // en enfriamiento, ya sonó hace poco
+    const activo = _llamarMeseroBtnActivo;
+    if (activo) {
+      activo.disabled = true;
+      setTimeout(() => { activo.disabled = false; }, 8000);
+    }
+  });
 
 
   /* ══════════════════════════════════════════════════
@@ -4786,10 +4842,14 @@
   function _iniciarCanalLlamadoMesero() {
     if (_canalLlamadoMesero) return _canalLlamadoMesero;
     _canalLlamadoMesero = db.channel('llamado-mesero', { config: { broadcast: { self: false } } })
-      .on('broadcast', { event: 'llamar' }, () => {
+      .on('broadcast', { event: 'llamar' }, ({ payload }) => {
         // Solo reacciona si ESTE dispositivo está en modo mesero — cocina,
         // caja o admin no necesitan que les suene la alarma del mesero.
-        if (ModuloAutenticacion.getSession()?.rol !== 'mesero') return;
+        const session = ModuloAutenticacion.getSession();
+        if (session?.rol !== 'mesero') return;
+        // El llamado va dirigido a un mesero puntual — si este dispositivo
+        // no es ese mesero, lo ignora.
+        if (payload?.mesero_id && payload.mesero_id !== session.id) return;
         _reproducirLlamadoMesero();
         _notificarLlamadoMesero();
         toast('🔔 Caja te está llamando — acércate al despacho', 'success');
@@ -4800,18 +4860,21 @@
 
   // Botón "Llamar mesero" en Caja/Cocina — con enfriamiento de 8s para que
   // no se pueda spamear la alarma por error (un toque accidental de más).
+  // Ahora siempre apunta a un mesero puntual (elegido en el modal), no a
+  // todos a la vez.
   let _llamadoMeseroBloqueado = false;
-  function llamarMesero() {
+  function llamarMesero(meseroId) {
+    if (!meseroId) return false;
     if (_llamadoMeseroBloqueado) return false;
     _llamadoMeseroBloqueado = true;
     setTimeout(() => { _llamadoMeseroBloqueado = false; }, 8000);
     // Broadcast: instantáneo si el mesero ya tiene la pestaña abierta.
-    _iniciarCanalLlamadoMesero().send({ type: 'broadcast', event: 'llamar', payload: {} });
+    _iniciarCanalLlamadoMesero().send({ type: 'broadcast', event: 'llamar', payload: { mesero_id: meseroId } });
     // Push real: llega aunque el teléfono esté bloqueado — best-effort,
     // si falla (function no desplegada aún, sin conexión, etc.) no debe
     // romper el flujo ni ocultar el toast de confirmación.
     const token = ModuloAutenticacion?.getSession()?.token ?? null;
-    db.functions.invoke('enviar-llamado-mesero', { body: { token } })
+    db.functions.invoke('enviar-llamado-mesero', { body: { token, mesero_id: meseroId } })
       .catch(e => console.warn('enviar-llamado-mesero:', e));
     toast('🔔 Llamando al mesero…', 'success');
     return true;
