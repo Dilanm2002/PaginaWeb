@@ -59,6 +59,7 @@ Deno.serve(async (req: Request) => {
     if (mesero_id && typeof mesero_id === 'string') subsQuery = subsQuery.eq('usu_id', mesero_id)
     const { data: subs, error: subsError } = await subsQuery
     if (subsError) throw subsError
+    console.log('enviar-llamado-mesero: mesero_id=', mesero_id, 'suscripciones encontradas=', subs?.length ?? 0)
     if (!subs || subs.length === 0) return jsonResponse({ ok: true, enviados: 0 })
 
     webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY)
@@ -79,12 +80,13 @@ Deno.serve(async (req: Request) => {
           { urgency: 'high' }
         )
         enviados++
+        console.log('enviar-llamado-mesero: push OK a', s.id)
       } catch (e) {
         // 404/410 = la suscripción ya no existe (el navegador la revocó) —
         // se limpia para no seguir intentando en cada llamado futuro.
         const status = (e as { statusCode?: number })?.statusCode
+        console.error('enviar-llamado-mesero: push FALLÓ a', s.id, 'status=', status, e)
         if (status === 404 || status === 410) idsVencidos.push(s.id)
-        else console.error('enviar-llamado-mesero push error:', e)
       }
     }))
 
