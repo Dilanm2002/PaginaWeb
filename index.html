@@ -414,6 +414,12 @@
               <div class="cajero-stat__lbl">Pedidos pendientes</div>
             </div>
           </div>
+          <button class="cajero-refresh cajero-refresh--llamar" id="btn-llamar-mesero-cocina" title="Avisa con sonido y vibración al mesero para que se acerque al despacho">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+            </svg>
+            Llamar mesero
+          </button>
         </div>
         <div id="cocina-grid" class="cajero-grid" role="list" aria-live="polite">
           <!-- pedidos generados por JS -->
@@ -3623,15 +3629,20 @@
     });
   }
 
-  const btnLlamarMesero = document.getElementById('btn-llamar-mesero');
-  if (btnLlamarMesero) {
-    btnLlamarMesero.addEventListener('click', () => {
+  // Mismo botón "Llamar mesero" en Caja y en Cocina — cualquiera de los
+  // dos puede necesitar avisarle que se acerque al despacho.
+  function _wireLlamarMeseroBtn(id) {
+    const btn = document.getElementById(id);
+    if (!btn) return;
+    btn.addEventListener('click', () => {
       const ok = llamarMesero();
       if (!ok) return; // en enfriamiento, ya sonó hace poco
-      btnLlamarMesero.disabled = true;
-      setTimeout(() => { btnLlamarMesero.disabled = false; }, 8000);
+      btn.disabled = true;
+      setTimeout(() => { btn.disabled = false; }, 8000);
     });
   }
+  _wireLlamarMeseroBtn('btn-llamar-mesero');
+  _wireLlamarMeseroBtn('btn-llamar-mesero-cocina');
 
 
   /* ══════════════════════════════════════════════════
@@ -4306,6 +4317,15 @@
         if (_btnVM) _btnVM.style.display = 'none';
         window.VistaMenu?.renderProductosMesero();
         renderCarrito();
+        // Pide permiso de notificaciones (si ya se respondió antes, esto no
+        // vuelve a preguntar) y se suscribe a Web Push — con eso el aviso de
+        // "Llamar mesero" llega aunque el teléfono esté bloqueado o el
+        // navegador en segundo plano, no solo con la pestaña abierta.
+        if ('Notification' in window && Notification.permission === 'default') {
+          Notification.requestPermission().then(p => { if (p === 'granted') _suscribirPushMesero(); }).catch(() => {});
+        } else if (Notification.permission === 'granted') {
+          _suscribirPushMesero();
+        }
       } else {
         // Limpiar carrito si venía de mesero, o si se pasó a invitado desde un rol logueado
         if (prevRol === 'mesero' || (session.rol === 'invitado' && prevRol !== null && prevRol !== 'invitado')) LogicaCarrito.vaciarCarrito();
@@ -4662,12 +4682,52 @@
     }
   }
 
-  // ── Llamado de caja al mesero ─────────────────────────────────────────
-  // El cajero toca "Llamar mesero" para avisar que hay un pedido listo en
-  // el despacho — suena una alarma de ~7s (más urgente que el "ding" de
-  // pedido nuevo) y, si el dispositivo lo soporta, vibra. No usa ninguna
-  // tabla en la base: es un mensaje efímero por Supabase Realtime
-  // Broadcast, solo le llega a quien esté conectado en ese momento.
+  // ── Llamado de caja/cocina al mesero ────────────────────────────────
+  // Quien llama toca "Llamar mesero" para avisar que hay un pedido listo
+  // en el despacho. Dos vías en paralelo:
+  //  1) Supabase Realtime Broadcast (sin tabla, efímero) — instantáneo,
+  //     pero solo suena si la pestaña del mesero está abierta y visible.
+  //  2) Web Push real (sí necesita la tabla push_subscripciones y una
+  //     Edge Function) — llega aunque el teléfono esté bloqueado o el
+  //     navegador en segundo plano, que es el caso que más importa.
+  const VAPID_PUBLIC_KEY = 'BMvkaxOlP34SuK_ATyc6c9oQmL9MSJHMOhA2uRjSBPOo7bPMJG0TAfzpy66ezsizPLTHGMQt8UsFjmSNEmzvFRg';
+
+  function _urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const rawData = atob(base64);
+    return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
+  }
+
+  // Registra el service worker y crea/reutiliza la suscripción de push del
+  // dispositivo, guardándola en Supabase para que la Edge Function sepa a
+  // quién avisar. Se llama al entrar en modo mesero con permiso concedido.
+  async function _suscribirPushMesero() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    try {
+      const reg = await navigator.serviceWorker.register('sw.js');
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        sub = await reg.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: _urlBase64ToUint8Array(VAPID_PUBLIC_KEY)
+        });
+      }
+      const session = ModuloAutenticacion.getSession();
+      if (!session?.id) return;
+      const j = sub.toJSON();
+      const { error } = await db.from('push_subscripciones').upsert({
+        usu_id:   session.id,
+        endpoint: j.endpoint,
+        p256dh:   j.keys.p256dh,
+        auth:     j.keys.auth
+      }, { onConflict: 'endpoint' });
+      if (error) console.error('Supabase push_subscripciones upsert:', error);
+    } catch (e) {
+      console.warn('No se pudo suscribir a Web Push:', e);
+    }
+  }
+
   function _reproducirLlamadoMesero() {
     try {
       if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -4691,9 +4751,33 @@
     } catch (e) {
       console.warn('No se pudo reproducir el llamado al mesero:', e);
     }
-    // Vibración — solo Android/Chrome soporta esta API; iOS Safari la
-    // ignora en silencio (navigator.vibrate ni siquiera existe ahí).
+    // Vibración de la propia página — solo funciona si esta pestaña está
+    // visible/enfocada (restricción del navegador, no del código). Para
+    // cuando NO lo está, ver _notificarLlamadoMesero() más abajo.
     try { navigator.vibrate?.(7000); } catch (_) {}
+  }
+
+  // Notificación del sistema (fuera de la pestaña) con su propio patrón de
+  // vibración — a diferencia de navigator.vibrate(), esta SÍ puede sonar/
+  // vibrar aunque el navegador esté en segundo plano (con la pestaña
+  // todavía abierta; si el navegador está cerrado del todo, nada de esto
+  // llega — para eso haría falta notificaciones push reales). Requiere
+  // permiso ya concedido (se pide una vez al entrar en modo mesero) y solo
+  // funciona en navegadores/SO que soportan vibración en notificaciones
+  // (Android/Chrome principalmente — iOS Safari no).
+  function _notificarLlamadoMesero() {
+    if (!('Notification' in window) || Notification.permission !== 'granted') return;
+    try {
+      const n = new Notification('🔔 Caja te está llamando', {
+        body: 'Acércate al despacho',
+        vibrate: [500, 200, 500, 200, 500, 200, 500, 200, 500],
+        tag: 'llamado-mesero',
+        renotify: true
+      });
+      n.onclick = () => { window.focus(); n.close(); };
+    } catch (e) {
+      console.warn('No se pudo mostrar la notificación de llamado:', e);
+    }
   }
 
   // Un solo canal de broadcast para todo — se crea una vez y sirve tanto
@@ -4707,20 +4791,28 @@
         // caja o admin no necesitan que les suene la alarma del mesero.
         if (ModuloAutenticacion.getSession()?.rol !== 'mesero') return;
         _reproducirLlamadoMesero();
+        _notificarLlamadoMesero();
         toast('🔔 Caja te está llamando — acércate al despacho', 'success');
       })
       .subscribe();
     return _canalLlamadoMesero;
   }
 
-  // Botón "Llamar mesero" en Caja — con enfriamiento de 8s para que no se
-  // pueda spamear la alarma por error (un toque accidental de más).
+  // Botón "Llamar mesero" en Caja/Cocina — con enfriamiento de 8s para que
+  // no se pueda spamear la alarma por error (un toque accidental de más).
   let _llamadoMeseroBloqueado = false;
   function llamarMesero() {
     if (_llamadoMeseroBloqueado) return false;
     _llamadoMeseroBloqueado = true;
     setTimeout(() => { _llamadoMeseroBloqueado = false; }, 8000);
+    // Broadcast: instantáneo si el mesero ya tiene la pestaña abierta.
     _iniciarCanalLlamadoMesero().send({ type: 'broadcast', event: 'llamar', payload: {} });
+    // Push real: llega aunque el teléfono esté bloqueado — best-effort,
+    // si falla (function no desplegada aún, sin conexión, etc.) no debe
+    // romper el flujo ni ocultar el toast de confirmación.
+    const token = ModuloAutenticacion?.getSession()?.token ?? null;
+    db.functions.invoke('enviar-llamado-mesero', { body: { token } })
+      .catch(e => console.warn('enviar-llamado-mesero:', e));
     toast('🔔 Llamando al mesero…', 'success');
     return true;
   }
