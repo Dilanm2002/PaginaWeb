@@ -631,6 +631,12 @@
     }
     .cajero-refresh:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
     .cajero-refresh svg { width: 14px; height: 14px; }
+    /* "Llamar mesero" — se distingue de los botones neutros de arriba
+       porque dispara una alarma en otro dispositivo, no solo refresca. */
+    .cajero-refresh--llamar { border-color: #dc2626; color: #dc2626; }
+    .cajero-refresh--llamar:hover { background: #dc2626; color: #fff; }
+    .cajero-refresh--llamar:disabled { opacity: .5; cursor: not-allowed; }
+    .cajero-refresh--llamar:disabled:hover { background: none; color: #dc2626; }
 
     .cajero-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 1.25rem; max-width: none; }
     #cajero-view .wrap { max-width: none; }

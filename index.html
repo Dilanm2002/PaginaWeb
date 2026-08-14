@@ -359,6 +359,12 @@
               </svg>
               Actualizar
             </button>
+            <button class="cajero-refresh cajero-refresh--llamar" id="btn-llamar-mesero" title="Avisa con sonido y vibración al mesero para que se acerque al despacho">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M18 8a6 6 0 10-12 0c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/>
+              </svg>
+              Llamar mesero
+            </button>
           </div>
         </div>
         <div id="cajero-grid" class="cajero-grid" role="list" aria-live="polite">
@@ -3017,7 +3023,7 @@
     insertarGasto, eliminarGasto,
     leerCategoriasGasto, crearCategoriaGasto, recargarCategoriasGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad, cambiarMesaPedido, abrirModalCambiarMesa,
+    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad, cambiarMesaPedido, abrirModalCambiarMesa, llamarMesero,
     guardarMenuItemDB, eliminarMenuItemDB,
     getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,
@@ -3614,6 +3620,16 @@
         btnCajeroVerMenu.style.cssText = '';
         menuView.scrollIntoView({ behavior: 'smooth' });
       }
+    });
+  }
+
+  const btnLlamarMesero = document.getElementById('btn-llamar-mesero');
+  if (btnLlamarMesero) {
+    btnLlamarMesero.addEventListener('click', () => {
+      const ok = llamarMesero();
+      if (!ok) return; // en enfriamiento, ya sonó hace poco
+      btnLlamarMesero.disabled = true;
+      setTimeout(() => { btnLlamarMesero.disabled = false; }, 8000);
     });
   }
 
@@ -4646,7 +4662,75 @@
     }
   }
 
+  // ── Llamado de caja al mesero ─────────────────────────────────────────
+  // El cajero toca "Llamar mesero" para avisar que hay un pedido listo en
+  // el despacho — suena una alarma de ~7s (más urgente que el "ding" de
+  // pedido nuevo) y, si el dispositivo lo soporta, vibra. No usa ninguna
+  // tabla en la base: es un mensaje efímero por Supabase Realtime
+  // Broadcast, solo le llega a quien esté conectado en ese momento.
+  function _reproducirLlamadoMesero() {
+    try {
+      if (!_audioCtx) _audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (_audioCtx.state === 'suspended') _audioCtx.resume();
+      const ahora = _audioCtx.currentTime;
+      const DURACION_S = 7;
+      const PERIODO_S  = 0.7; // un "beep" cada 0.7s → 10 beeps en 7s
+      for (let t = 0; t < DURACION_S; t += PERIODO_S) {
+        const inicio = ahora + t;
+        const osc  = _audioCtx.createOscillator();
+        const gain = _audioCtx.createGain();
+        osc.type = 'square';
+        osc.frequency.value = 1046.5; // más agudo/urgente que el ding de cocina
+        gain.gain.setValueAtTime(0, inicio);
+        gain.gain.linearRampToValueAtTime(.2, inicio + .02);
+        gain.gain.exponentialRampToValueAtTime(.001, inicio + .3);
+        osc.connect(gain).connect(_audioCtx.destination);
+        osc.start(inicio);
+        osc.stop(inicio + .35);
+      }
+    } catch (e) {
+      console.warn('No se pudo reproducir el llamado al mesero:', e);
+    }
+    // Vibración — solo Android/Chrome soporta esta API; iOS Safari la
+    // ignora en silencio (navigator.vibrate ni siquiera existe ahí).
+    try { navigator.vibrate?.(7000); } catch (_) {}
+  }
+
+  // Un solo canal de broadcast para todo — se crea una vez y sirve tanto
+  // para enviar (cajero) como para recibir (mesero) en la misma sesión.
+  let _canalLlamadoMesero = null;
+  function _iniciarCanalLlamadoMesero() {
+    if (_canalLlamadoMesero) return _canalLlamadoMesero;
+    _canalLlamadoMesero = db.channel('llamado-mesero', { config: { broadcast: { self: false } } })
+      .on('broadcast', { event: 'llamar' }, () => {
+        // Solo reacciona si ESTE dispositivo está en modo mesero — cocina,
+        // caja o admin no necesitan que les suene la alarma del mesero.
+        if (ModuloAutenticacion.getSession()?.rol !== 'mesero') return;
+        _reproducirLlamadoMesero();
+        toast('🔔 Caja te está llamando — acércate al despacho', 'success');
+      })
+      .subscribe();
+    return _canalLlamadoMesero;
+  }
+
+  // Botón "Llamar mesero" en Caja — con enfriamiento de 8s para que no se
+  // pueda spamear la alarma por error (un toque accidental de más).
+  let _llamadoMeseroBloqueado = false;
+  function llamarMesero() {
+    if (_llamadoMeseroBloqueado) return false;
+    _llamadoMeseroBloqueado = true;
+    setTimeout(() => { _llamadoMeseroBloqueado = false; }, 8000);
+    _iniciarCanalLlamadoMesero().send({ type: 'broadcast', event: 'llamar', payload: {} });
+    toast('🔔 Llamando al mesero…', 'success');
+    return true;
+  }
+
   function _iniciarRealtime() {
+    // Se suscribe siempre (no solo cuando el cajero llama) — así un
+    // dispositivo en modo mesero ya está escuchando desde que abre la
+    // app, sin depender de que alguien dispare el canal primero.
+    _iniciarCanalLlamadoMesero();
+
     const _renderMenu = (rol) => {
       if (rol === 'mesero') {
         window.VistaMenu?.renderProductosMesero?.();
