@@ -172,6 +172,13 @@ window.VistaCajero = (function () {
 
   function renderGastos() {
     const SC = window.SC;
+    // El cuadro de Cierre de caja calcula "Efectivo esperado" a partir de
+    // los gastos en efectivo del día — si no se refresca aquí también, se
+    // queda mostrando el monto viejo cada vez que se agrega/edita/borra
+    // un gasto (local o por tiempo real desde otro dispositivo), aunque
+    // los gastos en sí ya se hayan actualizado. No hace nada si el cuadro
+    // no está en esta pantalla (_renderCierreCajaBox ya se protege sola).
+    _renderCierreCajaBox();
     _initGastosDiaNav();
     const fecha  = _getFecha(_diaOffset);
     const gastos = SC.leerGastos().filter(g => g.fecha === fecha);
