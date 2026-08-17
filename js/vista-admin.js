@@ -3117,20 +3117,21 @@ window.VistaAdmin = (function () {
     const pendientePorUsu = {};
     (pendientes || []).forEach(p => { pendientePorUsu[p.usu_id] = parseFloat(p.saldo_pendiente) || 0; });
 
-    // Solo cuenta como día pagado (entra al subtotal) si marcó entrada Y
-    // salida Y todavía no se le pagó ese día — una vez que se registra un
-    // pago, esos días quedan marcados y no se vuelven a sumar aunque el
-    // admin vuelva a elegir un rango de fechas que los incluya.
+    // Cuenta como día pagado (entra al subtotal) con solo marcar la
+    // entrada — no hace falta esperar a que marque también la salida —
+    // y siempre que todavía no se le haya pagado ese día: una vez que se
+    // registra un pago, esos días quedan marcados y no se vuelven a sumar
+    // aunque el admin vuelva a elegir un rango de fechas que los incluya.
     const todosPorUsu = {}; // incluye pagados — es lo que se ve en el detalle
     const diasPorUsu  = {}; // solo no pagados — es lo que multiplica el pago/día
     (asistencias || []).forEach(a => {
-      if (!a.asis_entrada || !a.asis_salida) return;
+      if (!a.asis_entrada) return;
       (todosPorUsu[a.usu_id] ??= []).push(a);
       if (!a.asis_pagado) diasPorUsu[a.usu_id] = (diasPorUsu[a.usu_id] || 0) + 1;
     });
 
     const _fmtDia  = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
-    const _fmtHora = iso => iso ? new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }) : '—';
+    const _fmtHora = iso => iso ? new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 
     // Agrupa la asistencia de un empleado por semana (lunes a domingo)
     // para el detalle expandible, con hora exacta de entrada/salida.
@@ -3394,6 +3395,9 @@ window.VistaAdmin = (function () {
       movBackdrop.setAttribute('aria-hidden', 'true');
     }
 
+    document.getElementById('btn-rrhh-descuento')?.addEventListener('click', () => abrirMov('descuento'));
+    document.getElementById('btn-rrhh-adelanto')?.addEventListener('click', () => abrirMov('adelanto'));
+    document.getElementById('btn-rrhh-saldo-pendiente')?.addEventListener('click', () => abrirMov('saldo_pendiente'));
     document.getElementById('btn-close-rrhh-mov')?.addEventListener('click', cerrarMov);
     movBackdrop?.addEventListener('click', e => { if (e.target === movBackdrop) cerrarMov(); });
 
