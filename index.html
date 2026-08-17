@@ -216,7 +216,9 @@
         <button id="btn-cambiar-modo" class="btn-logout" style="display:none">
           <span id="btn-cambiar-modo-icon"></span><span id="btn-cambiar-modo-label"></span>
         </button>
-        <button id="btn-marcar-asistencia" class="btn-logout" style="display:none"></button>
+        <button id="btn-marcar-asistencia" class="btn-logout" style="display:none">
+          <span id="btn-marcar-asistencia-icon">🕐</span><span id="btn-marcar-asistencia-label"></span>
+        </button>
         <button id="btn-mi-perfil" class="btn-logout">Mi perfil</button>
         <button id="btn-abrir-auth" class="btn-logout">Iniciar Sesión</button>
         <button id="btn-logout" class="btn-logout" style="display:none" title="Salir" aria-label="Salir">
@@ -4298,26 +4300,36 @@
   // staff. El estado (qué falta marcar hoy) lo decide el servidor, no el
   // cliente, para que quede igual sin importar desde qué dispositivo se
   // haya marcado la entrada.
+  // El ícono cambia según el estado (⏰ falta entrada, 🚪 falta salida, ✅
+  // ya marcó las dos) — en móvil se oculta el texto y queda solo el
+  // ícono (mismo tratamiento que "Cambiar a Mesero"/"Salir"), así que el
+  // ícono por sí solo tiene que alcanzar para entender qué falta marcar.
+  function _pintarBotonAsistencia(icono, label, deshabilitado) {
+    const iconEl  = document.getElementById('btn-marcar-asistencia-icon');
+    const labelEl = document.getElementById('btn-marcar-asistencia-label');
+    if (iconEl)  iconEl.textContent  = icono;
+    if (labelEl) labelEl.textContent = ' ' + label;
+    btnMarcarAsistencia.title = label;
+    btnMarcarAsistencia.setAttribute('aria-label', label);
+    btnMarcarAsistencia.disabled = deshabilitado;
+  }
+
   async function _actualizarBotonAsistencia() {
     if (!btnMarcarAsistencia) return;
     const session = ModuloAutenticacion.getSession();
     if (!session?.id) return;
-    // Texto por defecto antes de consultar — así el botón nunca se ve en
+    // Estado por defecto antes de consultar — así el botón nunca se ve en
     // blanco, ni siquiera si la RPC todavía no existe en el servidor.
-    btnMarcarAsistencia.textContent = '🕐 Marcar entrada';
-    btnMarcarAsistencia.disabled = false;
+    _pintarBotonAsistencia('⏰', 'Marcar entrada', false);
     try {
       const { data, error } = await db.rpc('estado_asistencia_hoy', { p_usu_id: session.id });
       if (error) throw error;
       if (!data.entrada) {
-        btnMarcarAsistencia.textContent = '🕐 Marcar entrada';
-        btnMarcarAsistencia.disabled = false;
+        _pintarBotonAsistencia('⏰', 'Marcar entrada', false);
       } else if (!data.salida) {
-        btnMarcarAsistencia.textContent = '🕐 Marcar salida';
-        btnMarcarAsistencia.disabled = false;
+        _pintarBotonAsistencia('🚪', 'Marcar salida', false);
       } else {
-        btnMarcarAsistencia.textContent = '✅ Asistencia de hoy completa';
-        btnMarcarAsistencia.disabled = true;
+        _pintarBotonAsistencia('✅', 'Asistencia de hoy completa', true);
       }
     } catch (e) {
       console.warn('estado_asistencia_hoy:', e);

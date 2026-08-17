@@ -2484,6 +2484,10 @@
       /* Cambiar modo: solo ícono en móvil, para un toque rápido */
       #btn-cambiar-modo-label { display: none; }
       #btn-cambiar-modo { padding: .38rem .55rem; font-size: 1rem; }
+      /* Marcar entrada/salida: mismo tratamiento — el ícono ya cambia según
+         el estado (⏰/🚪/✅), así que solo el ícono alcanza para entender. */
+      #btn-marcar-asistencia-label { display: none; }
+      #btn-marcar-asistencia { padding: .38rem .55rem; font-size: 1rem; }
       /* Salir: mismo tratamiento — solo ícono, para que quepa junto al resto */
       #btn-logout-label { display: none; }
       #btn-logout { padding: .38rem .55rem; }
