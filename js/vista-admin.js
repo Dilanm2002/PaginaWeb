@@ -3070,17 +3070,21 @@ window.VistaAdmin = (function () {
   // por período.
   // ══════════════════════════════════════════════════════════════
 
+  // Por defecto, la semana laboral actual (lunes a viernes) — el admin
+  // ajusta el rango si necesita ver otro período. Se fuerza una sola vez
+  // por sesión (bandera en JS, no "input vacío") porque el navegador a
+  // veces restaura solo el último valor que se escribió en esos campos
+  // de fecha aunque se recargue la página.
+  let _rrhhFechasInicializadas = false;
   function _rrhhDefaultFechas() {
+    if (_rrhhFechasInicializadas) return;
+    _rrhhFechasInicializadas = true;
     const desdeEl = document.getElementById('rrhh-desde');
     const hastaEl = document.getElementById('rrhh-hasta');
-    // Por defecto, la semana laboral actual (lunes a viernes) — el admin
-    // ajusta el rango si necesita ver otro período.
-    if ((desdeEl && !desdeEl.value) || (hastaEl && !hastaEl.value)) {
-      const lunes = _lunesDeSemana(new Date());
-      const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
-      if (desdeEl && !desdeEl.value) desdeEl.value = _fechaLocalISO(lunes);
-      if (hastaEl && !hastaEl.value) hastaEl.value = _fechaLocalISO(viernes);
-    }
+    const lunes = _lunesDeSemana(new Date());
+    const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
+    if (desdeEl) desdeEl.value = _fechaLocalISO(lunes);
+    if (hastaEl) hastaEl.value = _fechaLocalISO(viernes);
   }
 
   async function renderRRHH() {
