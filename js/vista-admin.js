@@ -3395,9 +3395,16 @@ window.VistaAdmin = (function () {
       movBackdrop.setAttribute('aria-hidden', 'true');
     }
 
-    document.getElementById('btn-rrhh-descuento')?.addEventListener('click', () => abrirMov('descuento'));
-    document.getElementById('btn-rrhh-adelanto')?.addEventListener('click', () => abrirMov('adelanto'));
-    document.getElementById('btn-rrhh-saldo-pendiente')?.addEventListener('click', () => abrirMov('saldo_pendiente'));
+    // Envuelto en try/catch con toast — si algo revienta acá, un error
+    // silencioso en consola es invisible para el admin; así se ve en la
+    // propia página sin tener que abrir las herramientas de desarrollador.
+    function _abrirMovSeguro(tipo) {
+      try { abrirMov(tipo); }
+      catch (e) { console.error('abrirMov:', e); window.SC?.toast?.('Error al abrir el formulario: ' + (e?.message || e), 'error'); }
+    }
+    document.getElementById('btn-rrhh-descuento')?.addEventListener('click', () => _abrirMovSeguro('descuento'));
+    document.getElementById('btn-rrhh-adelanto')?.addEventListener('click', () => _abrirMovSeguro('adelanto'));
+    document.getElementById('btn-rrhh-saldo-pendiente')?.addEventListener('click', () => _abrirMovSeguro('saldo_pendiente'));
     document.getElementById('btn-close-rrhh-mov')?.addEventListener('click', cerrarMov);
     movBackdrop?.addEventListener('click', e => { if (e.target === movBackdrop) cerrarMov(); });
 
@@ -3518,16 +3525,21 @@ window.VistaAdmin = (function () {
     // ── Delegación de eventos de la tabla — se recrea en cada
     // renderRRHH(), así que se escucha desde el contenedor fijo. ──
     wrap?.addEventListener('click', e => {
-      const pagarBtn = e.target.closest('.btn-rrhh-pagar');
-      if (pagarBtn) { abrirPagar(pagarBtn); return; }
+      try {
+        const pagarBtn = e.target.closest('.btn-rrhh-pagar');
+        if (pagarBtn) { abrirPagar(pagarBtn); return; }
 
-      const toggleBtn = e.target.closest('.rrhh-toggle-semanas');
-      if (toggleBtn) {
-        const fila = document.getElementById(toggleBtn.dataset.target);
-        if (!fila) return;
-        const abierta = fila.style.display !== 'none';
-        fila.style.display = abierta ? 'none' : '';
-        toggleBtn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
+        const toggleBtn = e.target.closest('.rrhh-toggle-semanas');
+        if (toggleBtn) {
+          const fila = document.getElementById(toggleBtn.dataset.target);
+          if (!fila) return;
+          const abierta = fila.style.display !== 'none';
+          fila.style.display = abierta ? 'none' : '';
+          toggleBtn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
+        }
+      } catch (err) {
+        console.error('Clic en tabla RRHH:', err);
+        window.SC?.toast?.('Error: ' + (err?.message || err), 'error');
       }
     });
   }
