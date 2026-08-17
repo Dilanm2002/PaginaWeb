@@ -4302,8 +4302,13 @@
     if (!btnMarcarAsistencia) return;
     const session = ModuloAutenticacion.getSession();
     if (!session?.id) return;
+    // Texto por defecto antes de consultar — así el botón nunca se ve en
+    // blanco, ni siquiera si la RPC todavía no existe en el servidor.
+    btnMarcarAsistencia.textContent = '🕐 Marcar entrada';
+    btnMarcarAsistencia.disabled = false;
     try {
-      const { data } = await db.rpc('estado_asistencia_hoy', { p_usu_id: session.id });
+      const { data, error } = await db.rpc('estado_asistencia_hoy', { p_usu_id: session.id });
+      if (error) throw error;
       if (!data.entrada) {
         btnMarcarAsistencia.textContent = '🕐 Marcar entrada';
         btnMarcarAsistencia.disabled = false;
