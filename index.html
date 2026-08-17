@@ -762,9 +762,6 @@
                 <input type="date" id="rrhh-desde" class="rrhh-fecha-input">
                 <span style="color:var(--text-muted)">a</span>
                 <input type="date" id="rrhh-hasta" class="rrhh-fecha-input">
-                <button class="adm-btn-primary" id="btn-rrhh-descuento">➖ Registrar descuento</button>
-                <button class="adm-btn-primary" id="btn-rrhh-adelanto">💵 Registrar adelanto</button>
-                <button class="adm-btn-primary" id="btn-rrhh-saldo-pendiente">➕ Saldo pendiente a favor</button>
               </div>
             </div>
             <div id="rrhh-tabla-wrap"></div>
@@ -1289,6 +1286,27 @@
         </div>
         <span id="rrhh-mov-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
         <button id="btn-confirmar-rrhh-mov" class="btn-confirmar-mesa">✓ Guardar</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL: REGISTRAR PAGO DE EMPLEADO (Recursos Humanos) ══ -->
+  <div id="rrhh-pagar-backdrop" class="mesa-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="rrhh-pagar-titulo">
+    <div class="mesa-modal-box" style="max-width:380px">
+      <div class="mesa-modal-head">
+        <h2 id="rrhh-pagar-titulo">Registrar pago</h2>
+        <button id="btn-close-rrhh-pagar" class="btn-close" aria-label="Cerrar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="mesa-modal-body">
+        <div class="mesa-quien" id="rrhh-pagar-resumen" style="display:block"></div>
+        <div class="mesa-field">
+          <label for="rrhh-pagar-monto">¿Cuánto le vas a pagar ahora? ($)</label>
+          <input type="number" id="rrhh-pagar-monto" min="0" step="0.01" inputmode="decimal">
+        </div>
+        <span id="rrhh-pagar-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+        <button id="btn-confirmar-rrhh-pagar" class="btn-confirmar-mesa">✓ Confirmar pago</button>
       </div>
     </div>
   </div>

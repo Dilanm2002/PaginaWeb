@@ -3008,6 +3008,21 @@
   .rrhh-semanas-tabla { width: 100%; border-collapse: collapse; font-size: .82rem; }
   .rrhh-semanas-tabla th { text-align: left; color: var(--text-muted); font-weight: 600; padding: .3rem .5rem; text-transform: uppercase; font-size: .7rem; letter-spacing: .04em; }
   .rrhh-semanas-tabla td { padding: .3rem .5rem; border-top: 1px solid var(--border); }
+  .rrhh-detalle-titulo {
+    display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: .5rem;
+    font-size: .78rem; font-weight: 700; color: var(--brown-dark);
+    text-transform: uppercase; letter-spacing: .04em; margin-bottom: .4rem;
+  }
+  .rrhh-detalle-acciones { display: flex; gap: .4rem; flex-wrap: wrap; }
+  .rrhh-add-mov {
+    -webkit-appearance: none; appearance: none;
+    border: 1px solid var(--border); background: #fff; color: var(--brown-dark);
+    border-radius: var(--radius-sm); padding: .3rem .6rem; font-size: .72rem; font-weight: 600;
+    text-transform: none; letter-spacing: 0; cursor: pointer; transition: all .15s;
+  }
+  .rrhh-add-mov:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
+  .rrhh-tag { font-size: .72rem; font-weight: 700; padding: .1rem .5rem; border-radius: 999px; }
+  .rrhh-tag--ok { background: rgba(22,163,74,.12); color: #16a34a; }
 
   .rrhh-fecha-input {
     padding: .5rem .7rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);

@@ -3091,12 +3091,20 @@ window.VistaAdmin = (function () {
     const hasta = document.getElementById('rrhh-hasta').value;
     wrap.innerHTML = '<p class="usu-cargando">Cargando…</p>';
 
-    const [{ data: empleados }, { data: asistencias }, { data: descuentos }, { data: saldos }, { data: pendientes }] = await Promise.all([
+    const [
+      { data: empleados }, { data: asistencias }, { data: descuentos }, { data: saldos }, { data: pendientes },
+      { data: adelHist }, { data: pendHist }
+    ] = await Promise.all([
       window.db.rpc('listar_empleados'),
       window.db.rpc('listar_asistencias', { p_desde: desde, p_hasta: hasta }),
       window.db.rpc('listar_descuentos_empleado', { p_desde: desde, p_hasta: hasta }),
       window.db.rpc('listar_saldo_adelantos'),
-      window.db.rpc('listar_saldos_pendientes_empleado')
+      window.db.rpc('listar_saldos_pendientes_empleado'),
+      // Historial completo (sin filtrar por rango) para el detalle de
+      // movimientos — las tablas son de lectura abierta, igual que
+      // push_subscripciones.
+      window.db.from('adelantos_empleado').select('adel_id, usu_id, adel_fecha, adel_monto, adel_aplicado, adel_motivo').order('adel_fecha', { ascending: false }),
+      window.db.from('saldos_pendientes_empleado').select('sp_id, usu_id, sp_fecha, sp_monto, sp_pagado, sp_motivo').order('sp_fecha', { ascending: false })
     ]);
 
     _rrhhEmpleadosCache = (empleados || []).filter(e => e.emp_activo !== false);
@@ -3107,40 +3115,73 @@ window.VistaAdmin = (function () {
     // — queda a favor del empleado y se suma al total de este período.
     const pendientePorUsu = {};
     (pendientes || []).forEach(p => { pendientePorUsu[p.usu_id] = parseFloat(p.saldo_pendiente) || 0; });
-    // Solo cuenta como día pagado si marcó entrada Y salida ese día.
-    // Se guarda la fecha (no solo el conteo) para poder desglosar por
-    // semana en el detalle de cada empleado.
-    const fechasPorUsu = {};
+
+    // Solo cuenta como día pagado (entra al subtotal) si marcó entrada Y
+    // salida Y todavía no se le pagó ese día — una vez que se registra un
+    // pago, esos días quedan marcados y no se vuelven a sumar aunque el
+    // admin vuelva a elegir un rango de fechas que los incluya.
+    const todosPorUsu = {}; // incluye pagados — es lo que se ve en el detalle
+    const diasPorUsu  = {}; // solo no pagados — es lo que multiplica el pago/día
     (asistencias || []).forEach(a => {
       if (!a.asis_entrada || !a.asis_salida) return;
-      (fechasPorUsu[a.usu_id] ??= []).push(a.asis_fecha);
+      (todosPorUsu[a.usu_id] ??= []).push(a);
+      if (!a.asis_pagado) diasPorUsu[a.usu_id] = (diasPorUsu[a.usu_id] || 0) + 1;
     });
-    const diasPorUsu = {};
-    Object.keys(fechasPorUsu).forEach(usuId => { diasPorUsu[usuId] = fechasPorUsu[usuId].length; });
 
-    // Agrupa las fechas de un empleado por semana (lunes a domingo) para
-    // el detalle expandible — así se ve de qué semana es cada día contado.
-    const _fmtDia = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const _fmtDia  = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const _fmtHora = iso => iso ? new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' }) : '—';
+
+    // Agrupa la asistencia de un empleado por semana (lunes a domingo)
+    // para el detalle expandible, con hora exacta de entrada/salida.
     function _semanasDe(usuId) {
-      const fechas = (fechasPorUsu[usuId] || []).slice().sort();
+      const registros = (todosPorUsu[usuId] || []).slice().sort((a, b) => a.asis_fecha.localeCompare(b.asis_fecha));
       const porSemana = {};
-      fechas.forEach(iso => {
-        const lunes = _lunesDeSemana(new Date(iso + 'T00:00:00'));
+      registros.forEach(r => {
+        const lunes = _lunesDeSemana(new Date(r.asis_fecha + 'T00:00:00'));
         const key = _fechaLocalISO(lunes);
-        (porSemana[key] ??= []).push(iso);
+        (porSemana[key] ??= []).push(r);
       });
       return Object.keys(porSemana).sort().map(lunesISO => {
         const domingo = new Date(lunesISO + 'T00:00:00'); domingo.setDate(domingo.getDate() + 6);
         return {
           label: `${new Date(lunesISO + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' })} – ${domingo.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' })}`,
-          dias: porSemana[lunesISO]
+          registros: porSemana[lunesISO]
         };
       });
     }
+
+    // Solo los descuentos aún no aplicados a un pago restan del subtotal —
+    // los ya aplicados quedan en el historial pero no se vuelven a cobrar.
     const descPorUsu = {};
     (descuentos || []).forEach(d => {
+      if (d.desc_aplicado) return;
       descPorUsu[d.usu_id] = (descPorUsu[d.usu_id] || 0) + (parseFloat(d.desc_monto) || 0);
     });
+
+    // Historial combinado de descuentos/adelantos/saldo pendiente por
+    // empleado, para mostrar dentro del detalle expandible.
+    const movPorUsu = {};
+    (descuentos || []).forEach(d => {
+      (movPorUsu[d.usu_id] ??= []).push({
+        fecha: d.desc_fecha, tipo: 'Descuento', signo: -1, monto: parseFloat(d.desc_monto) || 0,
+        motivo: d.desc_motivo, estado: d.desc_aplicado ? 'Aplicado' : 'Pendiente'
+      });
+    });
+    (adelHist || []).forEach(a => {
+      const monto = parseFloat(a.adel_monto) || 0, aplicado = parseFloat(a.adel_aplicado) || 0;
+      (movPorUsu[a.usu_id] ??= []).push({
+        fecha: a.adel_fecha, tipo: 'Adelanto', signo: -1, monto,
+        motivo: a.adel_motivo, estado: aplicado >= monto - 0.004 ? 'Descontado' : (aplicado > 0 ? `Parcial ($${aplicado.toFixed(2)})` : 'Pendiente')
+      });
+    });
+    (pendHist || []).forEach(p => {
+      const monto = parseFloat(p.sp_monto) || 0, pagado = parseFloat(p.sp_pagado) || 0;
+      (movPorUsu[p.usu_id] ??= []).push({
+        fecha: p.sp_fecha, tipo: 'Saldo a favor', signo: 1, monto,
+        motivo: p.sp_motivo, estado: pagado >= monto - 0.004 ? 'Pagado' : (pagado > 0 ? `Parcial ($${pagado.toFixed(2)})` : 'Pendiente')
+      });
+    });
+    Object.values(movPorUsu).forEach(lista => lista.sort((a, b) => b.fecha.localeCompare(a.fecha)));
 
     if (!_rrhhEmpleadosCache.length) {
       wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay empleados activos.</p>';
@@ -3170,14 +3211,17 @@ window.VistaAdmin = (function () {
             const adelantoADescontar = Math.min(saldoAdel, disponible);
             const total = subtotal - desc - adelantoADescontar + pendiente;
             const nombre = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
-            const hayQuePagar = adelantoADescontar > 0 || pendiente > 0;
+            const nombreEsc = SC?.escapeHtml(nombre) ?? nombre;
+            const hayQuePagar = dias > 0 || pendiente > 0;
             const semanas = _semanasDe(e.usu_id);
+            const movimientos = movPorUsu[e.usu_id] || [];
             const detalleId = `rrhh-detalle-${e.usu_id}`;
+            const hayDetalle = semanas.length > 0 || movimientos.length > 0;
             return `<tr>
-              <td data-label="Empleado">${SC?.escapeHtml(nombre) ?? nombre}</td>
+              <td data-label="Empleado">${nombreEsc}</td>
               <td data-label="Días trabajados" style="text-align:center">
-                ${dias > 0
-                  ? `<button type="button" class="rrhh-toggle-semanas" data-target="${detalleId}" title="Ver por semana">${dias} <span class="rrhh-toggle-arrow">▸</span></button>`
+                ${hayDetalle
+                  ? `<button type="button" class="rrhh-toggle-semanas" data-target="${detalleId}" title="Ver detalle">${dias} <span class="rrhh-toggle-arrow">▸</span></button>`
                   : dias}
               </td>
               <td data-label="Pago/día" style="text-align:right">${e.emp_pago_dia != null ? '$' + pagoDia.toFixed(2) : '<span style="color:var(--text-muted)">Sin definir</span>'}</td>
@@ -3187,73 +3231,68 @@ window.VistaAdmin = (function () {
               <td data-label="Saldo pendiente (a favor)" style="text-align:right;color:#16a34a">${pendiente > 0 ? '+$' + pendiente.toFixed(2) : '—'}</td>
               <td data-label="Total a pagar" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${total.toFixed(2)}</td>
               <td data-label="">${hayQuePagar
-                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}">💰 Registrar pago</button>`
+                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-nombre="${nombreEsc}" data-subtotal="${subtotal}" data-desc="${desc}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}" data-total="${total}">💰 Registrar pago</button>`
                 : ''}</td>
-            </tr>${dias > 0 ? `
+            </tr>${hayDetalle ? `
             <tr class="rrhh-detalle-row" id="${detalleId}" style="display:none">
               <td colspan="9">
+                ${semanas.length ? `
+                <div class="rrhh-detalle-titulo">Asistencia por semana</div>
                 <table class="rrhh-semanas-tabla">
-                  <thead><tr><th>Semana</th><th style="text-align:center">Días</th><th>Fechas</th></tr></thead>
+                  <thead><tr><th>Semana</th><th>Día</th><th>Entrada</th><th>Salida</th><th></th></tr></thead>
                   <tbody>
-                    ${semanas.map(s => `<tr>
-                      <td>${s.label}</td>
-                      <td style="text-align:center">${s.dias.length}</td>
-                      <td>${s.dias.map(_fmtDia).join(', ')}</td>
+                    ${semanas.map(s => s.registros.map((r, i) => `<tr>
+                      ${i === 0 ? `<td rowspan="${s.registros.length}">${s.label}</td>` : ''}
+                      <td>${_fmtDia(r.asis_fecha)}</td>
+                      <td>${_fmtHora(r.asis_entrada)}</td>
+                      <td>${_fmtHora(r.asis_salida)}</td>
+                      <td>${r.asis_pagado ? '<span class="rrhh-tag rrhh-tag--ok">✓ Pagado</span>' : ''}</td>
+                    </tr>`).join('')).join('')}
+                  </tbody>
+                </table>` : ''}
+                <div class="rrhh-detalle-titulo" style="margin-top:${semanas.length ? '.9rem' : '0'}">
+                  Movimientos
+                  <span class="rrhh-detalle-acciones">
+                    <button type="button" class="rrhh-add-mov" data-tipo="descuento" data-usu-id="${e.usu_id}">➖ Descuento</button>
+                    <button type="button" class="rrhh-add-mov" data-tipo="adelanto" data-usu-id="${e.usu_id}">💵 Adelanto</button>
+                    <button type="button" class="rrhh-add-mov" data-tipo="saldo_pendiente" data-usu-id="${e.usu_id}">➕ Saldo pendiente</button>
+                  </span>
+                </div>
+                ${movimientos.length ? `
+                <table class="rrhh-semanas-tabla">
+                  <thead><tr><th>Fecha</th><th>Tipo</th><th style="text-align:right">Monto</th><th>Motivo</th><th>Estado</th></tr></thead>
+                  <tbody>
+                    ${movimientos.map(m => `<tr>
+                      <td>${new Date(m.fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+                      <td>${m.tipo}</td>
+                      <td style="text-align:right;color:${m.signo < 0 ? '#dc2626' : '#16a34a'}">${m.signo < 0 ? '-' : '+'}$${m.monto.toFixed(2)}</td>
+                      <td>${m.motivo ? (SC?.escapeHtml(m.motivo) ?? m.motivo) : '—'}</td>
+                      <td>${m.estado}</td>
                     </tr>`).join('')}
                   </tbody>
-                </table>
+                </table>` : '<p style="font-size:.8rem;color:var(--text-muted);margin:0">Sin movimientos registrados.</p>'}
               </td>
             </tr>` : ''}`;
           }).join('')}
         </tbody>
       </table>`;
-
-    wrap.querySelectorAll('.rrhh-toggle-semanas').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const fila = document.getElementById(btn.dataset.target);
-        if (!fila) return;
-        const abierta = fila.style.display !== 'none';
-        fila.style.display = abierta ? 'none' : '';
-        btn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
-      });
-    });
-
-    // "Registrar pago" — deja constancia de que el adelanto y/o el saldo
-    // pendiente mostrados arriba ya se saldaron en este pago, para que no
-    // se vuelvan a aplicar en el próximo período.
-    wrap.querySelectorAll('.btn-rrhh-pagar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const usuId     = btn.dataset.usuId;
-        const adelanto  = parseFloat(btn.dataset.adelanto) || 0;
-        const pendiente = parseFloat(btn.dataset.pendiente) || 0;
-        btn.disabled = true;
-        const [{ data: rAdel, error: eAdel }, { data: rPend, error: ePend }] = await Promise.all([
-          adelanto > 0  ? window.db.rpc('aplicar_adelantos_empleado', { p_usu_id: usuId, p_monto: adelanto })   : Promise.resolve({ data: { ok: true, aplicado: 0 } }),
-          pendiente > 0 ? window.db.rpc('pagar_saldo_pendiente_empleado', { p_usu_id: usuId, p_monto: pendiente }) : Promise.resolve({ data: { ok: true, pagado: 0 } })
-        ]);
-        if (eAdel || !rAdel?.ok || ePend || !rPend?.ok) {
-          SC?.toast('No se pudo registrar el pago', 'error');
-          btn.disabled = false;
-          return;
-        }
-        SC?.toast('Pago registrado ✓', 'success');
-        renderRRHH();
-      });
-    });
   }
 
   function _initRRHH() {
     document.getElementById('rrhh-desde')?.addEventListener('change', renderRRHH);
     document.getElementById('rrhh-hasta')?.addEventListener('change', renderRRHH);
 
-    const backdrop  = document.getElementById('rrhh-mov-backdrop');
+    const wrap = document.getElementById('rrhh-tabla-wrap');
+
+    // ── Modal descuento / adelanto / saldo pendiente ──────────────
+    const movBackdrop = document.getElementById('rrhh-mov-backdrop');
     const selEmp    = document.getElementById('rrhh-mov-empleado');
     const inpMonto  = document.getElementById('rrhh-mov-monto');
     const inpMotivo = document.getElementById('rrhh-mov-motivo');
     const errEl     = document.getElementById('rrhh-mov-error');
-    if (!backdrop) return;
+    if (!movBackdrop) return;
 
-    function abrirMov(tipo) {
+    function abrirMov(tipo, usuIdPreseleccionado) {
       _rrhhMovTipo = tipo;
       const cfg = _RRHH_MOV_CFG[tipo];
       document.getElementById('rrhh-mov-titulo').textContent = cfg.titulo;
@@ -3264,22 +3303,21 @@ window.VistaAdmin = (function () {
         const nombre = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
         return `<option value="${e.usu_id}">${SC?.escapeHtml(nombre) ?? nombre}</option>`;
       }).join('');
+      if (usuIdPreseleccionado) selEmp.value = usuIdPreseleccionado;
       inpMonto.value  = '';
       inpMotivo.value = '';
       errEl.style.display = 'none';
-      backdrop.classList.add('open');
-      backdrop.setAttribute('aria-hidden', 'false');
+      movBackdrop.classList.add('open');
+      movBackdrop.setAttribute('aria-hidden', 'false');
+      inpMonto.focus();
     }
     function cerrarMov() {
-      backdrop.classList.remove('open');
-      backdrop.setAttribute('aria-hidden', 'true');
+      movBackdrop.classList.remove('open');
+      movBackdrop.setAttribute('aria-hidden', 'true');
     }
 
-    document.getElementById('btn-rrhh-descuento')?.addEventListener('click', () => abrirMov('descuento'));
-    document.getElementById('btn-rrhh-adelanto')?.addEventListener('click', () => abrirMov('adelanto'));
-    document.getElementById('btn-rrhh-saldo-pendiente')?.addEventListener('click', () => abrirMov('saldo_pendiente'));
     document.getElementById('btn-close-rrhh-mov')?.addEventListener('click', cerrarMov);
-    backdrop.addEventListener('click', e => { if (e.target === backdrop) cerrarMov(); });
+    movBackdrop?.addEventListener('click', e => { if (e.target === movBackdrop) cerrarMov(); });
 
     document.getElementById('btn-confirmar-rrhh-mov')?.addEventListener('click', async () => {
       const usuId  = selEmp.value;
@@ -3307,6 +3345,101 @@ window.VistaAdmin = (function () {
       cerrarMov();
       window.SC?.toast(cfg.toastOk, 'success');
       renderRRHH();
+    });
+
+    // ── Modal registrar pago ───────────────────────────────────────
+    const pagarBackdrop = document.getElementById('rrhh-pagar-backdrop');
+    const pagarResumen  = document.getElementById('rrhh-pagar-resumen');
+    const pagarMonto    = document.getElementById('rrhh-pagar-monto');
+    const pagarErr      = document.getElementById('rrhh-pagar-error');
+    let _pagoActual = null;
+
+    function abrirPagar(btn) {
+      _pagoActual = {
+        usuId: btn.dataset.usuId, nombre: btn.dataset.nombre,
+        subtotal: parseFloat(btn.dataset.subtotal) || 0, desc: parseFloat(btn.dataset.desc) || 0,
+        adelanto: parseFloat(btn.dataset.adelanto) || 0, pendiente: parseFloat(btn.dataset.pendiente) || 0,
+        total: parseFloat(btn.dataset.total) || 0
+      };
+      const p = _pagoActual;
+      pagarResumen.innerHTML = `
+        <strong>${p.nombre}</strong><br>
+        Subtotal: $${p.subtotal.toFixed(2)}
+        ${p.desc > 0 ? ` · Descuentos: -$${p.desc.toFixed(2)}` : ''}
+        ${p.adelanto > 0 ? ` · Adelanto: -$${p.adelanto.toFixed(2)}` : ''}
+        ${p.pendiente > 0 ? ` · Saldo anterior: +$${p.pendiente.toFixed(2)}` : ''}
+        <br><strong>Total a pagar: $${p.total.toFixed(2)}</strong>`;
+      pagarMonto.value = p.total.toFixed(2);
+      pagarErr.style.display = 'none';
+      pagarBackdrop.classList.add('open');
+      pagarBackdrop.setAttribute('aria-hidden', 'false');
+      pagarMonto.focus();
+    }
+    function cerrarPagar() {
+      pagarBackdrop.classList.remove('open');
+      pagarBackdrop.setAttribute('aria-hidden', 'true');
+      _pagoActual = null;
+    }
+
+    document.getElementById('btn-close-rrhh-pagar')?.addEventListener('click', cerrarPagar);
+    pagarBackdrop?.addEventListener('click', e => { if (e.target === pagarBackdrop) cerrarPagar(); });
+
+    document.getElementById('btn-confirmar-rrhh-pagar')?.addEventListener('click', async () => {
+      if (!_pagoActual) return;
+      const monto = parseFloat(pagarMonto.value);
+      pagarErr.style.display = 'none';
+      if (monto == null || Number.isNaN(monto) || monto < 0) {
+        pagarErr.textContent = 'Ingresa un monto válido.'; pagarErr.style.display = ''; return;
+      }
+
+      const { usuId, adelanto, pendiente, total } = _pagoActual;
+      const desde = document.getElementById('rrhh-desde').value;
+      const hasta = document.getElementById('rrhh-hasta').value;
+      const session = window.ModuloAutenticacion?.getSession();
+      const btn = document.getElementById('btn-confirmar-rrhh-pagar');
+      btn.disabled = true;
+
+      // Marca como saldados los días/descuentos de este rango, aplica el
+      // adelanto pendiente y salda el saldo anterior — todo junto, porque
+      // este pago los cubre a todos (la diferencia entre lo calculado y
+      // lo efectivamente entregado es lo único que puede quedar pendiente).
+      await Promise.all([
+        window.db.rpc('marcar_asistencias_pagadas', { p_usu_id: usuId, p_desde: desde, p_hasta: hasta }),
+        window.db.rpc('marcar_descuentos_aplicados', { p_usu_id: usuId, p_desde: desde, p_hasta: hasta }),
+        adelanto > 0  ? window.db.rpc('aplicar_adelantos_empleado', { p_usu_id: usuId, p_monto: adelanto })      : Promise.resolve(),
+        pendiente > 0 ? window.db.rpc('pagar_saldo_pendiente_empleado', { p_usu_id: usuId, p_monto: pendiente }) : Promise.resolve()
+      ]);
+
+      const diferencia = total - monto;
+      if (diferencia > 0.004) {
+        await window.db.rpc('registrar_saldo_pendiente_empleado', {
+          p_usu_id: usuId, p_monto: diferencia, p_motivo: 'Pago parcial del período', p_registrado_por: session?.id ?? null
+        });
+      }
+
+      btn.disabled = false;
+      cerrarPagar();
+      window.SC?.toast('Pago registrado ✓', 'success');
+      renderRRHH();
+    });
+
+    // ── Delegación de eventos de la tabla — se recrea en cada
+    // renderRRHH(), así que se escucha desde el contenedor fijo. ──
+    wrap?.addEventListener('click', e => {
+      const addBtn = e.target.closest('.rrhh-add-mov');
+      if (addBtn) { abrirMov(addBtn.dataset.tipo, addBtn.dataset.usuId); return; }
+
+      const pagarBtn = e.target.closest('.btn-rrhh-pagar');
+      if (pagarBtn) { abrirPagar(pagarBtn); return; }
+
+      const toggleBtn = e.target.closest('.rrhh-toggle-semanas');
+      if (toggleBtn) {
+        const fila = document.getElementById(toggleBtn.dataset.target);
+        if (!fila) return;
+        const abierta = fila.style.display !== 'none';
+        fila.style.display = abierta ? 'none' : '';
+        toggleBtn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
+      }
     });
   }
 
