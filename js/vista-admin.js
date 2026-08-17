@@ -3388,7 +3388,8 @@ window.VistaAdmin = (function () {
       errEl.style.display = 'none';
       movBackdrop.classList.add('open');
       movBackdrop.setAttribute('aria-hidden', 'false');
-      window.SC?.toast?.('DEBUG: clase "open" agregada, ¿ves el modal?', 'success'); // TEMPORAL
+      const cs = getComputedStyle(movBackdrop);
+      window.SC?.toast?.(`DEBUG: opacity=${cs.opacity} display=${cs.display} zIndex=${cs.zIndex} clases="${movBackdrop.className}"`, 'success'); // TEMPORAL
       inpMonto.focus();
     }
     function cerrarMov() {
