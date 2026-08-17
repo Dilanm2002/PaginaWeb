@@ -1661,9 +1661,12 @@ window.VistaAdmin = (function () {
       SC.toast(`Producto "${nombre}" guardado ✓`, 'success');
     });
 
-    _initFormEmpleado();
-    _initAdminNav();
-    _initRRHH();
+    // Cada _init* por separado — si uno falla, no debe dejar sin
+    // eventos a los demás (antes, un error en cualquiera de los
+    // anteriores cancelaba silenciosamente los que venían después).
+    try { _initFormEmpleado(); } catch (e) { console.error('_initFormEmpleado:', e); window.SC?.toast?.('Error iniciando Empleados: ' + (e?.message || e), 'error'); }
+    try { _initAdminNav();     } catch (e) { console.error('_initAdminNav:', e);     window.SC?.toast?.('Error iniciando navegación admin: ' + (e?.message || e), 'error'); }
+    try { _initRRHH();         } catch (e) { console.error('_initRRHH:', e);         window.SC?.toast?.('Error iniciando Recursos Humanos: ' + (e?.message || e), 'error'); }
   }
 
   async function renderReportes(periodo) {

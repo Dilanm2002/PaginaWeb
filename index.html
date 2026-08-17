@@ -3150,7 +3150,7 @@
 
   /* Inicializar modulos de vista */
   try { window.VistaCajero?.init(); } catch(e) { console.error('VistaCajero init:', e); }
-  try { window.VistaAdmin?.init();  } catch(e) { console.error('VistaAdmin init:',  e); }
+  try { window.VistaAdmin?.init();  } catch(e) { console.error('VistaAdmin init:',  e); toast?.('Error al iniciar el panel admin: ' + (e?.message || e), 'error'); }
   try { window.VistaMenu?.init();   } catch(e) { console.error('VistaMenu init:',   e); }
 
 
