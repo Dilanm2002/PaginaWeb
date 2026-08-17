@@ -758,13 +758,22 @@
           <section class="adm-module" id="mod-rrhh" aria-label="Recursos Humanos">
             <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
               <h2 class="adm-section-title">Recursos Humanos</h2>
-              <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+              <div class="rep-tabs" id="rrhh-tabs" role="tablist" aria-label="Sección de Recursos Humanos">
+                <button class="rep-tab active" data-rrhh-tab="calculo" role="tab" aria-selected="true">Cálculo actual</button>
+                <button class="rep-tab" data-rrhh-tab="historial" role="tab" aria-selected="false">Historial de pagos</button>
+              </div>
+            </div>
+            <div id="rrhh-calculo-panel">
+              <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem">
                 <input type="date" id="rrhh-desde" class="rrhh-fecha-input">
                 <span style="color:var(--text-muted)">a</span>
                 <input type="date" id="rrhh-hasta" class="rrhh-fecha-input">
               </div>
+              <div id="rrhh-tabla-wrap"></div>
             </div>
-            <div id="rrhh-tabla-wrap"></div>
+            <div id="rrhh-historial-panel" style="display:none">
+              <div id="rrhh-historial-wrap"></div>
+            </div>
           </section>
 
           <!-- MÓDULO: Reportes -->

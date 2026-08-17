@@ -3231,7 +3231,7 @@ window.VistaAdmin = (function () {
               <td data-label="Saldo pendiente (a favor)" style="text-align:right;color:#16a34a">${pendiente > 0 ? '+$' + pendiente.toFixed(2) : '—'}</td>
               <td data-label="Total a pagar" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${total.toFixed(2)}</td>
               <td data-label="">${hayQuePagar
-                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-nombre="${nombreEsc}" data-subtotal="${subtotal}" data-desc="${desc}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}" data-total="${total}">💰 Registrar pago</button>`
+                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-nombre="${nombreEsc}" data-dias="${dias}" data-subtotal="${subtotal}" data-desc="${desc}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}" data-total="${total}">💰 Registrar pago</button>`
                 : ''}</td>
             </tr>${hayDetalle ? `
             <tr class="rrhh-detalle-row" id="${detalleId}" style="display:none">
@@ -3278,9 +3278,83 @@ window.VistaAdmin = (function () {
       </table>`;
   }
 
+  // Historial de pagos ya realizados — separado del cálculo de arriba
+  // porque una vez que un pago se registra, esos días/descuentos quedan
+  // marcados como saldados y dejan de contar ahí, así que sin esto no
+  // habría forma de ver después qué se le pagó a alguien en una semana
+  // anterior.
+  let _rrhhHistorialCargado = false;
+  async function renderRRHHHistorial() {
+    const wrap = document.getElementById('rrhh-historial-wrap');
+    if (!wrap) return;
+    const SC = window.SC;
+    wrap.innerHTML = '<p class="usu-cargando">Cargando…</p>';
+
+    const [{ data: pagos, error }, { data: empleados }] = await Promise.all([
+      window.db.from('pagos_empleado').select('*').order('created_at', { ascending: false }),
+      _rrhhEmpleadosCache.length ? Promise.resolve({ data: _rrhhEmpleadosCache }) : window.db.rpc('listar_empleados')
+    ]);
+
+    if (!_rrhhEmpleadosCache.length) _rrhhEmpleadosCache = empleados || [];
+    const nombrePorUsu = {};
+    (empleados || _rrhhEmpleadosCache).forEach(e => {
+      nombrePorUsu[e.usu_id] = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
+    });
+
+    if (error) {
+      wrap.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar el historial.</p>';
+      return;
+    }
+    if (!pagos || !pagos.length) {
+      wrap.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">Todavía no se ha registrado ningún pago.</p>';
+      return;
+    }
+
+    const _fmtFecha = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+
+    wrap.innerHTML = `
+      <table class="adm-tabla">
+        <thead><tr>
+          <th>Registrado</th><th>Empleado</th><th>Período pagado</th><th style="text-align:center">Días</th>
+          <th style="text-align:right">Total calculado</th><th style="text-align:right">Entregado</th>
+          <th style="text-align:right">Quedó pendiente</th>
+        </tr></thead>
+        <tbody>
+          ${pagos.map(p => {
+            const nombre = nombrePorUsu[p.usu_id] ?? p.usu_id;
+            return `<tr>
+              <td data-label="Registrado">${new Date(p.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
+              <td data-label="Empleado">${SC?.escapeHtml(nombre) ?? nombre}</td>
+              <td data-label="Período pagado">${_fmtFecha(p.pago_desde)} – ${_fmtFecha(p.pago_hasta)}</td>
+              <td data-label="Días" style="text-align:center">${p.pago_dias}</td>
+              <td data-label="Total calculado" style="text-align:right">$${parseFloat(p.pago_total_calculado).toFixed(2)}</td>
+              <td data-label="Entregado" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${parseFloat(p.pago_monto_entregado).toFixed(2)}</td>
+              <td data-label="Quedó pendiente" style="text-align:right;color:${parseFloat(p.pago_diferencia) > 0 ? '#dc2626' : 'inherit'}">${parseFloat(p.pago_diferencia) > 0 ? '$' + parseFloat(p.pago_diferencia).toFixed(2) : '—'}</td>
+            </tr>`;
+          }).join('')}
+        </tbody>
+      </table>`;
+    _rrhhHistorialCargado = true;
+  }
+
   function _initRRHH() {
     document.getElementById('rrhh-desde')?.addEventListener('change', renderRRHH);
     document.getElementById('rrhh-hasta')?.addEventListener('change', renderRRHH);
+
+    // Pestañas Cálculo actual / Historial de pagos
+    document.querySelectorAll('#rrhh-tabs .rep-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        const destino = tab.dataset.rrhhTab;
+        document.querySelectorAll('#rrhh-tabs .rep-tab').forEach(t => {
+          const activo = t === tab;
+          t.classList.toggle('active', activo);
+          t.setAttribute('aria-selected', activo ? 'true' : 'false');
+        });
+        document.getElementById('rrhh-calculo-panel').style.display   = destino === 'calculo'   ? '' : 'none';
+        document.getElementById('rrhh-historial-panel').style.display = destino === 'historial' ? '' : 'none';
+        if (destino === 'historial' && !_rrhhHistorialCargado) renderRRHHHistorial();
+      });
+    });
 
     const wrap = document.getElementById('rrhh-tabla-wrap');
 
@@ -3356,7 +3430,7 @@ window.VistaAdmin = (function () {
 
     function abrirPagar(btn) {
       _pagoActual = {
-        usuId: btn.dataset.usuId, nombre: btn.dataset.nombre,
+        usuId: btn.dataset.usuId, nombre: btn.dataset.nombre, dias: parseInt(btn.dataset.dias, 10) || 0,
         subtotal: parseFloat(btn.dataset.subtotal) || 0, desc: parseFloat(btn.dataset.desc) || 0,
         adelanto: parseFloat(btn.dataset.adelanto) || 0, pendiente: parseFloat(btn.dataset.pendiente) || 0,
         total: parseFloat(btn.dataset.total) || 0
@@ -3392,7 +3466,7 @@ window.VistaAdmin = (function () {
         pagarErr.textContent = 'Ingresa un monto válido.'; pagarErr.style.display = ''; return;
       }
 
-      const { usuId, adelanto, pendiente, total } = _pagoActual;
+      const { usuId, dias, subtotal, desc, adelanto, pendiente, total } = _pagoActual;
       const desde = document.getElementById('rrhh-desde').value;
       const hasta = document.getElementById('rrhh-hasta').value;
       const session = window.ModuloAutenticacion?.getSession();
@@ -3403,14 +3477,23 @@ window.VistaAdmin = (function () {
       // adelanto pendiente y salda el saldo anterior — todo junto, porque
       // este pago los cubre a todos (la diferencia entre lo calculado y
       // lo efectivamente entregado es lo único que puede quedar pendiente).
+      const diferencia = Math.max(total - monto, 0);
       await Promise.all([
         window.db.rpc('marcar_asistencias_pagadas', { p_usu_id: usuId, p_desde: desde, p_hasta: hasta }),
         window.db.rpc('marcar_descuentos_aplicados', { p_usu_id: usuId, p_desde: desde, p_hasta: hasta }),
         adelanto > 0  ? window.db.rpc('aplicar_adelantos_empleado', { p_usu_id: usuId, p_monto: adelanto })      : Promise.resolve(),
-        pendiente > 0 ? window.db.rpc('pagar_saldo_pendiente_empleado', { p_usu_id: usuId, p_monto: pendiente }) : Promise.resolve()
+        pendiente > 0 ? window.db.rpc('pagar_saldo_pendiente_empleado', { p_usu_id: usuId, p_monto: pendiente }) : Promise.resolve(),
+        // Queda el registro del pago para poder verlo después en el
+        // historial, aunque esos días ya se hayan marcado como pagados.
+        window.db.from('pagos_empleado').insert({
+          usu_id: usuId, pago_desde: desde, pago_hasta: hasta, pago_dias: dias,
+          pago_subtotal: subtotal, pago_descuentos: desc, pago_adelanto: adelanto,
+          pago_saldo_anterior: pendiente, pago_total_calculado: total,
+          pago_monto_entregado: monto, pago_diferencia: diferencia,
+          pago_registrado_por: session?.id ?? null
+        })
       ]);
 
-      const diferencia = total - monto;
       if (diferencia > 0.004) {
         await window.db.rpc('registrar_saldo_pendiente_empleado', {
           p_usu_id: usuId, p_monto: diferencia, p_motivo: 'Pago parcial del período', p_registrado_por: session?.id ?? null
@@ -3420,6 +3503,7 @@ window.VistaAdmin = (function () {
       btn.disabled = false;
       cerrarPagar();
       window.SC?.toast('Pago registrado ✓', 'success');
+      _rrhhHistorialCargado = false; // el historial quedó desactualizado, se recarga la próxima vez que se abra
       renderRRHH();
     });
 
