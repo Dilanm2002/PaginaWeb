@@ -2997,6 +2997,18 @@
     font-size: .71rem; color: var(--text-muted); font-weight: 500;
   }
 
+  .rrhh-toggle-semanas {
+    -webkit-appearance: none; appearance: none; border: none; background: none;
+    color: var(--cinnamon); font-weight: 700; font-size: inherit; font-family: inherit;
+    cursor: pointer; display: inline-flex; align-items: center; gap: .25rem;
+  }
+  .rrhh-toggle-semanas:hover { text-decoration: underline; }
+  .rrhh-toggle-arrow { font-size: .7em; }
+  .rrhh-detalle-row td { background: var(--cream-dk); padding: .6rem 1rem; }
+  .rrhh-semanas-tabla { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  .rrhh-semanas-tabla th { text-align: left; color: var(--text-muted); font-weight: 600; padding: .3rem .5rem; text-transform: uppercase; font-size: .7rem; letter-spacing: .04em; }
+  .rrhh-semanas-tabla td { padding: .3rem .5rem; border-top: 1px solid var(--border); }
+
   .rrhh-fecha-input {
     padding: .5rem .7rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
     font-size: .85rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text);

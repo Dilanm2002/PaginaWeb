@@ -3108,11 +3108,35 @@ window.VistaAdmin = (function () {
     const pendientePorUsu = {};
     (pendientes || []).forEach(p => { pendientePorUsu[p.usu_id] = parseFloat(p.saldo_pendiente) || 0; });
     // Solo cuenta como día pagado si marcó entrada Y salida ese día.
-    const diasPorUsu = {};
+    // Se guarda la fecha (no solo el conteo) para poder desglosar por
+    // semana en el detalle de cada empleado.
+    const fechasPorUsu = {};
     (asistencias || []).forEach(a => {
       if (!a.asis_entrada || !a.asis_salida) return;
-      diasPorUsu[a.usu_id] = (diasPorUsu[a.usu_id] || 0) + 1;
+      (fechasPorUsu[a.usu_id] ??= []).push(a.asis_fecha);
     });
+    const diasPorUsu = {};
+    Object.keys(fechasPorUsu).forEach(usuId => { diasPorUsu[usuId] = fechasPorUsu[usuId].length; });
+
+    // Agrupa las fechas de un empleado por semana (lunes a domingo) para
+    // el detalle expandible — así se ve de qué semana es cada día contado.
+    const _fmtDia = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    function _semanasDe(usuId) {
+      const fechas = (fechasPorUsu[usuId] || []).slice().sort();
+      const porSemana = {};
+      fechas.forEach(iso => {
+        const lunes = _lunesDeSemana(new Date(iso + 'T00:00:00'));
+        const key = _fechaLocalISO(lunes);
+        (porSemana[key] ??= []).push(iso);
+      });
+      return Object.keys(porSemana).sort().map(lunesISO => {
+        const domingo = new Date(lunesISO + 'T00:00:00'); domingo.setDate(domingo.getDate() + 6);
+        return {
+          label: `${new Date(lunesISO + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' })} – ${domingo.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' })}`,
+          dias: porSemana[lunesISO]
+        };
+      });
+    }
     const descPorUsu = {};
     (descuentos || []).forEach(d => {
       descPorUsu[d.usu_id] = (descPorUsu[d.usu_id] || 0) + (parseFloat(d.desc_monto) || 0);
@@ -3147,9 +3171,15 @@ window.VistaAdmin = (function () {
             const total = subtotal - desc - adelantoADescontar + pendiente;
             const nombre = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
             const hayQuePagar = adelantoADescontar > 0 || pendiente > 0;
+            const semanas = _semanasDe(e.usu_id);
+            const detalleId = `rrhh-detalle-${e.usu_id}`;
             return `<tr>
               <td data-label="Empleado">${SC?.escapeHtml(nombre) ?? nombre}</td>
-              <td data-label="Días trabajados" style="text-align:center">${dias}</td>
+              <td data-label="Días trabajados" style="text-align:center">
+                ${dias > 0
+                  ? `<button type="button" class="rrhh-toggle-semanas" data-target="${detalleId}" title="Ver por semana">${dias} <span class="rrhh-toggle-arrow">▸</span></button>`
+                  : dias}
+              </td>
               <td data-label="Pago/día" style="text-align:right">${e.emp_pago_dia != null ? '$' + pagoDia.toFixed(2) : '<span style="color:var(--text-muted)">Sin definir</span>'}</td>
               <td data-label="Subtotal" style="text-align:right">$${subtotal.toFixed(2)}</td>
               <td data-label="Descuentos" style="text-align:right;color:#dc2626">${desc > 0 ? '-$' + desc.toFixed(2) : '—'}</td>
@@ -3159,10 +3189,34 @@ window.VistaAdmin = (function () {
               <td data-label="">${hayQuePagar
                 ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}">💰 Registrar pago</button>`
                 : ''}</td>
-            </tr>`;
+            </tr>${dias > 0 ? `
+            <tr class="rrhh-detalle-row" id="${detalleId}" style="display:none">
+              <td colspan="9">
+                <table class="rrhh-semanas-tabla">
+                  <thead><tr><th>Semana</th><th style="text-align:center">Días</th><th>Fechas</th></tr></thead>
+                  <tbody>
+                    ${semanas.map(s => `<tr>
+                      <td>${s.label}</td>
+                      <td style="text-align:center">${s.dias.length}</td>
+                      <td>${s.dias.map(_fmtDia).join(', ')}</td>
+                    </tr>`).join('')}
+                  </tbody>
+                </table>
+              </td>
+            </tr>` : ''}`;
           }).join('')}
         </tbody>
       </table>`;
+
+    wrap.querySelectorAll('.rrhh-toggle-semanas').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const fila = document.getElementById(btn.dataset.target);
+        if (!fila) return;
+        const abierta = fila.style.display !== 'none';
+        fila.style.display = abierta ? 'none' : '';
+        btn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
+      });
+    });
 
     // "Registrar pago" — deja constancia de que el adelanto y/o el saldo
     // pendiente mostrados arriba ya se saldaron en este pago, para que no
