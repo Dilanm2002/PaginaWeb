@@ -3162,11 +3162,7 @@ window.VistaAdmin = (function () {
             </tr>`;
           }).join('')}
         </tbody>
-      </table>
-      <p style="font-size:.78rem;color:var(--text-muted);margin-top:.75rem">
-        Si no le alcanzas a pagar el total completo, usa "➕ Saldo pendiente a favor" para anotar lo que quedó debiendo —
-        se suma automáticamente al total del siguiente período hasta que lo pagues.
-      </p>`;
+      </table>`;
 
     // "Registrar pago" — deja constancia de que el adelanto y/o el saldo
     // pendiente mostrados arriba ya se saldaron en este pago, para que no
