@@ -2680,8 +2680,22 @@ window.VistaAdmin = (function () {
 
   let _empEditId    = null; // emp_id en edición, null = nuevo
   let _empEditUsuId = null; // usu_id del empleado en edición
-  let _rrhhEmpleadosCache = []; // último listar_empleados() de renderRRHH — lo usa el modal de descuento/adelanto para poblar el <select>
-  let _rrhhMovTipo = 'descuento'; // 'descuento' | 'adelanto' — qué registra el modal compartido
+  let _rrhhEmpleadosCache = []; // último listar_empleados() de renderRRHH — lo usa el modal de descuento/adelanto/saldo pendiente para poblar el <select>
+  let _rrhhMovTipo = 'descuento'; // 'descuento' | 'adelanto' | 'saldo_pendiente' — qué registra el modal compartido
+  const _RRHH_MOV_CFG = {
+    descuento: {
+      titulo: 'Registrar descuento', motivoLabel: 'Motivo', motivoPlaceholder: 'Ej: Rompió 2 vasos',
+      rpc: 'registrar_descuento_empleado', toastOk: 'Descuento registrado ✓'
+    },
+    adelanto: {
+      titulo: 'Registrar adelanto', motivoLabel: 'Motivo (opcional)', motivoPlaceholder: 'Ej: Adelanto de sueldo',
+      rpc: 'registrar_adelanto_empleado', toastOk: 'Adelanto registrado ✓'
+    },
+    saldo_pendiente: {
+      titulo: 'Saldo pendiente a favor', motivoLabel: 'Motivo (opcional)', motivoPlaceholder: 'Ej: No alcanzó a completarse el pago de la semana',
+      rpc: 'registrar_saldo_pendiente_empleado', toastOk: 'Saldo pendiente registrado ✓'
+    }
+  };
 
   const _EF_SOLO_LETRAS = /^[a-záéíóúüñA-ZÁÉÍÓÚÜÑ\s'.,-]+$/;
   const _EF_SOLO_NUMS   = /^\d+$/;
@@ -3077,17 +3091,22 @@ window.VistaAdmin = (function () {
     const hasta = document.getElementById('rrhh-hasta').value;
     wrap.innerHTML = '<p class="usu-cargando">Cargando…</p>';
 
-    const [{ data: empleados }, { data: asistencias }, { data: descuentos }, { data: saldos }] = await Promise.all([
+    const [{ data: empleados }, { data: asistencias }, { data: descuentos }, { data: saldos }, { data: pendientes }] = await Promise.all([
       window.db.rpc('listar_empleados'),
       window.db.rpc('listar_asistencias', { p_desde: desde, p_hasta: hasta }),
       window.db.rpc('listar_descuentos_empleado', { p_desde: desde, p_hasta: hasta }),
-      window.db.rpc('listar_saldo_adelantos')
+      window.db.rpc('listar_saldo_adelantos'),
+      window.db.rpc('listar_saldos_pendientes_empleado')
     ]);
 
     _rrhhEmpleadosCache = (empleados || []).filter(e => e.emp_activo !== false);
 
     const saldoPorUsu = {};
     (saldos || []).forEach(s => { saldoPorUsu[s.usu_id] = parseFloat(s.saldo_pendiente) || 0; });
+    // Sueldo de un período anterior que no se le alcanzó a pagar completo
+    // — queda a favor del empleado y se suma al total de este período.
+    const pendientePorUsu = {};
+    (pendientes || []).forEach(p => { pendientePorUsu[p.usu_id] = parseFloat(p.saldo_pendiente) || 0; });
     // Solo cuenta como día pagado si marcó entrada Y salida ese día.
     const diasPorUsu = {};
     (asistencias || []).forEach(a => {
@@ -3110,6 +3129,7 @@ window.VistaAdmin = (function () {
           <th>Empleado</th><th style="text-align:center">Días trabajados</th>
           <th style="text-align:right">Pago/día</th><th style="text-align:right">Subtotal</th>
           <th style="text-align:right">Descuentos</th><th style="text-align:right">Adelanto a descontar</th>
+          <th style="text-align:right">Saldo pendiente (a favor)</th>
           <th style="text-align:right">Total a pagar</th><th></th>
         </tr></thead>
         <tbody>
@@ -3119,12 +3139,14 @@ window.VistaAdmin = (function () {
             const subtotal  = dias * pagoDia;
             const desc      = descPorUsu[e.usu_id] || 0;
             const saldoAdel = saldoPorUsu[e.usu_id] || 0;
+            const pendiente = pendientePorUsu[e.usu_id] || 0;
             // No se puede descontar de adelantos más de lo que ya se
             // le debe al empleado después de sus otros descuentos.
             const disponible = Math.max(subtotal - desc, 0);
             const adelantoADescontar = Math.min(saldoAdel, disponible);
-            const total = subtotal - desc - adelantoADescontar;
+            const total = subtotal - desc - adelantoADescontar + pendiente;
             const nombre = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
+            const hayQuePagar = adelantoADescontar > 0 || pendiente > 0;
             return `<tr>
               <td data-label="Empleado">${SC?.escapeHtml(nombre) ?? nombre}</td>
               <td data-label="Días trabajados" style="text-align:center">${dias}</td>
@@ -3132,30 +3154,39 @@ window.VistaAdmin = (function () {
               <td data-label="Subtotal" style="text-align:right">$${subtotal.toFixed(2)}</td>
               <td data-label="Descuentos" style="text-align:right;color:#dc2626">${desc > 0 ? '-$' + desc.toFixed(2) : '—'}</td>
               <td data-label="Adelanto a descontar" style="text-align:right;color:#dc2626">${adelantoADescontar > 0 ? '-$' + adelantoADescontar.toFixed(2) : '—'}</td>
+              <td data-label="Saldo pendiente (a favor)" style="text-align:right;color:#16a34a">${pendiente > 0 ? '+$' + pendiente.toFixed(2) : '—'}</td>
               <td data-label="Total a pagar" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${total.toFixed(2)}</td>
-              <td data-label="">${adelantoADescontar > 0
-                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-monto="${adelantoADescontar}">💰 Registrar pago</button>`
+              <td data-label="">${hayQuePagar
+                ? `<button class="usu-btn-cambiar btn-rrhh-pagar" data-usu-id="${e.usu_id}" data-adelanto="${adelantoADescontar}" data-pendiente="${pendiente}">💰 Registrar pago</button>`
                 : ''}</td>
             </tr>`;
           }).join('')}
         </tbody>
-      </table>`;
+      </table>
+      <p style="font-size:.78rem;color:var(--text-muted);margin-top:.75rem">
+        Si no le alcanzas a pagar el total completo, usa "➕ Saldo pendiente a favor" para anotar lo que quedó debiendo —
+        se suma automáticamente al total del siguiente período hasta que lo pagues.
+      </p>`;
 
-    // "Registrar pago" — deja constancia de que el saldo de adelantos
-    // mostrado arriba ya se descontó en este pago, para que no se
-    // vuelva a restar en el próximo período.
+    // "Registrar pago" — deja constancia de que el adelanto y/o el saldo
+    // pendiente mostrados arriba ya se saldaron en este pago, para que no
+    // se vuelvan a aplicar en el próximo período.
     wrap.querySelectorAll('.btn-rrhh-pagar').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const usuId = btn.dataset.usuId;
-        const monto = parseFloat(btn.dataset.monto);
+        const usuId     = btn.dataset.usuId;
+        const adelanto  = parseFloat(btn.dataset.adelanto) || 0;
+        const pendiente = parseFloat(btn.dataset.pendiente) || 0;
         btn.disabled = true;
-        const { data, error } = await window.db.rpc('aplicar_adelantos_empleado', { p_usu_id: usuId, p_monto: monto });
-        if (error || !data?.ok) {
+        const [{ data: rAdel, error: eAdel }, { data: rPend, error: ePend }] = await Promise.all([
+          adelanto > 0  ? window.db.rpc('aplicar_adelantos_empleado', { p_usu_id: usuId, p_monto: adelanto })   : Promise.resolve({ data: { ok: true, aplicado: 0 } }),
+          pendiente > 0 ? window.db.rpc('pagar_saldo_pendiente_empleado', { p_usu_id: usuId, p_monto: pendiente }) : Promise.resolve({ data: { ok: true, pagado: 0 } })
+        ]);
+        if (eAdel || !rAdel?.ok || ePend || !rPend?.ok) {
           SC?.toast('No se pudo registrar el pago', 'error');
           btn.disabled = false;
           return;
         }
-        SC?.toast(`Pago registrado — se descontó $${(data.aplicado ?? 0).toFixed(2)} de adelantos ✓`, 'success');
+        SC?.toast('Pago registrado ✓', 'success');
         renderRRHH();
       });
     });
@@ -3174,9 +3205,10 @@ window.VistaAdmin = (function () {
 
     function abrirMov(tipo) {
       _rrhhMovTipo = tipo;
-      document.getElementById('rrhh-mov-titulo').textContent = tipo === 'descuento' ? 'Registrar descuento' : 'Registrar adelanto';
-      document.getElementById('rrhh-mov-motivo-label').textContent = tipo === 'descuento' ? 'Motivo' : 'Motivo (opcional)';
-      inpMotivo.placeholder = tipo === 'descuento' ? 'Ej: Rompió 2 vasos' : 'Ej: Adelanto de sueldo';
+      const cfg = _RRHH_MOV_CFG[tipo];
+      document.getElementById('rrhh-mov-titulo').textContent = cfg.titulo;
+      document.getElementById('rrhh-mov-motivo-label').textContent = cfg.motivoLabel;
+      inpMotivo.placeholder = cfg.motivoPlaceholder;
       const SC = window.SC;
       selEmp.innerHTML = _rrhhEmpleadosCache.map(e => {
         const nombre = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
@@ -3195,6 +3227,7 @@ window.VistaAdmin = (function () {
 
     document.getElementById('btn-rrhh-descuento')?.addEventListener('click', () => abrirMov('descuento'));
     document.getElementById('btn-rrhh-adelanto')?.addEventListener('click', () => abrirMov('adelanto'));
+    document.getElementById('btn-rrhh-saldo-pendiente')?.addEventListener('click', () => abrirMov('saldo_pendiente'));
     document.getElementById('btn-close-rrhh-mov')?.addEventListener('click', cerrarMov);
     backdrop.addEventListener('click', e => { if (e.target === backdrop) cerrarMov(); });
 
@@ -3202,6 +3235,7 @@ window.VistaAdmin = (function () {
       const usuId  = selEmp.value;
       const monto  = parseFloat(inpMonto.value);
       const motivo = inpMotivo.value.trim();
+      const cfg    = _RRHH_MOV_CFG[_rrhhMovTipo];
       errEl.style.display = 'none';
 
       if (!usuId) { errEl.textContent = 'Elige un empleado.'; errEl.style.display = ''; return; }
@@ -3211,8 +3245,7 @@ window.VistaAdmin = (function () {
       const session = window.ModuloAutenticacion?.getSession();
       const btn = document.getElementById('btn-confirmar-rrhh-mov');
       btn.disabled = true;
-      const rpc = _rrhhMovTipo === 'descuento' ? 'registrar_descuento_empleado' : 'registrar_adelanto_empleado';
-      const { data, error } = await window.db.rpc(rpc, {
+      const { data, error } = await window.db.rpc(cfg.rpc, {
         p_usu_id: usuId, p_monto: monto, p_motivo: motivo || null, p_registrado_por: session?.id ?? null
       });
       btn.disabled = false;
@@ -3222,7 +3255,7 @@ window.VistaAdmin = (function () {
         return;
       }
       cerrarMov();
-      window.SC?.toast(_rrhhMovTipo === 'descuento' ? 'Descuento registrado ✓' : 'Adelanto registrado ✓', 'success');
+      window.SC?.toast(cfg.toastOk, 'success');
       renderRRHH();
     });
   }
