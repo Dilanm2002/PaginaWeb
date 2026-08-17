@@ -3006,6 +3006,11 @@
   .rrhh-toggle-arrow { font-size: .7em; }
   .rrhh-detalle-row td { background: var(--cream-dk); padding: .6rem 1rem; }
   .rrhh-semanas-tabla { width: 100%; border-collapse: collapse; font-size: .82rem; }
+  /* .adm-tabla thead tr pinta cualquier encabezado anidado de café oscuro
+     con texto blanco — esta tabla vive DENTRO de una .adm-tabla, así que
+     hay que pisar fondo y color explícitamente (con más especificidad,
+     .rrhh-detalle-row … , para ganarle a esa regla). */
+  .rrhh-detalle-row .rrhh-semanas-tabla thead tr { background: none; color: var(--text-muted); }
   .rrhh-semanas-tabla th { text-align: left; color: var(--text-muted); font-weight: 600; padding: .3rem .5rem; text-transform: uppercase; font-size: .7rem; letter-spacing: .04em; }
   .rrhh-semanas-tabla td { padding: .3rem .5rem; border-top: 1px solid var(--border); }
   .rrhh-detalle-titulo {
