@@ -216,6 +216,7 @@
         <button id="btn-cambiar-modo" class="btn-logout" style="display:none">
           <span id="btn-cambiar-modo-icon"></span><span id="btn-cambiar-modo-label"></span>
         </button>
+        <button id="btn-marcar-asistencia" class="btn-logout" style="display:none"></button>
         <button id="btn-mi-perfil" class="btn-logout">Mi perfil</button>
         <button id="btn-abrir-auth" class="btn-logout">Iniciar Sesión</button>
         <button id="btn-logout" class="btn-logout" style="display:none" title="Salir" aria-label="Salir">
@@ -483,6 +484,10 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               Clientes
             </button>
+            <button class="adm-nav__item" data-mod="rrhh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              Recursos Humanos
+            </button>
           </div>
           <div class="adm-nav__group">
             <span class="adm-nav__label">ANÁLISIS</span>
@@ -747,6 +752,21 @@
             <div id="admin-clientes-lista"></div>
           </section>
 
+          <!-- MÓDULO: Recursos Humanos -->
+          <section class="adm-module" id="mod-rrhh" aria-label="Recursos Humanos">
+            <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
+              <h2 class="adm-section-title">Recursos Humanos</h2>
+              <div style="display:flex;gap:.6rem;align-items:center;flex-wrap:wrap">
+                <input type="date" id="rrhh-desde" class="rrhh-fecha-input">
+                <span style="color:var(--text-muted)">a</span>
+                <input type="date" id="rrhh-hasta" class="rrhh-fecha-input">
+                <button class="adm-btn-primary" id="btn-rrhh-descuento">➖ Registrar descuento</button>
+                <button class="adm-btn-primary" id="btn-rrhh-adelanto">💵 Registrar adelanto</button>
+              </div>
+            </div>
+            <div id="rrhh-tabla-wrap"></div>
+          </section>
+
           <!-- MÓDULO: Reportes -->
           <section class="adm-module" id="mod-reportes" aria-label="Reportes de ventas">
             <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
@@ -888,6 +908,11 @@
               <label for="ef-fecha-ingreso">Fecha de ingreso <span class="ef-req">*</span></label>
               <input type="date" id="ef-fecha-ingreso">
               <span class="ef-field-err" id="ef-err-fecha"></span>
+            </div>
+            <div class="emp-form-group">
+              <label for="ef-pago-dia">Pago por día ($)</label>
+              <input type="number" id="ef-pago-dia" placeholder="16.00" min="0" step="0.01" inputmode="decimal">
+              <span class="ef-field-err" id="ef-err-pago-dia"></span>
             </div>
             <div class="emp-form-group">
               <label for="ef-telefono">Teléfono</label>
@@ -1233,6 +1258,34 @@
       </div>
       <div class="mesa-modal-body">
         <div class="mesero-lista" id="llamar-mesero-lista" role="group" aria-label="Elige un mesero"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ MODAL: DESCUENTO / ADELANTO DE EMPLEADO (Recursos Humanos) ══ -->
+  <div id="rrhh-mov-backdrop" class="mesa-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="rrhh-mov-titulo">
+    <div class="mesa-modal-box" style="max-width:380px">
+      <div class="mesa-modal-head">
+        <h2 id="rrhh-mov-titulo">Registrar descuento</h2>
+        <button id="btn-close-rrhh-mov" class="btn-close" aria-label="Cerrar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="mesa-modal-body">
+        <div class="mesa-field">
+          <label for="rrhh-mov-empleado">Empleado</label>
+          <select id="rrhh-mov-empleado"></select>
+        </div>
+        <div class="mesa-field">
+          <label for="rrhh-mov-monto">Monto ($)</label>
+          <input type="number" id="rrhh-mov-monto" min="0.01" step="0.01" placeholder="0.00" inputmode="decimal">
+        </div>
+        <div class="mesa-field">
+          <label for="rrhh-mov-motivo" id="rrhh-mov-motivo-label">Motivo</label>
+          <input type="text" id="rrhh-mov-motivo" maxlength="200" placeholder="Ej: Rompió 2 vasos">
+        </div>
+        <span id="rrhh-mov-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+        <button id="btn-confirmar-rrhh-mov" class="btn-confirmar-mesa">✓ Guardar</button>
       </div>
     </div>
   </div>
@@ -2589,6 +2642,7 @@
   const userName        = document.getElementById('user-name');
   const btnLogout       = document.getElementById('btn-logout');
   const btnCambiarModo  = document.getElementById('btn-cambiar-modo');
+  const btnMarcarAsistencia = document.getElementById('btn-marcar-asistencia');
 
   /* ══════════════════════════════════════════════════
      TOAST
@@ -4240,6 +4294,48 @@
     };
   }
 
+  // Marcar entrada/salida — botón self-service en el header para todo el
+  // staff. El estado (qué falta marcar hoy) lo decide el servidor, no el
+  // cliente, para que quede igual sin importar desde qué dispositivo se
+  // haya marcado la entrada.
+  async function _actualizarBotonAsistencia() {
+    if (!btnMarcarAsistencia) return;
+    const session = ModuloAutenticacion.getSession();
+    if (!session?.id) return;
+    try {
+      const { data } = await db.rpc('estado_asistencia_hoy', { p_usu_id: session.id });
+      if (!data.entrada) {
+        btnMarcarAsistencia.textContent = '🕐 Marcar entrada';
+        btnMarcarAsistencia.disabled = false;
+      } else if (!data.salida) {
+        btnMarcarAsistencia.textContent = '🕐 Marcar salida';
+        btnMarcarAsistencia.disabled = false;
+      } else {
+        btnMarcarAsistencia.textContent = '✅ Asistencia de hoy completa';
+        btnMarcarAsistencia.disabled = true;
+      }
+    } catch (e) {
+      console.warn('estado_asistencia_hoy:', e);
+    }
+  }
+
+  btnMarcarAsistencia?.addEventListener('click', async () => {
+    const session = ModuloAutenticacion.getSession();
+    if (!session?.id) return;
+    btnMarcarAsistencia.disabled = true;
+    try {
+      const { data, error } = await db.rpc('marcar_asistencia', { p_usu_id: session.id });
+      if (error || !data?.ok) {
+        toast(data?.msg || 'No se pudo registrar la asistencia', 'error');
+      } else {
+        toast(data.tipo === 'entrada' ? '🕐 Entrada registrada ✓' : '🕐 Salida registrada ✓', 'success');
+      }
+    } catch (e) {
+      toast('No se pudo registrar la asistencia', 'error');
+    }
+    _actualizarBotonAsistencia();
+  });
+
   function aplicarSesion(soloRefrescoDatos) {
     const session = ModuloAutenticacion.getSession();
     if (!session) return;
@@ -4302,6 +4398,10 @@
     }
 
     const esRolEspecial = session.rol === 'cajero' || session.rol === 'mesero' || session.rol === 'administrador' || session.rol === 'cocinero';
+    if (btnMarcarAsistencia) {
+      btnMarcarAsistencia.style.display = esRolEspecial ? '' : 'none';
+      if (esRolEspecial && !soloRefrescoDatos) _actualizarBotonAsistencia();
+    }
     /* Sección contacto y buscador: solo para usuario e invitado */
     const contactoEl = document.getElementById('seccion-contacto');
     if (contactoEl) contactoEl.style.display = esRolEspecial ? 'none' : '';

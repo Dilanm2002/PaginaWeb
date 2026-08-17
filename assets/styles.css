@@ -2993,6 +2993,11 @@
     font-size: .71rem; color: var(--text-muted); font-weight: 500;
   }
 
+  .rrhh-fecha-input {
+    padding: .5rem .7rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    font-size: .85rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text);
+  }
+
   /* Charts */
   .reportes-charts {
     display: grid; grid-template-columns: 1fr 1fr; gap: 1.25rem; margin-bottom: 1.75rem;
