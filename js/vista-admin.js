@@ -3073,13 +3073,14 @@ window.VistaAdmin = (function () {
   function _rrhhDefaultFechas() {
     const desdeEl = document.getElementById('rrhh-desde');
     const hastaEl = document.getElementById('rrhh-hasta');
-    // Por defecto, últimos 15 días — el admin ajusta el rango a su
-    // período de pago real (quincena, mes, etc.).
-    if (desdeEl && !desdeEl.value) {
-      const d = new Date(); d.setDate(d.getDate() - 14);
-      desdeEl.value = _fechaLocalISO(d);
+    // Por defecto, la semana laboral actual (lunes a viernes) — el admin
+    // ajusta el rango si necesita ver otro período.
+    if ((desdeEl && !desdeEl.value) || (hastaEl && !hastaEl.value)) {
+      const lunes = _lunesDeSemana(new Date());
+      const viernes = new Date(lunes); viernes.setDate(viernes.getDate() + 4);
+      if (desdeEl && !desdeEl.value) desdeEl.value = _fechaLocalISO(lunes);
+      if (hastaEl && !hastaEl.value) hastaEl.value = _fechaLocalISO(viernes);
     }
-    if (hastaEl && !hastaEl.value) hastaEl.value = _fechaLocalISO();
   }
 
   async function renderRRHH() {
@@ -3216,7 +3217,10 @@ window.VistaAdmin = (function () {
             const semanas = _semanasDe(e.usu_id);
             const movimientos = movPorUsu[e.usu_id] || [];
             const detalleId = `rrhh-detalle-${e.usu_id}`;
-            const hayDetalle = semanas.length > 0 || movimientos.length > 0;
+            // Siempre visible — aunque el empleado todavía no tenga
+            // asistencia ni movimientos, ahí es donde se le registra el
+            // primer descuento/adelanto/saldo pendiente.
+            const hayDetalle = true;
             return `<tr>
               <td data-label="Empleado">${nombreEsc}</td>
               <td data-label="Días trabajados" style="text-align:center">
