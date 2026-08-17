@@ -1962,7 +1962,12 @@
     ════════════════════════════════════════ */
     .mesa-modal-backdrop {
       position: fixed; inset: 0; background: rgba(30,10,0,.6); backdrop-filter: blur(4px);
-      z-index: 400; display: flex; align-items: center; justify-content: center; padding: 1rem;
+      /* #admin-view.visible es position:fixed con z-index:900 (cubre toda la
+         pantalla) — con menos que eso, cualquier modal de esta clase abierto
+         desde dentro del panel admin (ej. Recursos Humanos) queda oculto
+         detrás aunque esté "abierto". 1100 iguala a los demás modales del
+         admin (emp-form-backdrop, prod-form-backdrop). */
+      z-index: 1100; display: flex; align-items: center; justify-content: center; padding: 1rem;
       opacity: 0; pointer-events: none; transition: opacity .25s;
     }
     .mesa-modal-backdrop.open { opacity: 1; pointer-events: all; }
