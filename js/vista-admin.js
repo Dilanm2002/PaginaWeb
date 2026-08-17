@@ -3465,6 +3465,8 @@ window.VistaAdmin = (function () {
       pagarErr.style.display = 'none';
       pagarBackdrop.classList.add('open');
       pagarBackdrop.setAttribute('aria-hidden', 'false');
+      const cs = getComputedStyle(pagarBackdrop);
+      window.SC?.toast?.(`DEBUG pago: opacity=${cs.opacity} display=${cs.display} zIndex=${cs.zIndex}`, 'success'); // TEMPORAL
       pagarMonto.focus();
     }
     function cerrarPagar() {
