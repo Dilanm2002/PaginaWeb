@@ -1744,7 +1744,7 @@ window.VistaAdmin = (function () {
     const [{ data: pedidos, error: errPed }, { data: anulados, error: errAnul }] = await Promise.all([
       window.db
         .from('pedidos')
-        .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre)), facturas(fact_numero, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
+        .select('ped_id, ped_total, ped_subtotal, ped_iva, ped_fecha, ped_cobrado_en, ped_nombre_invitado, usu_id, mesas(mes_numero), detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre, categorias(cat_nombre))), facturas(fact_numero, pagos(metodo_id, pago_monto, pago_cambio, metodos_pago(metodo_nombre)))')
         .eq('ped_estado', 'cobrado')
         .gte('ped_fecha', desdeStr)
         .lte('ped_fecha', hastaStr)
@@ -1811,6 +1811,7 @@ window.VistaAdmin = (function () {
     // termine de cargar, sin bloquear el resto de esta función.
     const divVentas = document.getElementById('chart-ventas-dia');
     const divTop    = document.getElementById('chart-top-productos');
+    const divCat    = document.getElementById('chart-top-categorias');
 
     const _layout = {
       paper_bgcolor: 'transparent',
@@ -1951,12 +1952,59 @@ window.VistaAdmin = (function () {
     }
     _dibujarChartTop();
 
+    // ── Gráfica 3: platos vendidos por categoría (Almuerzos, Desayunos,
+    // etc.) — misma agregación que la de productos, pero agrupada por
+    // categorías(cat_nombre) en vez de por plato individual.
+    const conteoCategoria = {};
+    const ventasPorCategoria = {};
+    data.forEach(p => {
+      (p.detalle_pedidos ?? []).forEach(d => {
+        if (!d.platos?.plat_nombre) return;
+        const cat = d.platos?.categorias?.cat_nombre || 'Sin categoría';
+        conteoCategoria[cat] = (conteoCategoria[cat] || 0) + (d.detped_cantidad || 0);
+        if (!ventasPorCategoria[cat]) ventasPorCategoria[cat] = { unidades: 0, ingresos: 0 };
+        ventasPorCategoria[cat].unidades += d.detped_cantidad || 0;
+        ventasPorCategoria[cat].ingresos += parseFloat(d.detped_subtotal) || 0;
+      });
+    });
+    const topCat        = Object.entries(conteoCategoria).sort((a, b) => b[1] - a[1]);
+    const topCatNombres = topCat.map(([n]) => n);
+    const topCatCants   = topCat.map(([, c]) => c);
+    const topCatIngresos = topCatNombres.map(n => ventasPorCategoria[n]?.ingresos ?? 0);
+    const maxTopCat      = topCatCants.length ? Math.max(...topCatCants) : 1;
+    const _dtickTopCat   = Math.max(1, Math.ceil(maxTopCat / 6));
+    if (divCat) divCat.style.height = Math.max(220, topCatNombres.length * 40 + 40) + 'px';
+
+    function _dibujarChartCat() {
+      if (!window.Plotly || !divCat) return;
+      window.Plotly.react(divCat, [{
+        type:          'bar',
+        orientation:   'h',
+        x:             topCatCants.length   ? topCatCants   : [0],
+        y:             topCatNombres.length ? topCatNombres : ['Sin datos'],
+        customdata:    topCatIngresos.length ? topCatIngresos : [0],
+        marker: {
+          color:        'rgba(200,86,26,.85)',
+          line:         { color: '#a84515', width: 1 },
+          cornerradius: 4
+        },
+        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata:.2f}</b><extra></extra>'
+      }], {
+        ..._layout,
+        margin: { t: 10, r: 20, b: 30, l: 130 },
+        xaxis: { tickformat: 'd', dtick: _dtickTopCat, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTopCat + Math.ceil(maxTopCat * 0.35) + 1] },
+        yaxis: { showgrid: false, automargin: true }
+      }, _config).then(() => _forzarResizeChart(divCat));
+    }
+    _dibujarChartCat();
+
     // Si Plotly todavía no había terminado de descargarse, dibujar las
     // gráficas apenas esté listo (no bloquea KPIs/tabla, que ya se ven).
     _plotlyListo.then(() => {
       if (_miGen !== _reportesGen) return; // el usuario ya cambió de pestaña/día
       _dibujarChartVentas();
       _dibujarChartTop();
+      _dibujarChartCat();
     }).catch(() => {});
 
     // ── Mini KPIs y tabla ─────────────────────────────────────────
@@ -2035,7 +2083,7 @@ window.VistaAdmin = (function () {
     // tener que re-consultar Supabase al exportar.
     _ultimoReporte = {
       periodo, periodoLabel, desdeStr, hastaStr,
-      data, totalVentas, numPedidos, promedio, top5, ventasPorProducto,
+      data, totalVentas, numPedidos, promedio, top5, ventasPorProducto, ventasPorCategoria,
       dataAnulados, porMetodo,
       _mesa, _cliente, _metodoDe
     };
@@ -2102,7 +2150,7 @@ window.VistaAdmin = (function () {
 
       const {
         periodo, periodoLabel, desdeStr, hastaStr, data, totalVentas, numPedidos, promedio,
-        top5, ventasPorProducto, dataAnulados, porMetodo, _mesa, _cliente, _metodoDe
+        top5, ventasPorProducto, ventasPorCategoria, dataAnulados, porMetodo, _mesa, _cliente, _metodoDe
       } = _ultimoReporte;
       const users = window.ModuloAutenticacion?.leerUsuarios() ?? [];
       const _quienAnulo = p => {
@@ -2249,11 +2297,27 @@ window.VistaAdmin = (function () {
       wsTop['!cols'] = [{ wch: 32 }, { wch: 18 }, { wch: 14 }];
       wsTop['!rows'] = [{ hpt: 20 }];
 
+      // ── Hoja Por categoría ──
+      const headerCat = ['Categoría', 'Unidades vendidas', 'Ingresos'].map(h => _cell(h, _sHeader));
+      const filasCat = Object.entries(ventasPorCategoria ?? {}).sort((a, b) => b[1].ingresos - a[1].ingresos)
+        .map(([nombre, v], i) => {
+          const bg = i % 2 === 0 ? WHITE : CREAM;
+          return [
+            _cell(nombre, _sCell(bg)),
+            _cell(v.unidades, _sCellCenter(bg)),
+            _cell(v.ingresos, _sCellRight(bg), MONEY_FMT)
+          ];
+        });
+      const wsCat = XLSX.utils.aoa_to_sheet([headerCat, ...filasCat]);
+      wsCat['!cols'] = [{ wch: 24 }, { wch: 18 }, { wch: 14 }];
+      wsCat['!rows'] = [{ hpt: 20 }];
+
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, wsResumen, 'Resumen');
       XLSX.utils.book_append_sheet(wb, wsPedidos, 'Pedidos');
       XLSX.utils.book_append_sheet(wb, wsAnulados, 'Anulados');
       XLSX.utils.book_append_sheet(wb, wsTop, 'Top productos');
+      XLSX.utils.book_append_sheet(wb, wsCat, 'Por categoría');
 
       const nombreArchivo = `sal-y-canela-reporte-${periodo}-${desdeStr}${periodo !== 'hoy' ? '_a_' + hastaStr : ''}.xlsx`;
       XLSX.writeFile(wb, nombreArchivo);
