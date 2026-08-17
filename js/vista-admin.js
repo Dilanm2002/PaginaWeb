@@ -1734,12 +1734,15 @@ window.VistaAdmin = (function () {
       chartTitleVentas = 'Ventas semana laboral (lun-vie)';
       tablaTitulo      = 'Pedidos — semana laboral';
     } else {
-      const d = new Date(hoy); d.setDate(d.getDate() - 29);
-      desdeStr         = _fechaLocalISO(d);
+      // Mes calendario actual (1 al día de hoy), no una ventana móvil de
+      // 30 días — así "este mes" no se mete días del mes anterior.
+      const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+      const nombreMes = hoy.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
+      desdeStr         = _fechaLocalISO(primerDia);
       hastaStr         = hoyISO;
-      periodoLabel     = '30 días';
-      chartTitleVentas = 'Ventas últimos 30 días';
-      tablaTitulo      = 'Pedidos — últimos 30 días';
+      periodoLabel     = nombreMes;
+      chartTitleVentas = `Ventas de ${nombreMes}`;
+      tablaTitulo      = `Pedidos — ${nombreMes}`;
     }
 
     const chartTitleEl = document.getElementById('rep-chart-ventas-title');
