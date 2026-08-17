@@ -3259,14 +3259,7 @@ window.VistaAdmin = (function () {
                     </tr>`).join('')).join('')}
                   </tbody>
                 </table>` : ''}
-                <div class="rrhh-detalle-titulo" style="margin-top:${semanas.length ? '.9rem' : '0'}">
-                  Movimientos
-                  <span class="rrhh-detalle-acciones">
-                    <button type="button" class="rrhh-add-mov" data-tipo="descuento" data-usu-id="${e.usu_id}">➖ Descuento</button>
-                    <button type="button" class="rrhh-add-mov" data-tipo="adelanto" data-usu-id="${e.usu_id}">💵 Adelanto</button>
-                    <button type="button" class="rrhh-add-mov" data-tipo="saldo_pendiente" data-usu-id="${e.usu_id}">➕ Saldo pendiente</button>
-                  </span>
-                </div>
+                <div class="rrhh-detalle-titulo" style="margin-top:${semanas.length ? '.9rem' : '0'}">Movimientos</div>
                 ${movimientos.length ? `
                 <table class="rrhh-semanas-tabla">
                   <thead><tr><th>Fecha</th><th>Tipo</th><th style="text-align:right">Monto</th><th>Motivo</th><th>Estado</th></tr></thead>
@@ -3522,9 +3515,6 @@ window.VistaAdmin = (function () {
     // ── Delegación de eventos de la tabla — se recrea en cada
     // renderRRHH(), así que se escucha desde el contenedor fijo. ──
     wrap?.addEventListener('click', e => {
-      const addBtn = e.target.closest('.rrhh-add-mov');
-      if (addBtn) { abrirMov(addBtn.dataset.tipo, addBtn.dataset.usuId); return; }
-
       const pagarBtn = e.target.closest('.btn-rrhh-pagar');
       if (pagarBtn) { abrirPagar(pagarBtn); return; }
 

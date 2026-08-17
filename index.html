@@ -4371,17 +4371,26 @@
     const session = ModuloAutenticacion.getSession();
     if (!session?.id) return;
     btnMarcarAsistencia.disabled = true;
+    let tipoRegistrado = null;
     try {
       const { data, error } = await db.rpc('marcar_asistencia', { p_usu_id: session.id });
       if (error || !data?.ok) {
         toast(data?.msg || 'No se pudo registrar la asistencia', 'error');
       } else {
+        tipoRegistrado = data.tipo;
         toast(data.tipo === 'entrada' ? '🕐 Entrada registrada ✓' : '🕐 Salida registrada ✓', 'success');
       }
     } catch (e) {
       toast('No se pudo registrar la asistencia', 'error');
     }
-    _actualizarBotonAsistencia();
+    await _actualizarBotonAsistencia();
+    // Resguardo: recién marcada la entrada, se deja el botón bloqueado
+    // unos segundos más — evita que un doble toque accidental (el mismo
+    // dedo, sin querer) marque también la salida casi al instante.
+    if (tipoRegistrado === 'entrada') {
+      btnMarcarAsistencia.disabled = true;
+      setTimeout(_actualizarBotonAsistencia, 10000);
+    }
   });
 
   function aplicarSesion(soloRefrescoDatos) {
