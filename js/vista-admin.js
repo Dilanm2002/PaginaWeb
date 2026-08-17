@@ -3388,6 +3388,7 @@ window.VistaAdmin = (function () {
       errEl.style.display = 'none';
       movBackdrop.classList.add('open');
       movBackdrop.setAttribute('aria-hidden', 'false');
+      window.SC?.toast?.('DEBUG: clase "open" agregada, ¿ves el modal?', 'success'); // TEMPORAL
       inpMonto.focus();
     }
     function cerrarMov() {
@@ -3399,6 +3400,7 @@ window.VistaAdmin = (function () {
     // silencioso en consola es invisible para el admin; así se ve en la
     // propia página sin tener que abrir las herramientas de desarrollador.
     function _abrirMovSeguro(tipo) {
+      window.SC?.toast?.('DEBUG: clic detectado (' + tipo + ')', 'success'); // TEMPORAL — quitar después de diagnosticar
       try { abrirMov(tipo); }
       catch (e) { console.error('abrirMov:', e); window.SC?.toast?.('Error al abrir el formulario: ' + (e?.message || e), 'error'); }
     }
@@ -3525,6 +3527,7 @@ window.VistaAdmin = (function () {
     // ── Delegación de eventos de la tabla — se recrea en cada
     // renderRRHH(), así que se escucha desde el contenedor fijo. ──
     wrap?.addEventListener('click', e => {
+      window.SC?.toast?.('DEBUG: clic en tabla detectado', 'success'); // TEMPORAL
       try {
         const pagarBtn = e.target.closest('.btn-rrhh-pagar');
         if (pagarBtn) { abrirPagar(pagarBtn); return; }
@@ -3532,6 +3535,7 @@ window.VistaAdmin = (function () {
         const toggleBtn = e.target.closest('.rrhh-toggle-semanas');
         if (toggleBtn) {
           const fila = document.getElementById(toggleBtn.dataset.target);
+          window.SC?.toast?.('DEBUG: toggle, fila encontrada=' + !!fila, 'success'); // TEMPORAL
           if (!fila) return;
           const abierta = fila.style.display !== 'none';
           fila.style.display = abierta ? 'none' : '';
