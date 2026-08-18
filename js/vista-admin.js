@@ -1994,6 +1994,9 @@ window.VistaAdmin = (function () {
         x:             topCatCants.length   ? topCatCants   : [0],
         y:             topCatNombres.length ? topCatNombres : ['Sin datos'],
         customdata:    topCatIngresos.length ? topCatIngresos : [0],
+        text:          topCatCants.length   ? topCatCants.map(String) : [],
+        textposition:  'outside',
+        textfont:      { color: '#3B1A08', size: 12 },
         marker: {
           color:        'rgba(200,86,26,.85)',
           line:         { color: '#a84515', width: 1 },
