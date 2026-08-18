@@ -78,6 +78,19 @@ window.VistaAdmin = (function () {
     return { desde: _fechaLocalISO(lunes), hasta: _fechaLocalISO(hastaDate) };
   }
 
+  // "del 1 al 7 de agosto" (o "del 29 de julio al 2 de agosto" si el rango
+  // cruza de mes) — para que el texto de los reportes diga exactamente de
+  // qué días se trata, no solo una etiqueta genérica como "semana laboral".
+  function _formatRangoFechas(desdeISO, hastaISO) {
+    const d1 = new Date(desdeISO + 'T00:00:00');
+    const d2 = new Date(hastaISO + 'T00:00:00');
+    const mes1 = d1.toLocaleDateString('es-EC', { month: 'long' });
+    const mes2 = d2.toLocaleDateString('es-EC', { month: 'long' });
+    return mes1 === mes2
+      ? `del ${d1.getDate()} al ${d2.getDate()} de ${mes2}`
+      : `del ${d1.getDate()} de ${mes1} al ${d2.getDate()} de ${mes2}`;
+  }
+
   let _prodFormImgBase64 = null;
   let _prodFormEditId    = null;
   // Nombre que tenía el producto ANTES de abrir el form de edición — si el
@@ -87,6 +100,7 @@ window.VistaAdmin = (function () {
   // renombrarlo primero). Solo bloquea si el nombre SÍ cambió.
   let _prodFormNombreOriginal = null;
   let _repDiaOffset      = 0; // navegación día a día en Reportes → tab "Hoy" (0=hoy, -1=ayer, ...)
+  let _repMesOffset      = 0; // navegación mes a mes en Reportes → tab "Este mes" (0=mes actual, -1=mes anterior, ...)
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
   // Clic en el encabezado "Método de pago" del Control de Caja alterna
@@ -902,6 +916,7 @@ window.VistaAdmin = (function () {
     document.querySelectorAll('.rep-tab[data-period]').forEach(btn => {
       btn.addEventListener('click', () => {
         if (btn.dataset.period === 'hoy') _repDiaOffset = 0; // volver al día actual al re-entrar al tab
+        if (btn.dataset.period === 'mes') _repMesOffset = 0; // volver al mes actual al re-entrar al tab
         renderReportes(btn.dataset.period);
       });
     });
@@ -909,6 +924,11 @@ window.VistaAdmin = (function () {
     document.getElementById('rep-dia-ant')?.addEventListener('click', () => { _repDiaOffset--; renderReportes('hoy'); });
     document.getElementById('rep-dia-sig')?.addEventListener('click', () => {
       if (_repDiaOffset < 0) { _repDiaOffset++; renderReportes('hoy'); }
+    });
+    // Navegación mes a mes dentro del tab "Este mes"
+    document.getElementById('rep-mes-ant')?.addEventListener('click', () => { _repMesOffset--; renderReportes('mes'); });
+    document.getElementById('rep-mes-sig')?.addEventListener('click', () => {
+      if (_repMesOffset < 0) { _repMesOffset++; renderReportes('mes'); }
     });
     // Exportar reporte actual a Excel (auditoría)
     document.getElementById('btn-exportar-reporte')?.addEventListener('click', _exportarReporteExcel);
@@ -1706,6 +1726,8 @@ window.VistaAdmin = (function () {
 
     const diaNavEl = document.getElementById('rep-dia-nav');
     if (diaNavEl) diaNavEl.style.display = periodo === 'hoy' ? '' : 'none';
+    const mesNavEl = document.getElementById('rep-mes-nav');
+    if (mesNavEl) mesNavEl.style.display = periodo === 'mes' ? '' : 'none';
 
     const kpisEl = document.getElementById('reportes-kpis');
     if (!kpisEl) return;
@@ -1732,19 +1754,28 @@ window.VistaAdmin = (function () {
       const rango = _rangoSemanaLaboral(hoy);
       desdeStr         = rango.desde;
       hastaStr         = rango.hasta;
-      periodoLabel     = 'semana laboral';
-      chartTitleVentas = 'Ventas semana laboral (lun-vie)';
-      tablaTitulo      = 'Pedidos — semana laboral';
+      const rangoTexto = _formatRangoFechas(desdeStr, hastaStr);
+      periodoLabel     = `semana ${rangoTexto}`;
+      chartTitleVentas = `Ventas semana laboral (${rangoTexto})`;
+      tablaTitulo      = `Pedidos — semana ${rangoTexto}`;
     } else {
-      // Mes calendario actual (1 al día de hoy), no una ventana móvil de
-      // 30 días — así "este mes" no se mete días del mes anterior.
-      const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-      const nombreMes = hoy.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
-      desdeStr         = _fechaLocalISO(primerDia);
-      hastaStr         = hoyISO;
-      periodoLabel     = nombreMes;
+      // Mes calendario — por defecto el actual (1 al día de hoy), pero
+      // navegable a meses anteriores con las flechas (nunca al futuro).
+      const mesBase      = new Date(hoy.getFullYear(), hoy.getMonth() + _repMesOffset, 1);
+      const esMesActual  = _repMesOffset === 0;
+      const ultimoDiaMes = new Date(mesBase.getFullYear(), mesBase.getMonth() + 1, 0);
+      const nombreMes    = mesBase.toLocaleDateString('es-EC', { month: 'long', year: 'numeric' });
+      desdeStr         = _fechaLocalISO(mesBase);
+      hastaStr         = esMesActual ? hoyISO : _fechaLocalISO(ultimoDiaMes);
+      const rangoTexto = _formatRangoFechas(desdeStr, hastaStr);
+      periodoLabel     = `${nombreMes} (${rangoTexto})`;
       chartTitleVentas = `Ventas de ${nombreMes}`;
       tablaTitulo      = `Pedidos — ${nombreMes}`;
+
+      const mesLabelEl = document.getElementById('rep-mes-label');
+      if (mesLabelEl) mesLabelEl.textContent = nombreMes.charAt(0).toUpperCase() + nombreMes.slice(1);
+      const mesSigBtn = document.getElementById('rep-mes-sig');
+      if (mesSigBtn) mesSigBtn.disabled = _repMesOffset >= 0;
     }
 
     const chartTitleEl = document.getElementById('rep-chart-ventas-title');
