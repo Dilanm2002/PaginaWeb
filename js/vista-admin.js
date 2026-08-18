@@ -1968,6 +1968,7 @@ window.VistaAdmin = (function () {
     // categorías(cat_nombre) en vez de por plato individual.
     const conteoCategoria = {};
     const ventasPorCategoria = {};
+    const platosPorCategoria = {}; // cat -> { nombrePlato: unidades } — para el desglose del hover
     data.forEach(p => {
       (p.detalle_pedidos ?? []).forEach(d => {
         if (!d.platos?.plat_nombre) return;
@@ -1976,12 +1977,21 @@ window.VistaAdmin = (function () {
         if (!ventasPorCategoria[cat]) ventasPorCategoria[cat] = { unidades: 0, ingresos: 0 };
         ventasPorCategoria[cat].unidades += d.detped_cantidad || 0;
         ventasPorCategoria[cat].ingresos += parseFloat(d.detped_subtotal) || 0;
+        const platos = (platosPorCategoria[cat] ??= {});
+        platos[d.platos.plat_nombre] = (platos[d.platos.plat_nombre] || 0) + (d.detped_cantidad || 0);
       });
     });
     const topCat        = Object.entries(conteoCategoria).sort((a, b) => b[1] - a[1]);
     const topCatNombres = topCat.map(([n]) => n);
     const topCatCants   = topCat.map(([, c]) => c);
     const topCatIngresos = topCatNombres.map(n => ventasPorCategoria[n]?.ingresos ?? 0);
+    // Desglose "Plato: unidades" de mayor a menor, uno por línea, para el
+    // tooltip — sin esto solo se veía el total de la categoría, no qué
+    // platos específicos la componían.
+    const topCatDetalle = topCatNombres.map(cat => {
+      const items = Object.entries(platosPorCategoria[cat] || {}).sort((a, b) => b[1] - a[1]);
+      return items.map(([nombre, cant]) => `${nombre}: ${cant}`).join('<br>');
+    });
     const maxTopCat      = topCatCants.length ? Math.max(...topCatCants) : 1;
     const _dtickTopCat   = Math.max(1, Math.ceil(maxTopCat / 6));
     if (divCat) divCat.style.height = Math.max(220, topCatNombres.length * 40 + 40) + 'px';
@@ -1993,7 +2003,7 @@ window.VistaAdmin = (function () {
         orientation:   'h',
         x:             topCatCants.length   ? topCatCants   : [0],
         y:             topCatNombres.length ? topCatNombres : ['Sin datos'],
-        customdata:    topCatIngresos.length ? topCatIngresos : [0],
+        customdata:    topCatIngresos.length ? topCatIngresos.map((ing, i) => [ing, topCatDetalle[i]]) : [[0, '']],
         text:          topCatCants.length   ? topCatCants.map(String) : [],
         textposition:  'outside',
         textfont:      { color: '#3B1A08', size: 12 },
@@ -2002,7 +2012,7 @@ window.VistaAdmin = (function () {
           line:         { color: '#a84515', width: 1 },
           cornerradius: 4
         },
-        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata:.2f}</b><extra></extra>'
+        hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata[0]:.2f}</b><br><br>%{customdata[1]}<extra></extra>'
       }], {
         ..._layout,
         margin: { t: 10, r: 20, b: 30, l: 130 },
