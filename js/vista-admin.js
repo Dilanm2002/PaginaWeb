@@ -1830,6 +1830,14 @@ window.VistaAdmin = (function () {
       font: { family: "'Inter', sans-serif", size: 12, color: '#5a3e2b' },
       margin: { t: 10, r: 16, b: 40, l: 50 },
       showlegend: false,
+      // Por defecto el tooltip de Plotly sale con poco contraste y letra
+      // chica — casi ilegible con el desglose de varias líneas que
+      // agrega el gráfico de categorías.
+      hoverlabel: {
+        bgcolor: '#3B1A08', bordercolor: '#3B1A08',
+        font: { color: '#FDF6EE', size: 13, family: "'Inter', sans-serif" },
+        align: 'left'
+      }
     };
     const _config = { responsive: true, displayModeBar: false, locale: 'es' };
 
