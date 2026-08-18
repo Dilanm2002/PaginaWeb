@@ -720,16 +720,18 @@ window.VistaAdmin = (function () {
       const rangoLbl = `📅 Semana del ${lunes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })} al ${viernes.toLocaleDateString('es-EC', { day: '2-digit', month: 'short' })}`;
 
       const filas = dias.map(d => {
-        const esHoy = d.mendia_fecha === hoyISO;
+        const esHoy    = d.mendia_fecha === hoyISO;
+        const esPasado = d.mendia_fecha < hoyISO;
         const diaSemana = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'long' });
         const diaMes    = new Date(d.mendia_fecha + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: 'short' });
         return `<tr class="md-fila${esHoy ? ' md-fila--hoy' : ''}" data-fecha="${d.mendia_fecha}">
           <td class="md-td-dia" data-label="Día">${SC.escapeHtml(diaSemana)}${esHoy ? ' <span class="md-semana-item__badge">HOY</span>' : ''}</td>
           <td class="md-td-fecha" data-label="Fecha">${SC.escapeHtml(diaMes)}</td>
           ${_MD_CAMPOS.map(c => celdaPlato(d, c)).join('')}
-          <td class="md-td-acciones" data-label="Acciones">
-            <button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
-            <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>
+          <td class="md-td-acciones" data-label="Acciones">${esPasado
+            ? '<span class="md-registrado" title="Los menús de días anteriores ya quedaron en el registro y no se pueden editar ni borrar">🔒 Registrado</span>'
+            : `<button class="md-semana-item__edit" data-fecha="${d.mendia_fecha}" type="button" title="Editar este menú" aria-label="Editar este menú">✏️</button>
+            <button class="md-semana-item__del" data-fecha="${d.mendia_fecha}" type="button" title="Eliminar este menú" aria-label="Eliminar este menú">🗑️</button>`}
           </td>
         </tr>`;
       }).join('');

@@ -4027,6 +4027,10 @@
     border: 1px solid rgba(220,38,38,.16);
   }
   .md-semana-item__del:hover { background: #dc2626; color: #fff; }
+  .md-registrado {
+    font-size: .78rem; font-weight: 600; color: var(--text-muted);
+    white-space: nowrap; display: inline-flex; align-items: center; gap: .3rem;
+  }
 
   /* ── Menú del día de hoy (tarjeta del dashboard) ── */
   .dash-menudia-titulo {
