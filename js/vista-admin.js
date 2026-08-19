@@ -2972,8 +2972,12 @@ window.VistaAdmin = (function () {
     if (!el) return;
     el.innerHTML = '<p class="usu-cargando">Cargando empleados…</p>';
 
-    const { data, error } = await window.db.rpc('listar_empleados');
-    if (error || !data) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar empleados.</p>'; return; }
+    const { data: dataCruda, error } = await window.db.rpc('listar_empleados');
+    if (error || !dataCruda) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar empleados.</p>'; return; }
+    // Los administradores no se manejan como "empleados" en esta pantalla
+    // (la cuenta admin original tampoco aparece acá) — solo cajero,
+    // mesero y cocinero.
+    const data = dataCruda.filter(e => !(e.rol_ids || []).includes('rol001'));
 
     const session = window.ModuloAutenticacion.getSession();
 
