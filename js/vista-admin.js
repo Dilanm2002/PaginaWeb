@@ -3230,14 +3230,17 @@ window.VistaAdmin = (function () {
     (descuentos || []).forEach(d => {
       (movPorUsu[d.usu_id] ??= []).push({
         fecha: d.desc_fecha, tipo: 'Descuento', signo: -1, monto: parseFloat(d.desc_monto) || 0,
-        motivo: d.desc_motivo, estado: d.desc_aplicado ? 'Aplicado' : 'Pendiente'
+        motivo: d.desc_motivo, estado: d.desc_aplicado ? 'Aplicado' : 'Por descontar'
       });
     });
     (adelHist || []).forEach(a => {
       const monto = parseFloat(a.adel_monto) || 0, aplicado = parseFloat(a.adel_aplicado) || 0;
+      // "Pendiente" sería confuso acá — el adelanto ya se le dio al
+      // empleado (eso pasó al registrarlo); lo que puede seguir pendiente
+      // es descontárselo de un pago futuro, no entregárselo.
       (movPorUsu[a.usu_id] ??= []).push({
         fecha: a.adel_fecha, tipo: 'Adelanto', signo: -1, monto,
-        motivo: a.adel_motivo, estado: aplicado >= monto - 0.004 ? 'Descontado' : (aplicado > 0 ? `Parcial ($${aplicado.toFixed(2)})` : 'Pendiente')
+        motivo: a.adel_motivo, estado: aplicado >= monto - 0.004 ? 'Descontado' : (aplicado > 0 ? `Parcial ($${aplicado.toFixed(2)} descontado)` : 'Por descontar')
       });
     });
     (pendHist || []).forEach(p => {
