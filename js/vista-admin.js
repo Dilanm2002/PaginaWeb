@@ -2935,7 +2935,9 @@ window.VistaAdmin = (function () {
         p_cargo:         cargo,
         p_rol_ids:       rolIds,
         p_observaciones: obs,
-        p_pago_dia:      pagoDia
+        p_pago_dia:      pagoDia,
+        p_nombre:        nombre,
+        p_apellido:      apellido
       }));
     } else {
       ({ data: res, error: err } = await window.db.rpc('crear_empleado', {
