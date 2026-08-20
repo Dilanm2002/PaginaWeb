@@ -3182,7 +3182,9 @@ window.VistaAdmin = (function () {
       window.db.from('saldos_pendientes_empleado').select('sp_id, usu_id, sp_fecha, sp_monto, sp_pagado, sp_motivo').order('sp_fecha', { ascending: false })
     ]);
 
-    _rrhhEmpleadosCache = (empleados || []).filter(e => e.emp_activo !== false);
+    // Los administradores no se manejan como "empleados" en RRHH tampoco
+    // (mismo criterio que la lista de Empleados).
+    _rrhhEmpleadosCache = (empleados || []).filter(e => e.emp_activo !== false && !(e.rol_ids || []).includes('rol001'));
 
     const saldoPorUsu = {};
     (saldos || []).forEach(s => { saldoPorUsu[s.usu_id] = parseFloat(s.saldo_pendiente) || 0; });
@@ -3370,7 +3372,7 @@ window.VistaAdmin = (function () {
       _rrhhEmpleadosCache.length ? Promise.resolve({ data: _rrhhEmpleadosCache }) : window.db.rpc('listar_empleados')
     ]);
 
-    if (!_rrhhEmpleadosCache.length) _rrhhEmpleadosCache = empleados || [];
+    if (!_rrhhEmpleadosCache.length) _rrhhEmpleadosCache = (empleados || []).filter(e => !(e.rol_ids || []).includes('rol001'));
     const nombrePorUsu = {};
     (empleados || _rrhhEmpleadosCache).forEach(e => {
       nombrePorUsu[e.usu_id] = `${e.usu_nombre}${e.usu_apellido ? ' ' + e.usu_apellido : ''}`;
