@@ -4450,9 +4450,38 @@
   .ef-field-err { font-size: .72rem; color: #dc2626; font-weight: 500; display: none; margin-top: .2rem; }
   .ef-req { color: var(--cinnamon); }
 
-  /* Filas de ingredientes en el formulario de Recetas */
+  /* Secciones (grupos de ingredientes) en el formulario de Recetas —
+     ej. "Masa" y "Relleno" dentro de una misma receta de empanada. */
+  .rf-grupo {
+    border: 1.5px solid #E0C9B0; border-radius: 12px; padding: .75rem .85rem;
+    margin-bottom: .75rem; background: rgba(200,86,26,.03);
+  }
+  .rf-grupo-head { display: flex; gap: .5rem; align-items: center; margin-bottom: .6rem; }
+  .rf-grupo-nombre {
+    flex: 1; padding: .5rem .7rem; border: 1.5px solid #E0C9B0; border-radius: 8px;
+    font-size: .84rem; font-weight: 700; color: var(--brown-dark); background: #fff;
+    box-sizing: border-box; font-family: inherit;
+  }
+  .rf-grupo-nombre:focus { outline: none; border-color: var(--cinnamon); }
+  .rf-grupo-quitar {
+    width: 30px; height: 30px; flex-shrink: 0; border-radius: 50%;
+    background: rgba(220,38,38,.08); color: #dc2626; border: 1px solid rgba(220,38,38,.16);
+    cursor: pointer; display: flex; align-items: center; justify-content: center; font-size: .78rem;
+    transition: background .15s;
+  }
+  .rf-grupo-quitar:hover { background: #dc2626; color: #fff; }
+  .rf-grupo-ingredientes { margin-bottom: .5rem; }
+  .rf-grupo-btn-agregar-ing {
+    -webkit-appearance: none; appearance: none; border: 1.5px dashed var(--cinnamon);
+    background: rgba(200,86,26,.06); color: var(--cinnamon); border-radius: 10px;
+    padding: .4rem .8rem; font-size: .78rem; font-weight: 700; cursor: pointer;
+    width: 100%; transition: background .15s;
+  }
+  .rf-grupo-btn-agregar-ing:hover { background: rgba(200,86,26,.12); }
+
+  /* Filas de ingredientes dentro de cada sección */
   .rf-ing-row {
-    display: grid; grid-template-columns: 1.5rem 5.5rem 6.5rem 1fr auto;
+    display: grid; grid-template-columns: 1.5rem 1fr 6.5rem auto;
     gap: .5rem; align-items: center; margin-bottom: .5rem;
   }
   .rf-ing-num { font-weight: 700; color: var(--cinnamon); font-size: .85rem; text-align: right; }
@@ -4475,12 +4504,13 @@
   /* Lista de recetas */
   .receta-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
   .receta-row__titulo { font-weight: 700; color: var(--brown-dark); font-size: 1rem; margin-bottom: .35rem; }
+  .receta-seccion { margin-bottom: .5rem; }
+  .receta-seccion__titulo { font-weight: 700; color: var(--cinnamon); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; margin-bottom: .3rem; }
   .receta-row__ingredientes { display: flex; flex-wrap: wrap; gap: .4rem; }
   .receta-ing-tag {
     background: var(--cream-dk); border: 1px solid var(--border); border-radius: 999px;
     padding: .18rem .65rem; font-size: .78rem; color: var(--text);
   }
-  .receta-ing-tag b { color: var(--cinnamon); font-weight: 700; }
   .ef-rol-group { display: flex; gap: 1rem; flex-wrap: wrap; padding: .55rem 0; }
   .ef-rol-check {
     display: flex;
@@ -4542,15 +4572,16 @@
     .emp-form-grid { grid-template-columns: 1fr; }
     .emp-form-body { padding: 1rem; }
     .rf-ing-row {
-      grid-template-columns: auto 1fr 1fr; grid-template-areas: "num cant unid" "nombre nombre nombre" "quitar quitar quitar";
+      grid-template-columns: auto 1fr; grid-template-areas: "num nombre" "num2 medida" "num3 quitar";
       gap: .4rem; padding-bottom: .6rem; margin-bottom: .6rem; border-bottom: 1px solid var(--border);
     }
     .rf-ing-row:last-child { border-bottom: none; }
     .rf-ing-num { grid-area: num; }
-    .rf-ing-row > input[type="number"] { grid-area: cant; }
-    .rf-ing-row > select { grid-area: unid; }
-    .rf-ing-row > input[type="text"] { grid-area: nombre; }
+    .rf-ing-nombre { grid-area: nombre; }
+    .rf-ing-medida { grid-area: medida; }
     .rf-ing-quitar { grid-area: quitar; width: 100%; height: 34px; border-radius: 8px; }
+    .rf-grupo-head { flex-wrap: wrap; }
+    .rf-grupo-nombre { flex-basis: 100%; }
     .receta-row { flex-direction: column; gap: .5rem; }
   }
 

@@ -3614,24 +3614,12 @@ window.VistaAdmin = (function () {
   }
 
   // ══════════════════════════════════════════════════════════════
-  // MÓDULO: Recetas — título + lista de ingredientes (cantidad, unidad,
-  // nombre), ej. "50g Harina". Tablas de lectura/escritura abierta, sin
-  // RPC (no es información sensible ni de dinero), igual que otras
-  // tablas operativas de esta app.
+  // MÓDULO: Recetas — título + una o varias secciones opcionales (ej.
+  // "Masa" / "Relleno" en una empanada), cada una con su lista de
+  // ingredientes (nombre + cantidad libre, ej. "50g Harina", "1/2 Huevo").
+  // Tablas de lectura/escritura abierta, sin RPC (no es información
+  // sensible ni de dinero), igual que otras tablas operativas de esta app.
   // ══════════════════════════════════════════════════════════════
-
-  const _UNIDADES_RECETA = [
-    { v: 'g',        l: 'g' },
-    { v: 'kg',       l: 'kg' },
-    { v: 'ml',       l: 'ml' },
-    { v: 'L',        l: 'L' },
-    { v: 'u',        l: 'unidades' },
-    { v: 'taza',     l: 'tazas' },
-    { v: 'cda',      l: 'cucharadas' },
-    { v: 'cdta',     l: 'cucharaditas' },
-    { v: 'pizca',    l: 'pizca' },
-    { v: 'al gusto', l: 'al gusto' }
-  ];
 
   let _recetaEditId = null; // rec_id en edición, null = nueva
 
@@ -3642,7 +3630,7 @@ window.VistaAdmin = (function () {
 
     const { data, error } = await window.db
       .from('recetas')
-      .select('rec_id, rec_titulo, receta_ingredientes(ingrec_id, ingrec_cantidad, ingrec_unidad, ingrec_nombre, ingrec_orden)')
+      .select('rec_id, rec_titulo, receta_secciones(seccion_id, seccion_nombre, seccion_orden), receta_ingredientes(ingrec_id, ingrec_unidad, ingrec_nombre, ingrec_orden, seccion_id)')
       .order('rec_titulo');
 
     if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>'; return; }
@@ -3652,18 +3640,32 @@ window.VistaAdmin = (function () {
     }
 
     const SC = window.SC;
+    const tagHtml = i => `<span class="receta-ing-tag">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`;
+
     el.innerHTML = data.map(r => {
+      const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
       const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
+
+      let bodyHtml;
+      if (secciones.length) {
+        const sinSeccion = ingredientes.filter(i => !i.seccion_id);
+        bodyHtml = secciones.map(s => {
+          const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
+          return `<div class="receta-seccion">
+            <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
+            <div class="receta-row__ingredientes">${propios.length ? propios.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>
+          </div>`;
+        }).join('') + (sinSeccion.length ? `<div class="receta-row__ingredientes">${sinSeccion.map(tagHtml).join('')}</div>` : '');
+      } else {
+        bodyHtml = `<div class="receta-row__ingredientes">${ingredientes.length ? ingredientes.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>`;
+      }
+
       return `
         <div class="emp-row" data-rec-id="${r.rec_id}">
           <div class="receta-row">
             <div style="flex:1;min-width:200px">
               <div class="receta-row__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
-              <div class="receta-row__ingredientes">
-                ${ingredientes.length
-                  ? ingredientes.map((i, idx) => `<span class="receta-ing-tag"><b>${idx + 1}.</b> ${i.ingrec_cantidad}${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`).join('')
-                  : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}
-              </div>
+              ${bodyHtml}
             </div>
             <div class="usu-rol-wrap">
               <button class="usu-btn-cambiar receta-btn-editar" data-rec-id="${r.rec_id}">✏️ Editar</button>
@@ -3692,31 +3694,54 @@ window.VistaAdmin = (function () {
   }
 
   function _filaIngredienteHtml(valores = {}) {
-    const { cantidad = '', unidad = 'g', nombre = '' } = valores;
+    const { medida = '', nombre = '' } = valores;
     return `
       <div class="rf-ing-row">
         <span class="rf-ing-num"></span>
-        <input type="number" class="rf-ing-cantidad" placeholder="Cant." min="0" step="0.01" value="${cantidad}">
-        <select class="rf-ing-unidad">
-          ${_UNIDADES_RECETA.map(u => `<option value="${u.v}"${u.v === unidad ? ' selected' : ''}>${u.l}</option>`).join('')}
-        </select>
         <input type="text" class="rf-ing-nombre" placeholder="Ingrediente (ej: Harina)" maxlength="60" value="${window.SC?.escapeHtml(nombre) ?? nombre}">
+        <input type="text" class="rf-ing-medida" placeholder="Cant. (ej: 50g, 1/2)" maxlength="40" value="${window.SC?.escapeHtml(medida) ?? medida}">
         <button type="button" class="rf-ing-quitar" aria-label="Quitar ingrediente">🗑️</button>
       </div>`;
   }
 
-  // Numera visualmente cada fila de ingrediente (1., 2., 3.…) según su posición actual.
+  // Una receta puede tener varias secciones (ej. "Masa" y "Relleno" en una
+  // empanada), cada una con su propia lista de ingredientes. El nombre de
+  // sección es opcional — si se deja vacío, esos ingredientes se guardan
+  // sueltos (sin encabezado) igual que en una receta simple sin subdivisiones.
+  function _grupoHtml(nombreSeccion = '', ingredientes = []) {
+    const filas = ingredientes.length ? ingredientes.map(i => _filaIngredienteHtml(i)).join('') : _filaIngredienteHtml();
+    return `
+      <div class="rf-grupo">
+        <div class="rf-grupo-head">
+          <input type="text" class="rf-grupo-nombre" placeholder="Nombre de la sección (opcional, ej: Masa)" maxlength="40" value="${window.SC?.escapeHtml(nombreSeccion) ?? nombreSeccion}">
+          <button type="button" class="rf-grupo-quitar" aria-label="Quitar sección">🗑️</button>
+        </div>
+        <div class="rf-grupo-ingredientes">${filas}</div>
+        <button type="button" class="rf-grupo-btn-agregar-ing">+ Agregar ingrediente</button>
+      </div>`;
+  }
+
+  // Numera visualmente cada fila de ingrediente (1., 2., 3.…) dentro de su sección.
   function _renumerarIngredientes() {
-    document.querySelectorAll('#rf-ingredientes-lista .rf-ing-row').forEach((row, idx) => {
-      const num = row.querySelector('.rf-ing-num');
-      if (num) num.textContent = (idx + 1) + '.';
+    document.querySelectorAll('#rf-ingredientes-lista .rf-grupo').forEach(grupo => {
+      grupo.querySelectorAll('.rf-ing-row').forEach((row, idx) => {
+        const num = row.querySelector('.rf-ing-num');
+        if (num) num.textContent = (idx + 1) + '.';
+      });
     });
   }
 
-  function _agregarFilaIngrediente(valores) {
+  function _agregarGrupo(nombreSeccion, ingredientes) {
     const lista = document.getElementById('rf-ingredientes-lista');
     if (!lista) return;
-    lista.insertAdjacentHTML('beforeend', _filaIngredienteHtml(valores));
+    lista.insertAdjacentHTML('beforeend', _grupoHtml(nombreSeccion, ingredientes));
+    _renumerarIngredientes();
+  }
+
+  function _agregarFilaEnGrupo(grupoEl, valores) {
+    const cont = grupoEl?.querySelector('.rf-grupo-ingredientes');
+    if (!cont) return;
+    cont.insertAdjacentHTML('beforeend', _filaIngredienteHtml(valores));
     _renumerarIngredientes();
   }
 
@@ -3730,11 +3755,18 @@ window.VistaAdmin = (function () {
 
     const lista = document.getElementById('rf-ingredientes-lista');
     if (lista) lista.innerHTML = '';
+    const secciones    = (receta?.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
     const ingredientes = (receta?.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
-    if (ingredientes.length) {
-      ingredientes.forEach(i => _agregarFilaIngrediente({ cantidad: i.ingrec_cantidad, unidad: i.ingrec_unidad, nombre: i.ingrec_nombre }));
+    const mapIng = i => ({ medida: i.ingrec_unidad, nombre: i.ingrec_nombre });
+
+    if (secciones.length) {
+      secciones.forEach(s => _agregarGrupo(s.seccion_nombre, ingredientes.filter(i => i.seccion_id === s.seccion_id).map(mapIng)));
+      const sinSeccion = ingredientes.filter(i => !i.seccion_id).map(mapIng);
+      if (sinSeccion.length) _agregarGrupo('', sinSeccion);
+    } else if (ingredientes.length) {
+      _agregarGrupo('', ingredientes.map(mapIng));
     } else {
-      _agregarFilaIngrediente();
+      _agregarGrupo('');
     }
 
     const bd = document.getElementById('receta-form-backdrop');
@@ -3765,19 +3797,23 @@ window.VistaAdmin = (function () {
     let valido = true;
     if (!titulo) { errTitulo.textContent = 'El título es obligatorio.'; errTitulo.style.display = 'block'; valido = false; }
 
-    const filas = [...document.querySelectorAll('#rf-ingredientes-lista .rf-ing-row')].map(row => ({
-      cantidad: parseFloat(row.querySelector('.rf-ing-cantidad')?.value),
-      unidad:   row.querySelector('.rf-ing-unidad')?.value ?? 'g',
-      nombre:   row.querySelector('.rf-ing-nombre')?.value.trim() ?? ''
-    })).filter(i => i.nombre || !isNaN(i.cantidad));
+    const grupos = [...document.querySelectorAll('#rf-ingredientes-lista .rf-grupo')].map(grupoEl => {
+      const nombreSeccion = grupoEl.querySelector('.rf-grupo-nombre')?.value.trim() ?? '';
+      const filas = [...grupoEl.querySelectorAll('.rf-ing-row')].map(row => ({
+        nombre: row.querySelector('.rf-ing-nombre')?.value.trim() ?? '',
+        medida: row.querySelector('.rf-ing-medida')?.value.trim() ?? ''
+      })).filter(i => i.nombre || i.medida);
+      return { nombreSeccion, filas };
+    });
 
-    const filasValidas = filas.filter(i => i.nombre && !isNaN(i.cantidad) && i.cantidad > 0);
+    const todasFilas   = grupos.flatMap(g => g.filas);
+    const filasValidas = todasFilas.filter(i => i.nombre && i.medida);
     if (!filasValidas.length) {
       errIng.textContent = 'Agrega al menos un ingrediente con cantidad y nombre.';
       errIng.style.display = 'block';
       valido = false;
-    } else if (filasValidas.length !== filas.length) {
-      errIng.textContent = 'Hay una fila incompleta — completa la cantidad y el nombre, o quítala.';
+    } else if (filasValidas.length !== todasFilas.length) {
+      errIng.textContent = 'Hay una fila incompleta — completa el ingrediente y la cantidad, o quítala.';
       errIng.style.display = 'block';
       valido = false;
     }
@@ -3792,6 +3828,7 @@ window.VistaAdmin = (function () {
     if (recId) {
       ({ error: err } = await window.db.from('recetas').update({ rec_titulo: titulo }).eq('rec_id', recId));
       if (!err) ({ error: err } = await window.db.from('receta_ingredientes').delete().eq('rec_id', recId));
+      if (!err) ({ error: err } = await window.db.from('receta_secciones').delete().eq('rec_id', recId));
     } else {
       const { data: nueva, error: errIns } = await window.db.from('recetas').insert({ rec_titulo: titulo }).select('rec_id').single();
       err = errIns;
@@ -3799,10 +3836,32 @@ window.VistaAdmin = (function () {
     }
 
     if (!err && recId) {
-      const filasInsert = filasValidas.map((i, idx) => ({
-        rec_id: recId, ingrec_cantidad: i.cantidad, ingrec_unidad: i.unidad, ingrec_nombre: i.nombre, ingrec_orden: idx
-      }));
-      ({ error: err } = await window.db.from('receta_ingredientes').insert(filasInsert));
+      // Solo los grupos con nombre y con al menos un ingrediente válido generan
+      // una fila en receta_secciones; los ingredientes sueltos (sin sección)
+      // se guardan con seccion_id = null, igual que una receta simple.
+      const gruposConNombre = grupos.filter(g => g.nombreSeccion && g.filas.some(f => f.nombre && f.medida));
+      let seccionesInsertadas = [];
+      if (gruposConNombre.length) {
+        const { data, error: errSec } = await window.db.from('receta_secciones').insert(
+          gruposConNombre.map((g, idx) => ({ rec_id: recId, seccion_nombre: g.nombreSeccion, seccion_orden: idx }))
+        ).select('seccion_id');
+        err = errSec;
+        seccionesInsertadas = data || [];
+      }
+
+      if (!err) {
+        const filasInsert = [];
+        let seccionIdx = 0;
+        grupos.forEach(g => {
+          const filasValidasGrupo = g.filas.filter(f => f.nombre && f.medida);
+          if (!filasValidasGrupo.length) return;
+          const seccionId = g.nombreSeccion ? (seccionesInsertadas[seccionIdx++]?.seccion_id ?? null) : null;
+          filasValidasGrupo.forEach((f, idx) => {
+            filasInsert.push({ rec_id: recId, seccion_id: seccionId, ingrec_unidad: f.medida, ingrec_nombre: f.nombre, ingrec_orden: idx });
+          });
+        });
+        if (filasInsert.length) ({ error: err } = await window.db.from('receta_ingredientes').insert(filasInsert));
+      }
     }
 
     btn.disabled = false;
@@ -3825,16 +3884,36 @@ window.VistaAdmin = (function () {
     document.getElementById('btn-cerrar-receta-form')?.addEventListener('click', _cerrarFormReceta);
     document.getElementById('btn-receta-cancel')?.addEventListener('click', _cerrarFormReceta);
     document.getElementById('btn-receta-save')?.addEventListener('click', _guardarReceta);
-    document.getElementById('rf-btn-agregar-ingrediente')?.addEventListener('click', () => _agregarFilaIngrediente());
+    document.getElementById('rf-btn-agregar-seccion')?.addEventListener('click', () => _agregarGrupo(''));
 
     document.getElementById('rf-ingredientes-lista')?.addEventListener('click', e => {
-      const btn = e.target.closest('.rf-ing-quitar');
-      if (!btn) return;
-      const lista = document.getElementById('rf-ingredientes-lista');
-      // Siempre debe quedar al menos una fila para poder seguir agregando.
-      if (lista.querySelectorAll('.rf-ing-row').length > 1) btn.closest('.rf-ing-row')?.remove();
-      else btn.closest('.rf-ing-row')?.querySelectorAll('input').forEach(inp => { inp.value = ''; });
-      _renumerarIngredientes();
+      const btnAgregarIng = e.target.closest('.rf-grupo-btn-agregar-ing');
+      if (btnAgregarIng) { _agregarFilaEnGrupo(btnAgregarIng.closest('.rf-grupo')); return; }
+
+      const btnQuitarIng = e.target.closest('.rf-ing-quitar');
+      if (btnQuitarIng) {
+        const cont = btnQuitarIng.closest('.rf-grupo')?.querySelector('.rf-grupo-ingredientes');
+        // Siempre debe quedar al menos una fila por sección para poder seguir agregando.
+        if (cont && cont.querySelectorAll('.rf-ing-row').length > 1) btnQuitarIng.closest('.rf-ing-row')?.remove();
+        else btnQuitarIng.closest('.rf-ing-row')?.querySelectorAll('input').forEach(inp => { inp.value = ''; });
+        _renumerarIngredientes();
+        return;
+      }
+
+      const btnQuitarGrupo = e.target.closest('.rf-grupo-quitar');
+      if (btnQuitarGrupo) {
+        const lista = document.getElementById('rf-ingredientes-lista');
+        const grupoEl = btnQuitarGrupo.closest('.rf-grupo');
+        // Siempre debe quedar al menos una sección para poder seguir agregando.
+        if (lista.querySelectorAll('.rf-grupo').length > 1) {
+          grupoEl?.remove();
+        } else if (grupoEl) {
+          grupoEl.querySelector('.rf-grupo-nombre').value = '';
+          const cont = grupoEl.querySelector('.rf-grupo-ingredientes');
+          if (cont) cont.innerHTML = _filaIngredienteHtml();
+        }
+        _renumerarIngredientes();
+      }
     });
 
     document.addEventListener('keydown', e => {
