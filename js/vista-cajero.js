@@ -8,6 +8,7 @@ window.VistaCajero = (function () {
   const MAX_STOCK = 20;
   let _diaOffset = 0;
   let _pedidoParaCobrar = null;
+  let _pedidoParaDividir = null;
   let _ultimoCobro = null; // { pedido, factNumero, metodoPagoNombre, montoPagado, cambio }
   let _correoNotaCtx = null; // { pedido, factNumero, metodoPagoNombre, fechaCobro }
 
@@ -509,6 +510,9 @@ window.VistaCajero = (function () {
         </div>
         <div class="cajero-order-card__foot" style="gap:.5rem">
           <button class="btn-cobrar" data-pedido-id="${p.id}" style="flex:2">Cobrado ✓</button>
+          ${items.length > 1 || (items[0]?.cantidad ?? 0) > 1
+            ? `<button class="btn-dividir" data-pedido-id="${p.id}" style="flex:1">✂️ Dividir</button>`
+            : ''}
           <button class="btn-anular" data-pedido-id="${p.id}" style="flex:1">Anular</button>
         </div>
       </div>`;
@@ -518,6 +522,12 @@ window.VistaCajero = (function () {
       const btnCobrar = e.target.closest('.btn-cobrar');
       if (btnCobrar) {
         abrirModalPago(btnCobrar.dataset.pedidoId);
+        return;
+      }
+      const btnDividir = e.target.closest('.btn-dividir');
+      if (btnDividir) {
+        const pedido = SC.leerCaja().find(p => String(p.id) === String(btnDividir.dataset.pedidoId));
+        if (pedido) abrirModalDividirCuenta(pedido);
         return;
       }
       const btnAnular = e.target.closest('.btn-anular');
@@ -867,6 +877,92 @@ window.VistaCajero = (function () {
       document.body.style.overflow = document.documentElement.style.overflow = '';
     }
     _pedidoParaCobrar = null;
+  }
+
+  /* ─────────────────────────────────────────────────────
+     MODAL DIVIDIR CUENTA — mueve las líneas elegidas a un pedido nuevo
+     (dividirPedido) y de una vez abre el modal de pago normal sobre ese
+     pedido nuevo, para cobrar esa porción con el flujo de siempre.
+  ───────────────────────────────────────────────────── */
+  function abrirModalDividirCuenta(pedido) {
+    const SC = window.SC;
+    _pedidoParaDividir = pedido.id;
+    const listaEl = document.getElementById('dividir-cuenta-lista');
+    if (!listaEl) return;
+
+    listaEl.innerHTML = (pedido.items || []).map(it => {
+      const { individual, resto } = LogicaCarrito.formatoExclusiones(it.exclusiones);
+      const detalles = [
+        it.paraLlevar && !pedido.paraLlevar ? '🥡 Para llevar' : '',
+        individual ? 'Individual' : '',
+        it.opcionesElegidas?.length ? _fmtOpcionesElegidas(it.opcionesElegidas) : '',
+        resto.length ? `sin: ${resto.join(', ')}` : ''
+      ].filter(Boolean).join(' · ');
+      return `
+      <div class="dividir-item" data-precio="${it.precio}" data-max="${it.cantidad}" data-detped-id="${it.detpedId}">
+        <div class="dividir-item__info">
+          <span class="dividir-item__nombre">${SC.escapeHtml(it.nombre)}</span>
+          <span class="dividir-item__precio">$${it.precio.toFixed(2)} c/u${detalles ? ' · ' + SC.escapeHtml(detalles) : ''} · ${it.cantidad} en total</span>
+        </div>
+        <div class="dividir-item__stepper">
+          <button type="button" class="dividir-stepper-btn" data-dir="-1" aria-label="Restar">−</button>
+          <input type="number" class="dividir-item__input" min="0" max="${it.cantidad}" value="0" inputmode="numeric" aria-label="Cantidad de ${SC.escapeHtml(it.nombre)} para este cobro">
+          <button type="button" class="dividir-stepper-btn" data-dir="1" aria-label="Sumar">+</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    _actualizarResumenDividir(pedido);
+
+    const errEl = document.getElementById('dividir-cuenta-error');
+    if (errEl) { errEl.textContent = ''; errEl.style.display = 'none'; }
+
+    const backdrop = document.getElementById('dividir-cuenta-backdrop');
+    if (backdrop) {
+      backdrop.classList.add('open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      document.body.style.overflow = document.documentElement.style.overflow = 'hidden';
+    }
+  }
+
+  function cerrarModalDividirCuenta() {
+    const backdrop = document.getElementById('dividir-cuenta-backdrop');
+    if (backdrop) {
+      backdrop.classList.remove('open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      document.body.style.overflow = document.documentElement.style.overflow = '';
+    }
+    _pedidoParaDividir = null;
+  }
+
+  // Recalcula el subtotal seleccionado a partir de los inputs del modal —
+  // se llama en cada cambio de cantidad. Devuelve también la selección ya
+  // armada en el formato que espera SC.dividirPedido.
+  function _actualizarResumenDividir(pedido) {
+    const listaEl     = document.getElementById('dividir-cuenta-lista');
+    const subtotalEl   = document.getElementById('dividir-cuenta-subtotal');
+    const restoEl       = document.getElementById('dividir-cuenta-resto');
+    const confirmBtn    = document.getElementById('btn-confirmar-dividir-cuenta');
+    if (!listaEl) return { subtotal: 0, seleccion: [] };
+
+    let subtotal = 0;
+    const seleccion = [];
+    listaEl.querySelectorAll('.dividir-item').forEach(row => {
+      const precio = parseFloat(row.dataset.precio) || 0;
+      const cant   = parseInt(row.querySelector('.dividir-item__input')?.value, 10) || 0;
+      if (cant > 0) {
+        subtotal += precio * cant;
+        seleccion.push({ detpedId: row.dataset.detpedId, cantidad: cant });
+      }
+    });
+
+    const total = pedido.total || 0;
+    if (subtotalEl) subtotalEl.textContent = `$${subtotal.toFixed(2)}`;
+    if (restoEl) restoEl.textContent = `$${Math.max(0, total - subtotal).toFixed(2)}`;
+    // No se puede dividir el 100% — para eso ya está "Cobrar" directo.
+    if (confirmBtn) confirmBtn.disabled = subtotal <= 0 || subtotal >= total - 0.001;
+
+    return { subtotal, seleccion };
   }
 
   /* ─────────────────────────────────────────────────────
@@ -1330,6 +1426,69 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         btnConfirmarCorreoNota.disabled    = false;
         btnConfirmarCorreoNota.textContent = '✉️ Enviar';
         if (ok) _cerrarModalCorreoNota();
+      });
+    }
+
+    /* ── Modal Dividir cuenta ── */
+    const dividirLista        = document.getElementById('dividir-cuenta-lista');
+    const btnCerrarDividir    = document.getElementById('btn-close-dividir-cuenta');
+    const btnConfirmarDividir = document.getElementById('btn-confirmar-dividir-cuenta');
+    const dividirErrEl        = document.getElementById('dividir-cuenta-error');
+
+    if (btnCerrarDividir) btnCerrarDividir.addEventListener('click', cerrarModalDividirCuenta);
+    // backdrop: solo se cierra con el botón X, mismo criterio que el modal de pago.
+
+    const _pedidoEnDivision = () => window.SC.leerCaja().find(p => String(p.id) === String(_pedidoParaDividir));
+
+    if (dividirLista) {
+      dividirLista.addEventListener('click', e => {
+        const btn = e.target.closest('.dividir-stepper-btn');
+        if (!btn) return;
+        const row   = btn.closest('.dividir-item');
+        const input = row?.querySelector('.dividir-item__input');
+        if (!input) return;
+        const max = parseInt(row.dataset.max, 10) || 0;
+        let val = (parseInt(input.value, 10) || 0) + (btn.dataset.dir === '1' ? 1 : -1);
+        input.value = Math.max(0, Math.min(max, val));
+        const pedido = _pedidoEnDivision();
+        if (pedido) _actualizarResumenDividir(pedido);
+      });
+      dividirLista.addEventListener('input', e => {
+        if (!e.target.classList.contains('dividir-item__input')) return;
+        const row = e.target.closest('.dividir-item');
+        const max = parseInt(row?.dataset.max, 10) || 0;
+        let val = parseInt(e.target.value, 10);
+        if (isNaN(val) || val < 0) val = 0;
+        if (val > max) val = max;
+        e.target.value = val;
+        const pedido = _pedidoEnDivision();
+        if (pedido) _actualizarResumenDividir(pedido);
+      });
+    }
+
+    if (btnConfirmarDividir) {
+      btnConfirmarDividir.addEventListener('click', async () => {
+        const SC = window.SC;
+        const pedido = _pedidoEnDivision();
+        if (!pedido) return;
+        const { seleccion } = _actualizarResumenDividir(pedido);
+        if (!seleccion.length) return;
+
+        if (dividirErrEl) { dividirErrEl.textContent = ''; dividirErrEl.style.display = 'none'; }
+        btnConfirmarDividir.disabled = true;
+        btnConfirmarDividir.textContent = 'Dividiendo…';
+
+        const nuevoPedId = await SC.dividirPedido(pedido.id, seleccion);
+
+        btnConfirmarDividir.disabled = false;
+        btnConfirmarDividir.textContent = '✓ Cobrar esta parte';
+        if (!nuevoPedId) return; // el error ya se mostró vía toast dentro de dividirPedido
+
+        cerrarModalDividirCuenta();
+        await SC.recargarCaja();
+        renderCajeroView();
+        window.VistaAdmin?.renderAdminPedidos?.();
+        abrirModalPago(nuevoPedId);
       });
     }
   }

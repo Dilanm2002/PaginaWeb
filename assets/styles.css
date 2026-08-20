@@ -760,6 +760,49 @@
     .btn-anular:hover { background: #fef2f2; border-color: #dc2626; }
     .btn-anular:disabled { opacity: .5; cursor: not-allowed; }
 
+    .btn-dividir {
+      background: transparent; color: var(--cinnamon);
+      border: 1.5px solid rgba(200,86,26,.35); border-radius: var(--radius-sm);
+      padding: .5rem 1rem; font-size: .84rem; font-weight: 700;
+      cursor: pointer; transition: background .2s, border-color .2s;
+      display: flex; align-items: center; gap: .35rem;
+    }
+    .btn-dividir:hover { background: rgba(200,86,26,.08); border-color: var(--cinnamon); }
+    .btn-dividir:disabled { opacity: .5; cursor: not-allowed; }
+
+    /* Modal Dividir cuenta */
+    .dividir-item {
+      display: flex; align-items: center; justify-content: space-between; gap: .75rem;
+      padding: .65rem 0; border-bottom: 1px solid var(--border);
+    }
+    .dividir-item:last-child { border-bottom: none; }
+    .dividir-item__info { display: flex; flex-direction: column; gap: .1rem; min-width: 0; }
+    .dividir-item__nombre { font-size: .9rem; font-weight: 600; color: var(--text); }
+    .dividir-item__precio { font-size: .74rem; color: var(--text-muted); }
+    .dividir-item__stepper { display: flex; align-items: center; gap: .4rem; flex-shrink: 0; }
+    .dividir-stepper-btn {
+      width: 28px; height: 28px; border-radius: 50%; border: 1.5px solid var(--border);
+      background: var(--cream); color: var(--brown-dark); font-size: 1rem; font-weight: 700;
+      cursor: pointer; display: flex; align-items: center; justify-content: center; transition: all .15s;
+    }
+    .dividir-stepper-btn:hover { border-color: var(--cinnamon); color: var(--cinnamon); }
+    .dividir-item__input {
+      width: 42px; text-align: center; padding: .3rem 0; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .9rem; font-weight: 700; font-family: inherit;
+      color: var(--text); background: var(--cream);
+    }
+    .dividir-item__input:focus { outline: none; border-color: var(--cinnamon); }
+    .dividir-cuenta-resumen {
+      display: flex; justify-content: space-between; gap: 1rem;
+      margin-top: .9rem; padding-top: .75rem; border-top: 2px solid var(--border);
+      font-size: .88rem;
+    }
+    .dividir-cuenta-resumen div { display: flex; flex-direction: column; gap: .1rem; }
+    .dividir-cuenta-resumen span { font-size: .72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: .04em; }
+    .dividir-cuenta-resumen strong { font-size: 1.05rem; color: var(--cinnamon); }
+    .dividir-cuenta-resumen div:last-child { align-items: flex-end; }
+    .dividir-cuenta-resumen div:last-child strong { color: var(--text-muted); }
+
     .cajero-empty {
       grid-column: 1 / -1; text-align: center;
       padding: 4rem 1rem; color: var(--text-muted);

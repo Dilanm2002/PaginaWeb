@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260819b">
+  <link rel="stylesheet" href="assets/styles.css?v=20260819c">
 </head>
 <body>
 
@@ -1328,6 +1328,31 @@
     </div>
   </div>
 
+  <!-- ══ MODAL DIVIDIR CUENTA ══
+       Para cuando distintos grupos de una misma mesa pagan por separado —
+       elige cuántas unidades de cada plato paga este grupo; el resto queda
+       en el pedido original para seguir dividiéndolo o cobrarlo normal. -->
+  <div id="dividir-cuenta-backdrop" class="mesa-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="dividir-cuenta-titulo">
+    <div class="mesa-modal-box" style="max-width:440px">
+      <div class="mesa-modal-head">
+        <h2 id="dividir-cuenta-titulo">Dividir cuenta</h2>
+        <button id="btn-close-dividir-cuenta" class="btn-close" aria-label="Cerrar">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </div>
+      <div class="mesa-modal-body">
+        <p style="font-size:.82rem;color:var(--text-muted);margin:0 0 .85rem">Marca cuántas unidades de cada plato paga este grupo. El resto queda en el pedido para cobrarse después.</p>
+        <div id="dividir-cuenta-lista"></div>
+        <div class="dividir-cuenta-resumen">
+          <div><span>Este cobro</span><strong id="dividir-cuenta-subtotal">$0.00</strong></div>
+          <div><span>Queda pendiente</span><strong id="dividir-cuenta-resto">$0.00</strong></div>
+        </div>
+        <span id="dividir-cuenta-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
+        <button id="btn-confirmar-dividir-cuenta" class="btn-confirmar-mesa">✓ Cobrar esta parte</button>
+      </div>
+    </div>
+  </div>
+
   <!-- ══ MODAL PAGO ══ -->
   <div id="pago-modal-backdrop" class="pago-modal-backdrop" role="dialog" aria-modal="true" aria-hidden="true" aria-labelledby="pago-modal-title">
     <div class="pago-modal-box">
@@ -1499,15 +1524,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260819b"></script>
-  <script src="js/logica-carrito.js?v=20260819b"></script>
-  <script src="js/carrito.js?v=20260819b"></script>
-  <script src="js/vista.js?v=20260819b"></script>
-  <script src="js/aplicacion.js?v=20260819b"></script>
-  <script src="js/vista-cajero.js?v=20260819b"></script>
-  <script src="js/vista-admin.js?v=20260819b"></script>
-  <script src="js/vista-menu.js?v=20260819b"></script>
-  <script src="js/vista-cocina.js?v=20260819b"></script>
+  <script src="js/autenticacion.js?v=20260819c"></script>
+  <script src="js/logica-carrito.js?v=20260819c"></script>
+  <script src="js/carrito.js?v=20260819c"></script>
+  <script src="js/vista.js?v=20260819c"></script>
+  <script src="js/aplicacion.js?v=20260819c"></script>
+  <script src="js/vista-cajero.js?v=20260819c"></script>
+  <script src="js/vista-admin.js?v=20260819c"></script>
+  <script src="js/vista-menu.js?v=20260819c"></script>
+  <script src="js/vista-cocina.js?v=20260819c"></script>
 
   <script>
   'use strict';
@@ -1616,6 +1641,9 @@
       fecha:         _isoFechaALocale(r.ped_fecha),
       items:         (r.detalle_pedidos || []).map(d => ({
         id:          d.plat_id,
+        // Fila exacta en detalle_pedidos — necesaria para "Dividir cuenta"
+        // (dividirPedido), que mueve/parte líneas puntuales, no solo platos.
+        detpedId:    d.detped_id,
         nombre:      d.platos?.plat_nombre ?? '?',
         precio:      parseFloat(d.detped_precio_unit ?? 0),
         cantidad:    d.detped_cantidad ?? 1,
@@ -2243,6 +2271,28 @@
 
     CarritoIDB.guardar(entrada).catch(() => {});
     return { pedido: cobrado, factNumero: resultado.fact_numero, factId: resultado.fact_id };
+  }
+
+  // Divide un pedido pendiente en dos — mueve/parte las líneas elegidas
+  // (items: [{detpedId, cantidad}]) a un pedido nuevo, para que un grupo de
+  // la misma mesa pueda pagar su parte por separado. El pedido nuevo queda
+  // 'pendiente' igual que el original, listo para cobrarse con el flujo
+  // normal (cobrarPedido) — dividir no cobra nada por sí solo.
+  async function dividirPedido(id, items) {
+    const session = ModuloAutenticacion.getSession();
+    const { data: resultado, error } = await db.rpc('dividir_pedido', {
+      p_token:  session?.token ?? null,
+      p_ped_id: String(id),
+      p_items:  items.map(i => ({ detped_id: i.detpedId, cantidad: i.cantidad }))
+    });
+
+    if (error || !resultado?.ok) {
+      console.error('Supabase dividir_pedido (RPC):', error, resultado);
+      toast(error?.message || resultado?.msg || 'Error al dividir el pedido', 'error');
+      return null;
+    }
+
+    return resultado.nuevo_ped_id;
   }
 
   // Anula un pedido pendiente (no cobrado) — p.ej. el cliente se fue o se
@@ -3140,7 +3190,7 @@
     insertarGasto, eliminarGasto,
     leerCategoriasGasto, crearCategoriaGasto, recargarCategoriasGasto,
     getStock, getProductosMergeados, getAllProductosMergeados, toggleActivoProductoDB,
-    cobrarPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad, cambiarMesaPedido, abrirModalCambiarMesa, llamarMesero,
+    cobrarPedido, dividirPedido, anularPedido, actualizarPedido, actualizarStock, reponerStock, despacharPedido, marcarPrioridad, cambiarMesaPedido, abrirModalCambiarMesa, llamarMesero,
     guardarMenuItemDB, eliminarMenuItemDB,
     getCategoriasColores, crearCategoriaConColor, actualizarFiltrosMenu,
     comprimirImagen, toast, escapeHtml,
