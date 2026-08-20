@@ -1528,6 +1528,6 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 
   return {
     renderCajeroView, renderResumenDia, renderGastos, renderStock, init,
-    imprimirNotaVenta, enviarNotaVentaPorCorreo, abrirModalCorreoNota
+    imprimirNotaVenta, enviarNotaVentaPorCorreo, abrirModalCorreoNota, cerrarModalPago
   };
 })();
