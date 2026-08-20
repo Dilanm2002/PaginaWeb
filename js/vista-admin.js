@@ -1692,6 +1692,7 @@ window.VistaAdmin = (function () {
     try { _initAdminNav();     } catch (e) { console.error('_initAdminNav:', e);     window.SC?.toast?.('Error iniciando navegación admin: ' + (e?.message || e), 'error'); }
     try { _initRRHH();         } catch (e) { console.error('_initRRHH:', e);         window.SC?.toast?.('Error iniciando Recursos Humanos: ' + (e?.message || e), 'error'); }
     try { _initFormReceta();   } catch (e) { console.error('_initFormReceta:', e);   window.SC?.toast?.('Error iniciando Recetas: ' + (e?.message || e), 'error'); }
+    try { _initRecetasNav();   } catch (e) { console.error('_initRecetasNav:', e);   window.SC?.toast?.('Error iniciando navegación de Recetas: ' + (e?.message || e), 'error'); }
   }
 
   async function renderReportes(periodo) {
@@ -3622,77 +3623,155 @@ window.VistaAdmin = (function () {
   // ══════════════════════════════════════════════════════════════
 
   let _recetaEditId = null; // rec_id en edición, null = nueva
+  let _recetasCache = [];   // último listado cargado, ordenado por título
+  let _recetaActualIdx = 0; // índice de la receta que se ve en el cuaderno
 
-  async function renderRecetas() {
-    const el = document.getElementById('admin-recetas-lista');
-    if (!el) return;
-    el.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
+  const _tagIngredienteHtml = i => {
+    const SC = window.SC;
+    return `<span class="receta-ing-tag"><b class="receta-ing-medida">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</b> ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`;
+  };
+
+  function _pintarSelectorRecetas(lista) {
+    const selector = document.getElementById('receta-selector');
+    if (!selector) return;
+    const SC = window.SC;
+    selector.innerHTML = '<option value="">— Elegir receta —</option>' +
+      lista.map(r => `<option value="${r.rec_id}">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</option>`).join('');
+  }
+
+  // Carga el listado completo (para el buscador/desplegable/flechas) y
+  // muestra una sola receta a la vez, tipo hoja de cuaderno — preferId
+  // fuerza cuál mostrar (ej. la que se acaba de guardar).
+  async function renderRecetas(preferId) {
+    const notebook = document.getElementById('receta-notebook');
+    const nav       = document.getElementById('receta-nav');
+    if (!notebook) return;
+    notebook.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
 
     const { data, error } = await window.db
       .from('recetas')
       .select('rec_id, rec_titulo, receta_secciones(seccion_id, seccion_nombre, seccion_orden), receta_ingredientes(ingrec_id, ingrec_unidad, ingrec_nombre, ingrec_orden, seccion_id)')
       .order('rec_titulo');
 
-    if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>'; return; }
-    if (!data || !data.length) {
-      el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay recetas registradas aún.</p>';
+    if (error) {
+      notebook.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>';
+      if (nav) nav.style.display = 'none';
+      _pintarSelectorRecetas([]);
       return;
     }
 
+    _recetasCache = data || [];
+    _pintarSelectorRecetas(_recetasCache);
+
+    if (!_recetasCache.length) {
+      notebook.innerHTML = '<p class="receta-notebook__vacio">📖 No hay recetas registradas aún.<br>Crea la primera con "+ Nueva receta".</p>';
+      if (nav) nav.style.display = 'none';
+      return;
+    }
+
+    if (preferId) {
+      const idx = _recetasCache.findIndex(r => r.rec_id === preferId);
+      if (idx >= 0) _recetaActualIdx = idx;
+    } else if (_recetaActualIdx >= _recetasCache.length) {
+      _recetaActualIdx = 0;
+    }
+    _mostrarRecetaActual();
+  }
+
+  function _mostrarRecetaActual() {
+    const notebook  = document.getElementById('receta-notebook');
+    const nav       = document.getElementById('receta-nav');
+    const navLabel  = document.getElementById('receta-nav-label');
+    const selector  = document.getElementById('receta-selector');
+    if (!notebook || !_recetasCache.length) return;
+
     const SC = window.SC;
-    const tagHtml = i => `<span class="receta-ing-tag"><b class="receta-ing-medida">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</b> ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`;
+    const r  = _recetasCache[_recetaActualIdx];
+    const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
+    const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
 
-    el.innerHTML = data.map(r => {
-      const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
-      const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
-
-      let bodyHtml;
-      if (secciones.length) {
-        const sinSeccion = ingredientes.filter(i => !i.seccion_id);
-        bodyHtml = secciones.map(s => {
-          const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
-          return `<div class="receta-seccion">
-            <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
-            <div class="receta-row__ingredientes">${propios.length ? propios.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>
-          </div>`;
-        }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
-            <div class="receta-seccion__titulo">Otros ingredientes</div>
-            <div class="receta-row__ingredientes">${sinSeccion.map(tagHtml).join('')}</div>
-          </div>` : '');
-      } else {
-        bodyHtml = `<div class="receta-row__ingredientes">${ingredientes.length ? ingredientes.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>`;
-      }
-
-      return `
-        <div class="emp-row receta-card" data-rec-id="${r.rec_id}">
-          <div class="receta-row">
-            <div style="flex:1;min-width:200px">
-              <div class="receta-row__titulo"><span class="receta-row__icono">🍽️</span>${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
-              ${bodyHtml}
-            </div>
-            <div class="usu-rol-wrap">
-              <button class="usu-btn-cambiar receta-btn-editar" data-rec-id="${r.rec_id}">✏️ Editar</button>
-              <button class="usu-btn-eliminar receta-btn-eliminar" data-rec-id="${r.rec_id}" data-titulo="${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}">🗑 Eliminar</button>
-            </div>
-          </div>
+    let bodyHtml;
+    if (secciones.length) {
+      const sinSeccion = ingredientes.filter(i => !i.seccion_id);
+      bodyHtml = secciones.map(s => {
+        const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
+        return `<div class="receta-seccion">
+          <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
+          <div class="receta-row__ingredientes">${propios.length ? propios.map(_tagIngredienteHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>
         </div>`;
-    }).join('');
+      }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
+          <div class="receta-seccion__titulo">Otros ingredientes</div>
+          <div class="receta-row__ingredientes">${sinSeccion.map(_tagIngredienteHtml).join('')}</div>
+        </div>` : '');
+    } else {
+      bodyHtml = `<div class="receta-row__ingredientes">${ingredientes.length ? ingredientes.map(_tagIngredienteHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>`;
+    }
 
-    el.querySelectorAll('.receta-btn-editar').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const receta = data.find(r => r.rec_id === btn.dataset.recId);
-        if (receta) _abrirFormReceta(receta);
-      });
+    notebook.innerHTML = `
+      <div class="receta-notebook__pagina" data-rec-id="${r.rec_id}">
+        <div class="receta-notebook__titulo">🍽️ ${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
+        <div class="receta-notebook__cuerpo">${bodyHtml}</div>
+        <div class="receta-notebook__acciones">
+          <button class="usu-btn-cambiar receta-btn-editar">✏️ Editar</button>
+          <button class="usu-btn-eliminar receta-btn-eliminar">🗑 Eliminar</button>
+        </div>
+      </div>`;
+
+    if (nav) nav.style.display = _recetasCache.length > 1 ? 'flex' : 'none';
+    if (navLabel) navLabel.textContent = `${_recetaActualIdx + 1} / ${_recetasCache.length}`;
+    if (selector) selector.value = r.rec_id;
+
+    notebook.querySelector('.receta-btn-editar')?.addEventListener('click', () => _abrirFormReceta(r));
+    notebook.querySelector('.receta-btn-eliminar')?.addEventListener('click', async () => {
+      const confirmado = await _modalConfirmar(r.rec_titulo, '¿Eliminar esta receta?');
+      if (!confirmado) return;
+      const { error: errDel } = await window.db.from('recetas').delete().eq('rec_id', r.rec_id);
+      if (errDel) { SC?.toast('Error al eliminar la receta', 'error'); return; }
+      SC?.toast('Receta eliminada ✓', 'success');
+      renderRecetas();
     });
-    el.querySelectorAll('.receta-btn-eliminar').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const confirmado = await _modalConfirmar(btn.dataset.titulo, '¿Eliminar esta receta?');
-        if (!confirmado) return;
-        const { error: errDel } = await window.db.from('recetas').delete().eq('rec_id', btn.dataset.recId);
-        if (errDel) { SC?.toast('Error al eliminar la receta', 'error'); return; }
-        SC?.toast('Receta eliminada ✓', 'success');
-        renderRecetas();
-      });
+  }
+
+  function _irARecetaIdx(idx) {
+    if (!_recetasCache.length) return;
+    _recetaActualIdx = ((idx % _recetasCache.length) + _recetasCache.length) % _recetasCache.length;
+    _mostrarRecetaActual();
+  }
+
+  function _initRecetasNav() {
+    document.getElementById('receta-nav-ant')?.addEventListener('click', () => _irARecetaIdx(_recetaActualIdx - 1));
+    document.getElementById('receta-nav-sig')?.addEventListener('click', () => _irARecetaIdx(_recetaActualIdx + 1));
+
+    document.getElementById('receta-selector')?.addEventListener('change', e => {
+      const idx = _recetasCache.findIndex(r => r.rec_id === e.target.value);
+      if (idx >= 0) _irARecetaIdx(idx);
+    });
+
+    const buscadorInp = document.getElementById('receta-buscador');
+    const buscadorRes = document.getElementById('receta-buscador-resultados');
+    buscadorInp?.addEventListener('input', () => {
+      const q = buscadorInp.value.trim().toLowerCase();
+      if (!buscadorRes) return;
+      if (!q) { buscadorRes.style.display = 'none'; return; }
+      const SC = window.SC;
+      const coincidencias = _recetasCache.filter(r => r.rec_titulo.toLowerCase().includes(q)).slice(0, 6);
+      buscadorRes.innerHTML = coincidencias.length
+        ? coincidencias.map(r => `<button type="button" class="receta-buscador-item" data-rec-id="${r.rec_id}">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</button>`).join('')
+        : '<div class="receta-buscador-vacio">Sin resultados</div>';
+      buscadorRes.style.display = 'block';
+    });
+    buscadorRes?.addEventListener('click', e => {
+      const btn = e.target.closest('.receta-buscador-item');
+      if (!btn) return;
+      const idx = _recetasCache.findIndex(r => r.rec_id === btn.dataset.recId);
+      if (idx >= 0) _irARecetaIdx(idx);
+      if (buscadorInp) buscadorInp.value = '';
+      buscadorRes.style.display = 'none';
+    });
+    document.addEventListener('click', e => {
+      if (buscadorRes && buscadorRes.style.display !== 'none' && !buscadorRes.contains(e.target) && e.target !== buscadorInp) {
+        buscadorRes.style.display = 'none';
+      }
     });
   }
 
@@ -3879,7 +3958,7 @@ window.VistaAdmin = (function () {
 
     _cerrarFormReceta();
     SC?.toast(`Receta "${titulo}" guardada ✓`, 'success');
-    renderRecetas();
+    renderRecetas(recId);
   }
 
   function _initFormReceta() {
