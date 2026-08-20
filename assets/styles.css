@@ -4502,15 +4502,30 @@
   .rf-btn-agregar-ing:hover { background: rgba(200,86,26,.12); }
 
   /* Lista de recetas */
+  .receta-card { padding: 1.15rem 1.3rem; }
   .receta-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; flex-wrap: wrap; }
-  .receta-row__titulo { font-weight: 700; color: var(--brown-dark); font-size: 1rem; margin-bottom: .35rem; }
-  .receta-seccion { margin-bottom: .5rem; }
-  .receta-seccion__titulo { font-weight: 700; color: var(--cinnamon); font-size: .78rem; text-transform: uppercase; letter-spacing: .03em; margin-bottom: .3rem; }
-  .receta-row__ingredientes { display: flex; flex-wrap: wrap; gap: .4rem; }
-  .receta-ing-tag {
-    background: var(--cream-dk); border: 1px solid var(--border); border-radius: 999px;
-    padding: .18rem .65rem; font-size: .78rem; color: var(--text);
+  .receta-row__titulo {
+    display: flex; align-items: center; gap: .45rem;
+    font-weight: 700; color: var(--brown-dark); font-size: 1.08rem; margin-bottom: .7rem;
   }
+  .receta-row__icono { font-size: 1.15em; line-height: 1; }
+  .receta-seccion {
+    padding: .55rem .75rem; margin-bottom: .55rem;
+    background: rgba(200,86,26,.035); border-left: 3px solid var(--cinnamon); border-radius: 0 8px 8px 0;
+  }
+  .receta-seccion:last-child { margin-bottom: 0; }
+  .receta-seccion--suelta { background: transparent; border-left-color: var(--border); }
+  .receta-seccion__titulo {
+    display: inline-block; font-weight: 700; color: var(--cinnamon); font-size: .72rem;
+    text-transform: uppercase; letter-spacing: .05em; margin-bottom: .4rem;
+  }
+  .receta-seccion--suelta .receta-seccion__titulo { color: var(--text-muted); }
+  .receta-row__ingredientes { display: flex; flex-wrap: wrap; gap: .45rem; }
+  .receta-ing-tag {
+    background: #fff; border: 1px solid var(--border); border-radius: 8px;
+    padding: .3rem .7rem; font-size: .8rem; color: var(--text); box-shadow: 0 1px 2px rgba(59,26,8,.04);
+  }
+  .receta-ing-medida { color: var(--cinnamon); font-weight: 700; }
   .ef-rol-group { display: flex; gap: 1rem; flex-wrap: wrap; padding: .55rem 0; }
   .ef-rol-check {
     display: flex;

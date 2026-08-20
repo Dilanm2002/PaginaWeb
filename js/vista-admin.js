@@ -3640,7 +3640,7 @@ window.VistaAdmin = (function () {
     }
 
     const SC = window.SC;
-    const tagHtml = i => `<span class="receta-ing-tag">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`;
+    const tagHtml = i => `<span class="receta-ing-tag"><b class="receta-ing-medida">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</b> ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`;
 
     el.innerHTML = data.map(r => {
       const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
@@ -3655,16 +3655,19 @@ window.VistaAdmin = (function () {
             <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
             <div class="receta-row__ingredientes">${propios.length ? propios.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>
           </div>`;
-        }).join('') + (sinSeccion.length ? `<div class="receta-row__ingredientes">${sinSeccion.map(tagHtml).join('')}</div>` : '');
+        }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
+            <div class="receta-seccion__titulo">Otros ingredientes</div>
+            <div class="receta-row__ingredientes">${sinSeccion.map(tagHtml).join('')}</div>
+          </div>` : '');
       } else {
         bodyHtml = `<div class="receta-row__ingredientes">${ingredientes.length ? ingredientes.map(tagHtml).join('') : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}</div>`;
       }
 
       return `
-        <div class="emp-row" data-rec-id="${r.rec_id}">
+        <div class="emp-row receta-card" data-rec-id="${r.rec_id}">
           <div class="receta-row">
             <div style="flex:1;min-width:200px">
-              <div class="receta-row__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
+              <div class="receta-row__titulo"><span class="receta-row__icono">🍽️</span>${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
               ${bodyHtml}
             </div>
             <div class="usu-rol-wrap">
