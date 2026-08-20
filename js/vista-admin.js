@@ -3661,7 +3661,7 @@ window.VistaAdmin = (function () {
               <div class="receta-row__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
               <div class="receta-row__ingredientes">
                 ${ingredientes.length
-                  ? ingredientes.map(i => `<span class="receta-ing-tag">${i.ingrec_cantidad}${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`).join('')
+                  ? ingredientes.map((i, idx) => `<span class="receta-ing-tag"><b>${idx + 1}.</b> ${i.ingrec_cantidad}${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`).join('')
                   : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}
               </div>
             </div>
@@ -3695,6 +3695,7 @@ window.VistaAdmin = (function () {
     const { cantidad = '', unidad = 'g', nombre = '' } = valores;
     return `
       <div class="rf-ing-row">
+        <span class="rf-ing-num"></span>
         <input type="number" class="rf-ing-cantidad" placeholder="Cant." min="0" step="0.01" value="${cantidad}">
         <select class="rf-ing-unidad">
           ${_UNIDADES_RECETA.map(u => `<option value="${u.v}"${u.v === unidad ? ' selected' : ''}>${u.l}</option>`).join('')}
@@ -3704,10 +3705,19 @@ window.VistaAdmin = (function () {
       </div>`;
   }
 
+  // Numera visualmente cada fila de ingrediente (1., 2., 3.…) según su posición actual.
+  function _renumerarIngredientes() {
+    document.querySelectorAll('#rf-ingredientes-lista .rf-ing-row').forEach((row, idx) => {
+      const num = row.querySelector('.rf-ing-num');
+      if (num) num.textContent = (idx + 1) + '.';
+    });
+  }
+
   function _agregarFilaIngrediente(valores) {
     const lista = document.getElementById('rf-ingredientes-lista');
     if (!lista) return;
     lista.insertAdjacentHTML('beforeend', _filaIngredienteHtml(valores));
+    _renumerarIngredientes();
   }
 
   function _abrirFormReceta(receta = null) {
@@ -3824,6 +3834,7 @@ window.VistaAdmin = (function () {
       // Siempre debe quedar al menos una fila para poder seguir agregando.
       if (lista.querySelectorAll('.rf-ing-row').length > 1) btn.closest('.rf-ing-row')?.remove();
       else btn.closest('.rf-ing-row')?.querySelectorAll('input').forEach(inp => { inp.value = ''; });
+      _renumerarIngredientes();
     });
 
     document.addEventListener('keydown', e => {

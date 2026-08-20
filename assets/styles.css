@@ -4452,9 +4452,10 @@
 
   /* Filas de ingredientes en el formulario de Recetas */
   .rf-ing-row {
-    display: grid; grid-template-columns: 5.5rem 6.5rem 1fr auto;
+    display: grid; grid-template-columns: 1.5rem 5.5rem 6.5rem 1fr auto;
     gap: .5rem; align-items: center; margin-bottom: .5rem;
   }
+  .rf-ing-num { font-weight: 700; color: var(--cinnamon); font-size: .85rem; text-align: right; }
   .rf-ing-row input, .rf-ing-row select { width: 100%; box-sizing: border-box; }
   .rf-ing-quitar {
     width: 32px; height: 32px; flex-shrink: 0; border-radius: 50%;
@@ -4479,6 +4480,7 @@
     background: var(--cream-dk); border: 1px solid var(--border); border-radius: 999px;
     padding: .18rem .65rem; font-size: .78rem; color: var(--text);
   }
+  .receta-ing-tag b { color: var(--cinnamon); font-weight: 700; }
   .ef-rol-group { display: flex; gap: 1rem; flex-wrap: wrap; padding: .55rem 0; }
   .ef-rol-check {
     display: flex;
@@ -4540,10 +4542,11 @@
     .emp-form-grid { grid-template-columns: 1fr; }
     .emp-form-body { padding: 1rem; }
     .rf-ing-row {
-      grid-template-columns: 1fr 1fr; grid-template-areas: "cant unid" "nombre nombre" "quitar quitar";
+      grid-template-columns: auto 1fr 1fr; grid-template-areas: "num cant unid" "nombre nombre nombre" "quitar quitar quitar";
       gap: .4rem; padding-bottom: .6rem; margin-bottom: .6rem; border-bottom: 1px solid var(--border);
     }
     .rf-ing-row:last-child { border-bottom: none; }
+    .rf-ing-num { grid-area: num; }
     .rf-ing-row > input[type="number"] { grid-area: cant; }
     .rf-ing-row > select { grid-area: unid; }
     .rf-ing-row > input[type="text"] { grid-area: nombre; }
