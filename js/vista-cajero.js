@@ -1516,9 +1516,17 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         if (!nuevoPedId) return; // el error ya se mostró vía toast dentro de dividirPedido
 
         cerrarModalDividirCuenta();
+        // Ojo: a propósito NO se llama renderCajeroView() aquí. Si se pinta
+        // la grilla ahora, el cajero vería por un instante la tarjeta original
+        // reducida MÁS una tarjeta nueva con la porción dividida, detrás del
+        // modal de cobro que se abre a continuación — aunque cancele de
+        // inmediato, ya alcanzó a verse ese "salto" visual. Solo se refresca
+        // la caché local (recargarCaja) para que abrirModalPago encuentre el
+        // pedido nuevo; la grilla se repinta recién cuando el flujo termina
+        // (pago confirmado más abajo, o deshecho en cerrarModalPago/
+        // _deshacerDivisionPendiente si cancela) — así solo se ve un cambio
+        // final, nunca el estado intermedio dividido.
         await SC.recargarCaja();
-        renderCajeroView();
-        window.VistaAdmin?.renderAdminPedidos?.();
         // Si cancela el cobro de esta parte (en vez de completarlo), hay
         // que regresarla al pedido original — ver cerrarModalPago().
         _divisionPendiente = { nuevoPedId, padreId: pedido.id };
