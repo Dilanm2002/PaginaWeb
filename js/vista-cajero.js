@@ -903,6 +903,7 @@ window.VistaCajero = (function () {
     await SC.recargarCaja();
     renderCajeroView();
     window.VistaAdmin?.renderAdminPedidos?.();
+    SC.toast('Cobro cancelado — el pedido volvió a estar completo ✓', 'success');
   }
 
   /* ─────────────────────────────────────────────────────
