@@ -9,6 +9,12 @@ window.VistaCajero = (function () {
   let _diaOffset = 0;
   let _pedidoParaCobrar = null;
   let _pedidoParaDividir = null;
+  // Cuando el modal de pago se abre justo después de "Dividir cuenta"
+  // (para cobrar la porción dividida de una), estos dos rastrean ese
+  // contexto para poder deshacer la división si el cajero cancela el
+  // cobro en vez de completarlo — ver cerrarModalPago().
+  let _divisionPendiente = null;  // { nuevoPedId, padreId }
+  let _cobroFueIntentado = false; // true apenas se llama a SC.cobrarPedido
   let _ultimoCobro = null; // { pedido, factNumero, metodoPagoNombre, montoPagado, cambio }
   let _correoNotaCtx = null; // { pedido, factNumero, metodoPagoNombre, fechaCobro }
 
@@ -521,6 +527,7 @@ window.VistaCajero = (function () {
     cajeroGrid.onclick = async e => {
       const btnCobrar = e.target.closest('.btn-cobrar');
       if (btnCobrar) {
+        _divisionPendiente = null; // cobro directo, no viene de "Dividir cuenta"
         abrirModalPago(btnCobrar.dataset.pedidoId);
         return;
       }
@@ -811,6 +818,7 @@ window.VistaCajero = (function () {
     const pedido = SC.leerCaja().find(p => String(p.id) === String(pedidoId));
     if (!pedido) return;
     _pedidoParaCobrar = pedidoId;
+    _cobroFueIntentado = false;
 
     const totalDisp = document.getElementById('pago-total-display');
     const montoInp  = document.getElementById('pago-monto-recibido');
@@ -876,7 +884,25 @@ window.VistaCajero = (function () {
       backdrop.setAttribute('aria-hidden', 'true');
       document.body.style.overflow = document.documentElement.style.overflow = '';
     }
-    _pedidoParaCobrar = null;
+    // Si este modal se abrió justo después de "Dividir cuenta" y se cierra
+    // sin haber llegado a intentar el cobro (canceló), la porción dividida
+    // no debe quedar como una tarjeta suelta sin pagar — se regresa al
+    // pedido original.
+    if (!_cobroFueIntentado && _divisionPendiente && String(_divisionPendiente.nuevoPedId) === String(_pedidoParaCobrar)) {
+      _deshacerDivisionPendiente(_divisionPendiente);
+    }
+    _divisionPendiente  = null;
+    _cobroFueIntentado  = false;
+    _pedidoParaCobrar   = null;
+  }
+
+  async function _deshacerDivisionPendiente({ nuevoPedId, padreId }) {
+    const SC = window.SC;
+    const ok = await SC.deshacerDivisionPedido(nuevoPedId, padreId);
+    if (!ok) { SC.toast('No se pudo deshacer la división — revisa el pedido manualmente', 'error'); return; }
+    await SC.recargarCaja();
+    renderCajeroView();
+    window.VistaAdmin?.renderAdminPedidos?.();
   }
 
   /* ─────────────────────────────────────────────────────
@@ -1331,6 +1357,10 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
 
         btnConfirmarPago.disabled    = true;
         btnConfirmarPago.textContent = 'Procesando…';
+        // A partir de acá ya no se debe deshacer una división pendiente
+        // aunque el cobro falle — el cajero puede reintentar desde la
+        // misma tarjeta, que sigue existiendo tal cual.
+        _cobroFueIntentado = true;
 
         const resultado = await SC.cobrarPedido(String(_pedidoParaCobrar), metodoPagoId, montoPagado, cambio, email, pagosMixtos);
 
@@ -1488,6 +1518,9 @@ body{font-family:Arial,sans-serif;font-size:11px;padding:20px}
         await SC.recargarCaja();
         renderCajeroView();
         window.VistaAdmin?.renderAdminPedidos?.();
+        // Si cancela el cobro de esta parte (en vez de completarlo), hay
+        // que regresarla al pedido original — ver cerrarModalPago().
+        _divisionPendiente = { nuevoPedId, padreId: pedido.id };
         abrirModalPago(nuevoPedId);
       });
     }
