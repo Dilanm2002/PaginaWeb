@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260819f">
+  <link rel="stylesheet" href="assets/styles.css?v=20260820a">
 </head>
 <body>
 
@@ -1568,15 +1568,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260819f"></script>
-  <script src="js/logica-carrito.js?v=20260819f"></script>
-  <script src="js/carrito.js?v=20260819f"></script>
-  <script src="js/vista.js?v=20260819f"></script>
-  <script src="js/aplicacion.js?v=20260819f"></script>
-  <script src="js/vista-cajero.js?v=20260819f"></script>
-  <script src="js/vista-admin.js?v=20260819f"></script>
-  <script src="js/vista-menu.js?v=20260819f"></script>
-  <script src="js/vista-cocina.js?v=20260819f"></script>
+  <script src="js/autenticacion.js?v=20260820a"></script>
+  <script src="js/logica-carrito.js?v=20260820a"></script>
+  <script src="js/carrito.js?v=20260820a"></script>
+  <script src="js/vista.js?v=20260820a"></script>
+  <script src="js/aplicacion.js?v=20260820a"></script>
+  <script src="js/vista-cajero.js?v=20260820a"></script>
+  <script src="js/vista-admin.js?v=20260820a"></script>
+  <script src="js/vista-menu.js?v=20260820a"></script>
+  <script src="js/vista-cocina.js?v=20260820a"></script>
 
   <script>
   'use strict';
@@ -1835,8 +1835,8 @@
     try {
       const [, rCaja, rHist, rGastos, rCatsGasto] = await Promise.all([
         ModuloAutenticacion.cargarUsuarios(),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }).limit(200),
         db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true }),
         db.from('categorias_gasto').select('catgast_id, catgast_nombre').order('catgast_nombre', { ascending: true })
       ]);
@@ -1852,8 +1852,8 @@
   async function recargarCaja() {
     try {
       const [rCaja, rHist, rGastos] = await Promise.all([
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }),
-        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).limit(200),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }),
+        db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }).limit(200),
         db.from('gastos').select(_GASTO_SELECT).order('gast_created_at', { ascending: true })
       ]);
       if (!rCaja.error) {
@@ -4260,8 +4260,8 @@
     if (session?.id) {
       try {
         const [rHist, rPend] = await Promise.all([
-          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }),
-          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true })
+          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }),
+          db.from('pedidos').select(_PED_SELECT).eq('usu_id', session.id).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true })
         ]);
         renderUsuarioView((rHist.data || []).map(_rowAPedido), (rPend.data || []).map(_rowAPedido));
       } catch (_e) {
