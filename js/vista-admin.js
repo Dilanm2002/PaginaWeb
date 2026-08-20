@@ -150,6 +150,7 @@ window.VistaAdmin = (function () {
     pedidos:   'Pedidos activos',
     stock:     'Gestión de Stock',
     menudia:   'Menú del Día',
+    recetas:   'Recetas',
     empleados: 'Empleados',
     clientes:  'Clientes',
     rrhh:      'Recursos Humanos',
@@ -515,6 +516,7 @@ window.VistaAdmin = (function () {
     else if (nombre === 'reportes')  renderReportes('hoy');
     else if (nombre === 'gastos')    _renderGastos();
     else if (nombre === 'menudia')   _renderMenuDia();
+    else if (nombre === 'recetas')   renderRecetas();
     else if (nombre === 'dashboard') _renderDashboardStats();
   }
 
@@ -1689,6 +1691,7 @@ window.VistaAdmin = (function () {
     try { _initFormEmpleado(); } catch (e) { console.error('_initFormEmpleado:', e); window.SC?.toast?.('Error iniciando Empleados: ' + (e?.message || e), 'error'); }
     try { _initAdminNav();     } catch (e) { console.error('_initAdminNav:', e);     window.SC?.toast?.('Error iniciando navegación admin: ' + (e?.message || e), 'error'); }
     try { _initRRHH();         } catch (e) { console.error('_initRRHH:', e);         window.SC?.toast?.('Error iniciando Recursos Humanos: ' + (e?.message || e), 'error'); }
+    try { _initFormReceta();   } catch (e) { console.error('_initFormReceta:', e);   window.SC?.toast?.('Error iniciando Recetas: ' + (e?.message || e), 'error'); }
   }
 
   async function renderReportes(periodo) {
@@ -3606,6 +3609,226 @@ window.VistaAdmin = (function () {
       } catch (err) {
         console.error('Clic en tabla RRHH:', err);
         window.SC?.toast?.('Error: ' + (err?.message || err), 'error');
+      }
+    });
+  }
+
+  // ══════════════════════════════════════════════════════════════
+  // MÓDULO: Recetas — título + lista de ingredientes (cantidad, unidad,
+  // nombre), ej. "50g Harina". Tablas de lectura/escritura abierta, sin
+  // RPC (no es información sensible ni de dinero), igual que otras
+  // tablas operativas de esta app.
+  // ══════════════════════════════════════════════════════════════
+
+  const _UNIDADES_RECETA = [
+    { v: 'g',        l: 'g' },
+    { v: 'kg',       l: 'kg' },
+    { v: 'ml',       l: 'ml' },
+    { v: 'L',        l: 'L' },
+    { v: 'u',        l: 'unidades' },
+    { v: 'taza',     l: 'tazas' },
+    { v: 'cda',      l: 'cucharadas' },
+    { v: 'cdta',     l: 'cucharaditas' },
+    { v: 'pizca',    l: 'pizca' },
+    { v: 'al gusto', l: 'al gusto' }
+  ];
+
+  let _recetaEditId = null; // rec_id en edición, null = nueva
+
+  async function renderRecetas() {
+    const el = document.getElementById('admin-recetas-lista');
+    if (!el) return;
+    el.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
+
+    const { data, error } = await window.db
+      .from('recetas')
+      .select('rec_id, rec_titulo, receta_ingredientes(ingrec_id, ingrec_cantidad, ingrec_unidad, ingrec_nombre, ingrec_orden)')
+      .order('rec_titulo');
+
+    if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>'; return; }
+    if (!data || !data.length) {
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay recetas registradas aún.</p>';
+      return;
+    }
+
+    const SC = window.SC;
+    el.innerHTML = data.map(r => {
+      const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
+      return `
+        <div class="emp-row" data-rec-id="${r.rec_id}">
+          <div class="receta-row">
+            <div style="flex:1;min-width:200px">
+              <div class="receta-row__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
+              <div class="receta-row__ingredientes">
+                ${ingredientes.length
+                  ? ingredientes.map(i => `<span class="receta-ing-tag">${i.ingrec_cantidad}${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad} ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}</span>`).join('')
+                  : '<span style="color:var(--text-muted);font-size:.8rem">Sin ingredientes</span>'}
+              </div>
+            </div>
+            <div class="usu-rol-wrap">
+              <button class="usu-btn-cambiar receta-btn-editar" data-rec-id="${r.rec_id}">✏️ Editar</button>
+              <button class="usu-btn-eliminar receta-btn-eliminar" data-rec-id="${r.rec_id}" data-titulo="${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}">🗑 Eliminar</button>
+            </div>
+          </div>
+        </div>`;
+    }).join('');
+
+    el.querySelectorAll('.receta-btn-editar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const receta = data.find(r => r.rec_id === btn.dataset.recId);
+        if (receta) _abrirFormReceta(receta);
+      });
+    });
+    el.querySelectorAll('.receta-btn-eliminar').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const confirmado = await _modalConfirmar(btn.dataset.titulo, '¿Eliminar esta receta?');
+        if (!confirmado) return;
+        const { error: errDel } = await window.db.from('recetas').delete().eq('rec_id', btn.dataset.recId);
+        if (errDel) { SC?.toast('Error al eliminar la receta', 'error'); return; }
+        SC?.toast('Receta eliminada ✓', 'success');
+        renderRecetas();
+      });
+    });
+  }
+
+  function _filaIngredienteHtml(valores = {}) {
+    const { cantidad = '', unidad = 'g', nombre = '' } = valores;
+    return `
+      <div class="rf-ing-row">
+        <input type="number" class="rf-ing-cantidad" placeholder="Cant." min="0" step="0.01" value="${cantidad}">
+        <select class="rf-ing-unidad">
+          ${_UNIDADES_RECETA.map(u => `<option value="${u.v}"${u.v === unidad ? ' selected' : ''}>${u.l}</option>`).join('')}
+        </select>
+        <input type="text" class="rf-ing-nombre" placeholder="Ingrediente (ej: Harina)" maxlength="60" value="${window.SC?.escapeHtml(nombre) ?? nombre}">
+        <button type="button" class="rf-ing-quitar" aria-label="Quitar ingrediente">🗑️</button>
+      </div>`;
+  }
+
+  function _agregarFilaIngrediente(valores) {
+    const lista = document.getElementById('rf-ingredientes-lista');
+    if (!lista) return;
+    lista.insertAdjacentHTML('beforeend', _filaIngredienteHtml(valores));
+  }
+
+  function _abrirFormReceta(receta = null) {
+    _recetaEditId = receta?.rec_id ?? null;
+    document.getElementById('receta-form-title').textContent = receta ? 'Editar Receta' : 'Nueva Receta';
+    document.getElementById('rf-titulo').value = receta?.rec_titulo ?? '';
+    document.getElementById('rf-err-titulo').style.display = 'none';
+    document.getElementById('rf-err-ingredientes').style.display = 'none';
+    document.getElementById('rf-error').style.display = 'none';
+
+    const lista = document.getElementById('rf-ingredientes-lista');
+    if (lista) lista.innerHTML = '';
+    const ingredientes = (receta?.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
+    if (ingredientes.length) {
+      ingredientes.forEach(i => _agregarFilaIngrediente({ cantidad: i.ingrec_cantidad, unidad: i.ingrec_unidad, nombre: i.ingrec_nombre }));
+    } else {
+      _agregarFilaIngrediente();
+    }
+
+    const bd = document.getElementById('receta-form-backdrop');
+    bd.classList.add('open');
+    bd.setAttribute('aria-hidden', 'false');
+    document.body.style.overflow = 'hidden';
+    document.getElementById('rf-titulo').focus();
+  }
+
+  function _cerrarFormReceta() {
+    const bd = document.getElementById('receta-form-backdrop');
+    bd.classList.remove('open');
+    bd.setAttribute('aria-hidden', 'true');
+    document.body.style.overflow = '';
+    _recetaEditId = null;
+  }
+
+  async function _guardarReceta() {
+    const SC = window.SC;
+    const titulo = document.getElementById('rf-titulo').value.trim();
+    const errTitulo = document.getElementById('rf-err-titulo');
+    const errIng    = document.getElementById('rf-err-ingredientes');
+    const errGen    = document.getElementById('rf-error');
+    errTitulo.style.display = 'none';
+    errIng.style.display = 'none';
+    errGen.style.display = 'none';
+
+    let valido = true;
+    if (!titulo) { errTitulo.textContent = 'El título es obligatorio.'; errTitulo.style.display = 'block'; valido = false; }
+
+    const filas = [...document.querySelectorAll('#rf-ingredientes-lista .rf-ing-row')].map(row => ({
+      cantidad: parseFloat(row.querySelector('.rf-ing-cantidad')?.value),
+      unidad:   row.querySelector('.rf-ing-unidad')?.value ?? 'g',
+      nombre:   row.querySelector('.rf-ing-nombre')?.value.trim() ?? ''
+    })).filter(i => i.nombre || !isNaN(i.cantidad));
+
+    const filasValidas = filas.filter(i => i.nombre && !isNaN(i.cantidad) && i.cantidad > 0);
+    if (!filasValidas.length) {
+      errIng.textContent = 'Agrega al menos un ingrediente con cantidad y nombre.';
+      errIng.style.display = 'block';
+      valido = false;
+    } else if (filasValidas.length !== filas.length) {
+      errIng.textContent = 'Hay una fila incompleta — completa la cantidad y el nombre, o quítala.';
+      errIng.style.display = 'block';
+      valido = false;
+    }
+    if (!valido) return;
+
+    const btn = document.getElementById('btn-receta-save');
+    btn.disabled = true;
+    btn.textContent = 'Guardando…';
+
+    let recId = _recetaEditId;
+    let err = null;
+    if (recId) {
+      ({ error: err } = await window.db.from('recetas').update({ rec_titulo: titulo }).eq('rec_id', recId));
+      if (!err) ({ error: err } = await window.db.from('receta_ingredientes').delete().eq('rec_id', recId));
+    } else {
+      const { data: nueva, error: errIns } = await window.db.from('recetas').insert({ rec_titulo: titulo }).select('rec_id').single();
+      err = errIns;
+      recId = nueva?.rec_id ?? null;
+    }
+
+    if (!err && recId) {
+      const filasInsert = filasValidas.map((i, idx) => ({
+        rec_id: recId, ingrec_cantidad: i.cantidad, ingrec_unidad: i.unidad, ingrec_nombre: i.nombre, ingrec_orden: idx
+      }));
+      ({ error: err } = await window.db.from('receta_ingredientes').insert(filasInsert));
+    }
+
+    btn.disabled = false;
+    btn.textContent = 'Guardar receta';
+
+    if (err || !recId) {
+      console.error('Guardar receta:', err);
+      errGen.textContent = 'No se pudo guardar la receta. Intenta de nuevo.';
+      errGen.style.display = 'block';
+      return;
+    }
+
+    _cerrarFormReceta();
+    SC?.toast(`Receta "${titulo}" guardada ✓`, 'success');
+    renderRecetas();
+  }
+
+  function _initFormReceta() {
+    document.getElementById('btn-nueva-receta')?.addEventListener('click', () => _abrirFormReceta(null));
+    document.getElementById('btn-cerrar-receta-form')?.addEventListener('click', _cerrarFormReceta);
+    document.getElementById('btn-receta-cancel')?.addEventListener('click', _cerrarFormReceta);
+    document.getElementById('btn-receta-save')?.addEventListener('click', _guardarReceta);
+    document.getElementById('rf-btn-agregar-ingrediente')?.addEventListener('click', () => _agregarFilaIngrediente());
+
+    document.getElementById('rf-ingredientes-lista')?.addEventListener('click', e => {
+      const btn = e.target.closest('.rf-ing-quitar');
+      if (!btn) return;
+      const lista = document.getElementById('rf-ingredientes-lista');
+      // Siempre debe quedar al menos una fila para poder seguir agregando.
+      if (lista.querySelectorAll('.rf-ing-row').length > 1) btn.closest('.rf-ing-row')?.remove();
+      else btn.closest('.rf-ing-row')?.querySelectorAll('input').forEach(inp => { inp.value = ''; });
+    });
+
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape' && document.getElementById('receta-form-backdrop')?.classList.contains('open')) {
+        _cerrarFormReceta();
       }
     });
   }

@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260819e">
+  <link rel="stylesheet" href="assets/styles.css?v=20260819f">
 </head>
 <body>
 
@@ -475,6 +475,10 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
               Menú del Día
             </button>
+            <button class="adm-nav__item" data-mod="recetas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="9" y1="7" x2="15" y2="7"/><line x1="9" y1="11" x2="15" y2="11"/></svg>
+              Recetas
+            </button>
           </div>
           <div class="adm-nav__group">
             <span class="adm-nav__label">PERSONAS</span>
@@ -734,6 +738,18 @@
             </div>
           </section>
 
+          <!-- MÓDULO: Recetas -->
+          <section class="adm-module" id="mod-recetas" aria-label="Recetas">
+            <div class="adm-module-header">
+              <h2 class="adm-section-title">Recetas</h2>
+              <button class="adm-btn-primary" id="btn-nueva-receta">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
+                Nueva receta
+              </button>
+            </div>
+            <div id="admin-recetas-lista"></div>
+          </section>
+
           <!-- MÓDULO: Empleados -->
           <section class="adm-module" id="mod-empleados" aria-label="Gestión de empleados">
             <div class="adm-module-header">
@@ -893,6 +909,34 @@
     </div><!-- /admin-view -->
 
     <!-- Modal formulario de empleado (admin) -->
+    <!-- Modal formulario de receta (admin) -->
+    <div id="receta-form-backdrop" class="emp-form-backdrop" role="dialog" aria-modal="true" aria-labelledby="receta-form-title" aria-hidden="true">
+      <div class="emp-form-box">
+        <div class="emp-form-header">
+          <h3 id="receta-form-title">Nueva Receta</h3>
+          <button id="btn-cerrar-receta-form" aria-label="Cerrar">×</button>
+        </div>
+        <div class="emp-form-body">
+          <div class="emp-form-group emp-form-full">
+            <label for="rf-titulo">Título de la receta <span class="ef-req">*</span></label>
+            <input type="text" id="rf-titulo" placeholder="Ej: Sancocho de pollo" maxlength="80" autocomplete="off">
+            <span class="ef-field-err" id="rf-err-titulo"></span>
+          </div>
+          <div class="emp-form-group emp-form-full">
+            <label>Ingredientes <span class="ef-req">*</span></label>
+            <div id="rf-ingredientes-lista"></div>
+            <button type="button" class="rf-btn-agregar-ing" id="rf-btn-agregar-ingrediente">+ Agregar ingrediente</button>
+            <span class="ef-field-err" id="rf-err-ingredientes"></span>
+          </div>
+          <p id="rf-error" class="ef-error" style="display:none"></p>
+        </div>
+        <div class="emp-form-footer">
+          <button class="btn-emp-cancel" id="btn-receta-cancel">Cancelar</button>
+          <button class="btn-emp-save" id="btn-receta-save">Guardar receta</button>
+        </div>
+      </div>
+    </div>
+
     <div id="emp-form-backdrop" class="emp-form-backdrop" role="dialog" aria-modal="true" aria-labelledby="emp-form-title" aria-hidden="true">
       <div class="emp-form-box">
         <div class="emp-form-header">
@@ -1524,15 +1568,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260819e"></script>
-  <script src="js/logica-carrito.js?v=20260819e"></script>
-  <script src="js/carrito.js?v=20260819e"></script>
-  <script src="js/vista.js?v=20260819e"></script>
-  <script src="js/aplicacion.js?v=20260819e"></script>
-  <script src="js/vista-cajero.js?v=20260819e"></script>
-  <script src="js/vista-admin.js?v=20260819e"></script>
-  <script src="js/vista-menu.js?v=20260819e"></script>
-  <script src="js/vista-cocina.js?v=20260819e"></script>
+  <script src="js/autenticacion.js?v=20260819f"></script>
+  <script src="js/logica-carrito.js?v=20260819f"></script>
+  <script src="js/carrito.js?v=20260819f"></script>
+  <script src="js/vista.js?v=20260819f"></script>
+  <script src="js/aplicacion.js?v=20260819f"></script>
+  <script src="js/vista-cajero.js?v=20260819f"></script>
+  <script src="js/vista-admin.js?v=20260819f"></script>
+  <script src="js/vista-menu.js?v=20260819f"></script>
+  <script src="js/vista-cocina.js?v=20260819f"></script>
 
   <script>
   'use strict';
