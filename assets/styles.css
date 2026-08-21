@@ -4534,20 +4534,23 @@
   #receta-nav-label { min-width: 56px; }
 
   .receta-notebook__vacio { color: var(--text-muted); font-size: .95rem; text-align: center; padding: 3rem 1rem; line-height: 1.8; }
-  /* Misma paleta y bordes que el resto del panel (emp-row, emp-form-box) —
-     sin textura de cuaderno ni colores nuevos, solo un acento arriba. */
+  /* Hoja tipo documento con la misma cabecera de marca que ya se usa en
+     los formularios/modales de esta app (degradé café + letra cursiva). */
   .receta-notebook__pagina {
     position: relative; background: #fff;
-    border: 1px solid var(--border); border-top: 4px solid var(--cinnamon);
-    border-radius: 14px; box-shadow: 0 3px 14px rgba(59,26,8,.07);
-    padding: 1.5rem 1.75rem 1.75rem;
+    border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: 0 3px 14px rgba(59,26,8,.09); overflow: hidden;
   }
+  .receta-notebook__header {
+    display: flex; align-items: center; gap: .6rem;
+    background: linear-gradient(135deg, var(--brown-dark), var(--brown-mid));
+    padding: 1rem 1.75rem;
+  }
+  .receta-notebook__icono { font-size: 1.3rem; line-height: 1; }
   .receta-notebook__titulo {
-    display: flex; align-items: center; gap: .55rem;
-    font-family: 'Dancing Script', cursive; font-weight: 700; color: var(--brown-dark);
-    font-size: 1.75rem; margin-bottom: 1.1rem; padding-bottom: .75rem;
-    border-bottom: 1px solid var(--border);
+    font-family: 'Dancing Script', cursive; font-weight: 700; color: #fff; font-size: 1.75rem;
   }
+  .receta-notebook__body { padding: 1.5rem 1.75rem 1.75rem; }
   .receta-notebook__cuerpo { max-width: 640px; }
   .receta-notebook__acciones {
     display: flex; justify-content: flex-end; gap: .75rem;
@@ -4555,7 +4558,7 @@
   }
   /* Como un documento: título (cursiva grande), subtítulo por sección
      (misma cursiva, más chica) y debajo cada ingrediente en su propia
-     línea, sin colores ni negritas — solo texto plano tipo Word. */
+     línea, marcada con un guion, sin colores en el texto — tipo Word. */
   .receta-seccion { margin: 0 0 1.1rem; }
   .receta-seccion:last-child { margin-bottom: 0; }
   .receta-seccion__titulo {
@@ -4563,7 +4566,8 @@
     font-size: 1.3rem; margin-bottom: .3rem;
   }
   .receta-seccion--suelta .receta-seccion__titulo { color: var(--text-muted); }
-  .receta-ing-linea { font-size: .92rem; line-height: 1.7; color: var(--text); }
+  .receta-ing-linea { font-size: .92rem; line-height: 1.7; color: var(--text); padding-left: 1rem; position: relative; }
+  .receta-ing-linea::before { content: "–"; position: absolute; left: 0; color: var(--cinnamon); font-weight: 700; }
   .ef-rol-group { display: flex; gap: 1rem; flex-wrap: wrap; padding: .55rem 0; }
   .ef-rol-check {
     display: flex;
@@ -4637,7 +4641,8 @@
     .rf-grupo-nombre { flex-basis: 100%; }
     .receta-toolbar { flex-direction: column; }
     .receta-buscador-wrap, .receta-selector { min-width: 0; }
-    .receta-notebook__pagina { padding: 1.25rem 1.1rem 1.5rem; }
+    .receta-notebook__header { padding: .85rem 1.1rem; }
+    .receta-notebook__body { padding: 1.25rem 1.1rem 1.5rem; }
     .receta-notebook__acciones { flex-direction: column; }
     .receta-notebook__acciones button { width: 100%; }
   }

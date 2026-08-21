@@ -3712,11 +3712,16 @@ window.VistaAdmin = (function () {
 
     notebook.innerHTML = `
       <div class="receta-notebook__pagina" data-rec-id="${r.rec_id}">
-        <div class="receta-notebook__titulo">🍽️ ${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
-        <div class="receta-notebook__cuerpo">${bodyHtml}</div>
-        <div class="receta-notebook__acciones">
-          <button class="usu-btn-cambiar receta-btn-editar">✏️ Editar</button>
-          <button class="usu-btn-eliminar receta-btn-eliminar">🗑 Eliminar</button>
+        <div class="receta-notebook__header">
+          <span class="receta-notebook__icono">🍽️</span>
+          <span class="receta-notebook__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</span>
+        </div>
+        <div class="receta-notebook__body">
+          <div class="receta-notebook__cuerpo">${bodyHtml}</div>
+          <div class="receta-notebook__acciones">
+            <button class="usu-btn-cambiar receta-btn-editar">✏️ Editar</button>
+            <button class="usu-btn-eliminar receta-btn-eliminar">🗑 Eliminar</button>
+          </div>
         </div>
       </div>`;
 
