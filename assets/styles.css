@@ -4553,15 +4553,17 @@
     display: flex; justify-content: flex-end; gap: .75rem;
     margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
   }
-  /* Cada sección se lee como un renglón escrito, no como una tarjeta:
-     "Masa: 500 g Harina, 2,50 Manteca" en texto corrido. */
-  .receta-seccion {
-    margin: 0 0 .65rem; font-size: .92rem; line-height: 1.75; color: var(--text);
-  }
+  /* Como un documento: título (cursiva grande), subtítulo por sección
+     (misma cursiva, más chica) y debajo cada ingrediente en su propia
+     línea, sin colores ni negritas — solo texto plano tipo Word. */
+  .receta-seccion { margin: 0 0 1.1rem; }
   .receta-seccion:last-child { margin-bottom: 0; }
-  .receta-seccion__titulo { font-weight: 700; color: var(--cinnamon); }
+  .receta-seccion__titulo {
+    font-family: 'Dancing Script', cursive; font-weight: 700; color: var(--brown-dark);
+    font-size: 1.3rem; margin-bottom: .3rem;
+  }
   .receta-seccion--suelta .receta-seccion__titulo { color: var(--text-muted); }
-  .receta-ing-medida { color: var(--cinnamon); font-weight: 700; }
+  .receta-ing-linea { font-size: .92rem; line-height: 1.7; color: var(--text); }
   .ef-rol-group { display: flex; gap: 1rem; flex-wrap: wrap; padding: .55rem 0; }
   .ef-rol-check {
     display: flex;

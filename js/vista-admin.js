@@ -3628,11 +3628,10 @@ window.VistaAdmin = (function () {
   let _recetasCache = [];   // último listado cargado, ordenado por título
   let _recetaActualIdx = 0; // índice de la receta que se ve en el cuaderno
 
-  // Texto plano "500 g Harina" (sin viñeta/chip) — se unen con ", " para
-  // que la receta se lea como un renglón escrito a mano, no como etiquetas.
-  const _tagIngredienteHtml = i => {
+  // Una línea plana "Harina — 500 g" (sin color, sin chip) por ingrediente.
+  const _lineaIngredienteHtml = i => {
     const SC = window.SC;
-    return `<b class="receta-ing-medida">${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</b> ${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre}`;
+    return `<div class="receta-ing-linea">${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre} — ${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</div>`;
   };
 
   function _pintarSelectorRecetas(lista) {
@@ -3699,16 +3698,16 @@ window.VistaAdmin = (function () {
       const sinSeccion = ingredientes.filter(i => !i.seccion_id);
       bodyHtml = secciones.map(s => {
         const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
-        return `<p class="receta-seccion">
-          <span class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}:</span>
-          ${propios.length ? propios.map(_tagIngredienteHtml).join(', ') : '<span style="color:var(--text-muted)">sin ingredientes</span>'}
-        </p>`;
-      }).join('') + (sinSeccion.length ? `<p class="receta-seccion receta-seccion--suelta">
-          <span class="receta-seccion__titulo">Otros ingredientes:</span>
-          ${sinSeccion.map(_tagIngredienteHtml).join(', ')}
-        </p>` : '');
+        return `<div class="receta-seccion">
+          <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
+          ${propios.length ? propios.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>'}
+        </div>`;
+      }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
+          <div class="receta-seccion__titulo">Otros ingredientes</div>
+          ${sinSeccion.map(_lineaIngredienteHtml).join('')}
+        </div>` : '');
     } else {
-      bodyHtml = `<p class="receta-seccion">${ingredientes.length ? ingredientes.map(_tagIngredienteHtml).join(', ') : '<span style="color:var(--text-muted)">Sin ingredientes</span>'}</p>`;
+      bodyHtml = ingredientes.length ? ingredientes.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>';
     }
 
     notebook.innerHTML = `
