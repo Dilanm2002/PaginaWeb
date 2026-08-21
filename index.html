@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260821f">
+  <link rel="stylesheet" href="assets/styles.css?v=20260821g">
 </head>
 <body>
 
@@ -1568,15 +1568,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260821f"></script>
-  <script src="js/logica-carrito.js?v=20260821f"></script>
-  <script src="js/carrito.js?v=20260821f"></script>
-  <script src="js/vista.js?v=20260821f"></script>
-  <script src="js/aplicacion.js?v=20260821f"></script>
-  <script src="js/vista-cajero.js?v=20260821f"></script>
-  <script src="js/vista-admin.js?v=20260821f"></script>
-  <script src="js/vista-menu.js?v=20260821f"></script>
-  <script src="js/vista-cocina.js?v=20260821f"></script>
+  <script src="js/autenticacion.js?v=20260821g"></script>
+  <script src="js/logica-carrito.js?v=20260821g"></script>
+  <script src="js/carrito.js?v=20260821g"></script>
+  <script src="js/vista.js?v=20260821g"></script>
+  <script src="js/aplicacion.js?v=20260821g"></script>
+  <script src="js/vista-cajero.js?v=20260821g"></script>
+  <script src="js/vista-admin.js?v=20260821g"></script>
+  <script src="js/vista-menu.js?v=20260821g"></script>
+  <script src="js/vista-cocina.js?v=20260821g"></script>
 
   <script>
   'use strict';
@@ -2173,7 +2173,17 @@
       detped_para_llevar: paraLlevar || i.paraLlevar || false
     }));
     const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(detalles).select('detped_id, plat_id');
-    if (detError) console.error('Supabase insert detalle_pedidos:', detError);
+    if (detError) {
+      // Si los items no se llegan a insertar, el pedido queda "fantasma":
+      // con precio pero sin nada que cobrar/preparar (invisible en Cocina,
+      // pero cobrable en Caja mostrando "Sin detalle de ítems"). Mejor
+      // deshacer el pedido entero y avisar, para que quien lo mandó
+      // reintente, que dejarlo a medias en silencio.
+      console.error('Supabase insert detalle_pedidos:', detError);
+      await db.from('pedidos').delete().eq('ped_id', pedData.ped_id);
+      toast('Error al enviar el pedido — no se guardaron los productos. Intenta de nuevo.', 'error');
+      return null;
+    }
 
     // Insertar exclusiones de ingredientes — se correlaciona por posición
     // (detData[i] corresponde a items[i], mismo orden que se insertó) y no
