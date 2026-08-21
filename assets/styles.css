@@ -4501,52 +4501,21 @@
   }
   .rf-btn-agregar-ing:hover { background: rgba(200,86,26,.12); }
 
-  /* Recetas — layout tipo "maestro-detalle": sidebar con buscador + lista
-     clicable a la izquierda, receta elegida a la derecha. */
-  .receta-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1.25rem; margin-top: 1rem; align-items: start; }
-  .receta-sidebar {
+  /* Recetas — lista simple, una tarjeta blanca por receta (mismo patrón
+     que Empleados), sin barra lateral ni panel separado. */
+  .receta-card {
     background: #fff; border: 1px solid var(--border); border-radius: 14px;
-    padding: 1rem; box-shadow: 0 3px 14px rgba(59,26,8,.06);
+    box-shadow: 0 3px 14px rgba(59,26,8,.06); padding: 1.25rem 1.5rem 1.4rem;
+    margin-bottom: 1rem;
   }
-  .receta-buscador {
-    width: 100%; padding: .6rem .85rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm, 10px);
-    font-size: .87rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text);
-    box-sizing: border-box; transition: border-color .2s; margin-bottom: .85rem;
+  .receta-card__titulo {
+    font-family: 'Dancing Script', cursive; font-weight: 700; color: var(--brown-dark);
+    font-size: 1.55rem; margin-bottom: 1rem; padding-bottom: .65rem;
+    border-bottom: 1px solid var(--border);
   }
-  .receta-buscador:focus { outline: none; border-color: var(--cinnamon); }
-  .receta-lista-sidebar { display: flex; flex-direction: column; gap: .3rem; max-height: 60vh; overflow-y: auto; }
-  .receta-lista-item {
-    -webkit-appearance: none; appearance: none; border: none; background: none;
-    text-align: left; padding: .6rem .7rem; border-radius: 9px; font-size: .87rem; font-family: inherit;
-    color: var(--text); cursor: pointer; transition: background .15s, color .15s;
-  }
-  .receta-lista-item:hover { background: var(--cream-dk); }
-  .receta-lista-item.activo { background: var(--cinnamon); color: #fff; font-weight: 600; }
-  .receta-lista-sidebar__vacio { font-size: .82rem; color: var(--text-muted); padding: .5rem .3rem; }
-  .receta-detalle { min-width: 0; }
-
-  .receta-notebook__vacio { color: var(--text-muted); font-size: .95rem; text-align: center; padding: 3rem 1rem; line-height: 1.8; }
-  /* Hoja tipo documento con la misma cabecera de marca que ya se usa en
-     los formularios/modales de esta app (degradé café + letra cursiva). */
-  .receta-notebook__pagina {
-    position: relative; background: #fff;
-    border: 1px solid var(--border); border-radius: 14px;
-    box-shadow: 0 3px 14px rgba(59,26,8,.09); overflow: hidden;
-  }
-  .receta-notebook__header {
-    display: flex; align-items: center; gap: .6rem;
-    background: linear-gradient(135deg, var(--brown-dark), var(--brown-mid));
-    padding: 1rem 1.75rem;
-  }
-  .receta-notebook__icono { font-size: 1.3rem; line-height: 1; }
-  .receta-notebook__titulo {
-    font-family: 'Dancing Script', cursive; font-weight: 700; color: #fff; font-size: 1.75rem;
-  }
-  .receta-notebook__body { padding: 1.5rem 1.75rem 1.75rem; }
-  .receta-notebook__cuerpo { max-width: 640px; }
-  .receta-notebook__acciones {
+  .receta-card__acciones {
     display: flex; justify-content: flex-end; gap: .75rem;
-    margin-top: 1.5rem; padding-top: 1rem; border-top: 1px solid var(--border);
+    margin-top: 1.1rem; padding-top: 1rem; border-top: 1px solid var(--border);
   }
   /* Como un documento: título (cursiva grande), subtítulo por sección
      (misma cursiva, más chica) y debajo cada ingrediente en su propia
@@ -4631,12 +4600,9 @@
     .rf-ing-quitar { grid-area: quitar; width: 100%; height: 34px; border-radius: 8px; }
     .rf-grupo-head { flex-wrap: wrap; }
     .rf-grupo-nombre { flex-basis: 100%; }
-    .receta-layout { grid-template-columns: 1fr; }
-    .receta-lista-sidebar { max-height: 40vh; }
-    .receta-notebook__header { padding: .85rem 1.1rem; }
-    .receta-notebook__body { padding: 1.25rem 1.1rem 1.5rem; }
-    .receta-notebook__acciones { flex-direction: column; }
-    .receta-notebook__acciones button { width: 100%; }
+    .receta-card { padding: 1rem 1.1rem 1.25rem; }
+    .receta-card__acciones { flex-direction: column; }
+    .receta-card__acciones button { width: 100%; }
   }
 
   /* Ajuste: admin-view y modales */

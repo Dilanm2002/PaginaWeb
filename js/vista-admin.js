@@ -1692,7 +1692,6 @@ window.VistaAdmin = (function () {
     try { _initAdminNav();     } catch (e) { console.error('_initAdminNav:', e);     window.SC?.toast?.('Error iniciando navegación admin: ' + (e?.message || e), 'error'); }
     try { _initRRHH();         } catch (e) { console.error('_initRRHH:', e);         window.SC?.toast?.('Error iniciando Recursos Humanos: ' + (e?.message || e), 'error'); }
     try { _initFormReceta();   } catch (e) { console.error('_initFormReceta:', e);   window.SC?.toast?.('Error iniciando Recetas: ' + (e?.message || e), 'error'); }
-    try { _initRecetasNav();   } catch (e) { console.error('_initRecetasNav:', e);   window.SC?.toast?.('Error iniciando navegación de Recetas: ' + (e?.message || e), 'error'); }
   }
 
   async function renderReportes(periodo) {
@@ -3625,8 +3624,6 @@ window.VistaAdmin = (function () {
   // ══════════════════════════════════════════════════════════════
 
   let _recetaEditId = null; // rec_id en edición, null = nueva
-  let _recetasCache = [];   // último listado cargado, ordenado por título
-  let _recetaActualIdx = 0; // índice de la receta que se ve en el cuaderno
 
   // Una línea plana "Harina — 500 g" (sin color, sin chip) por ingrediente.
   const _lineaIngredienteHtml = i => {
@@ -3634,133 +3631,74 @@ window.VistaAdmin = (function () {
     return `<div class="receta-ing-linea">${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre} — ${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</div>`;
   };
 
-  // Pinta la lista clicable del sidebar (filtrada por el buscador si hay
-  // texto) y marca como activa la receta que se está mostrando.
-  function _pintarListaSidebar() {
-    const cont = document.getElementById('receta-lista-sidebar');
-    if (!cont) return;
-    const SC = window.SC;
-    const q = (document.getElementById('receta-buscador')?.value ?? '').trim().toLowerCase();
-    const lista = q ? _recetasCache.filter(r => r.rec_titulo.toLowerCase().includes(q)) : _recetasCache;
-    const activaId = _recetasCache[_recetaActualIdx]?.rec_id;
-
-    if (!lista.length) {
-      cont.innerHTML = `<p class="receta-lista-sidebar__vacio">${q ? 'Sin resultados.' : 'No hay recetas aún.'}</p>`;
-      return;
-    }
-    cont.innerHTML = lista.map(r => `
-      <button type="button" class="receta-lista-item${r.rec_id === activaId ? ' activo' : ''}" data-rec-id="${r.rec_id}">
-        ${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}
-      </button>`).join('');
-  }
-
-  // Carga el listado completo (para el buscador/sidebar) y muestra la
-  // receta elegida en el panel de detalle — preferId fuerza cuál mostrar
-  // (ej. la que se acaba de guardar).
-  async function renderRecetas(preferId) {
-    const notebook = document.getElementById('receta-notebook');
-    if (!notebook) return;
-    notebook.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
+  // Lista simple, todas las recetas apiladas una tarjeta debajo de otra
+  // (mismo patrón que Empleados) — cada tarjeta con título, secciones
+  // (Masa/Relleno) y sus ingredientes en líneas de texto plano.
+  async function renderRecetas() {
+    const el = document.getElementById('admin-recetas-lista');
+    if (!el) return;
+    el.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
 
     const { data, error } = await window.db
       .from('recetas')
       .select('rec_id, rec_titulo, receta_secciones(seccion_id, seccion_nombre, seccion_orden), receta_ingredientes(ingrec_id, ingrec_unidad, ingrec_nombre, ingrec_orden, seccion_id)')
       .order('rec_titulo');
 
-    if (error) {
-      notebook.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>';
-      _recetasCache = [];
-      _pintarListaSidebar();
+    if (error) { el.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>'; return; }
+    if (!data || !data.length) {
+      el.innerHTML = '<p style="color:var(--text-muted);font-size:.9rem;padding:1rem 0">No hay recetas registradas aún.</p>';
       return;
     }
-
-    _recetasCache = data || [];
-
-    if (!_recetasCache.length) {
-      notebook.innerHTML = '<p class="receta-notebook__vacio">📖 No hay recetas registradas aún.<br>Crea la primera con "+ Nueva receta".</p>';
-      _pintarListaSidebar();
-      return;
-    }
-
-    if (preferId) {
-      const idx = _recetasCache.findIndex(r => r.rec_id === preferId);
-      if (idx >= 0) _recetaActualIdx = idx;
-    } else if (_recetaActualIdx >= _recetasCache.length) {
-      _recetaActualIdx = 0;
-    }
-    _pintarListaSidebar();
-    _mostrarRecetaActual();
-  }
-
-  function _mostrarRecetaActual() {
-    const notebook  = document.getElementById('receta-notebook');
-    if (!notebook || !_recetasCache.length) return;
 
     const SC = window.SC;
-    const r  = _recetasCache[_recetaActualIdx];
-    const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
-    const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
+    el.innerHTML = data.map(r => {
+      const secciones    = (r.receta_secciones || []).slice().sort((a, b) => a.seccion_orden - b.seccion_orden);
+      const ingredientes = (r.receta_ingredientes || []).slice().sort((a, b) => a.ingrec_orden - b.ingrec_orden);
 
-    let bodyHtml;
-    if (secciones.length) {
-      const sinSeccion = ingredientes.filter(i => !i.seccion_id);
-      bodyHtml = secciones.map(s => {
-        const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
-        return `<div class="receta-seccion">
-          <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
-          ${propios.length ? propios.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>'}
-        </div>`;
-      }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
-          <div class="receta-seccion__titulo">Otros ingredientes</div>
-          ${sinSeccion.map(_lineaIngredienteHtml).join('')}
-        </div>` : '');
-    } else {
-      bodyHtml = ingredientes.length ? ingredientes.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>';
-    }
+      let bodyHtml;
+      if (secciones.length) {
+        const sinSeccion = ingredientes.filter(i => !i.seccion_id);
+        bodyHtml = secciones.map(s => {
+          const propios = ingredientes.filter(i => i.seccion_id === s.seccion_id);
+          return `<div class="receta-seccion">
+            <div class="receta-seccion__titulo">${SC?.escapeHtml(s.seccion_nombre) ?? s.seccion_nombre}</div>
+            ${propios.length ? propios.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>'}
+          </div>`;
+        }).join('') + (sinSeccion.length ? `<div class="receta-seccion receta-seccion--suelta">
+            <div class="receta-seccion__titulo">Otros ingredientes</div>
+            ${sinSeccion.map(_lineaIngredienteHtml).join('')}
+          </div>` : '');
+      } else {
+        bodyHtml = ingredientes.length ? ingredientes.map(_lineaIngredienteHtml).join('') : '<div class="receta-ing-linea" style="color:var(--text-muted)">Sin ingredientes</div>';
+      }
 
-    notebook.innerHTML = `
-      <div class="receta-notebook__pagina" data-rec-id="${r.rec_id}">
-        <div class="receta-notebook__header">
-          <span class="receta-notebook__icono">🍽️</span>
-          <span class="receta-notebook__titulo">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</span>
-        </div>
-        <div class="receta-notebook__body">
-          <div class="receta-notebook__cuerpo">${bodyHtml}</div>
-          <div class="receta-notebook__acciones">
-            <button class="usu-btn-cambiar receta-btn-editar">✏️ Editar</button>
-            <button class="usu-btn-eliminar receta-btn-eliminar">🗑 Eliminar</button>
+      return `
+        <div class="receta-card" data-rec-id="${r.rec_id}">
+          <div class="receta-card__titulo">🍽️ ${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</div>
+          <div class="receta-card__cuerpo">${bodyHtml}</div>
+          <div class="receta-card__acciones">
+            <button class="usu-btn-cambiar receta-btn-editar" data-rec-id="${r.rec_id}">✏️ Editar</button>
+            <button class="usu-btn-eliminar receta-btn-eliminar" data-rec-id="${r.rec_id}" data-titulo="${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}">🗑 Eliminar</button>
           </div>
-        </div>
-      </div>`;
+        </div>`;
+    }).join('');
 
-    document.querySelectorAll('.receta-lista-item').forEach(btn => {
-      btn.classList.toggle('activo', btn.dataset.recId === r.rec_id);
+    el.querySelectorAll('.receta-btn-editar').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const receta = data.find(r => r.rec_id === btn.dataset.recId);
+        if (receta) _abrirFormReceta(receta);
+      });
     });
-
-    notebook.querySelector('.receta-btn-editar')?.addEventListener('click', () => _abrirFormReceta(r));
-    notebook.querySelector('.receta-btn-eliminar')?.addEventListener('click', async () => {
-      const confirmado = await _modalConfirmar(r.rec_titulo, '¿Eliminar esta receta?');
-      if (!confirmado) return;
-      const { error: errDel } = await window.db.from('recetas').delete().eq('rec_id', r.rec_id);
-      if (errDel) { SC?.toast('Error al eliminar la receta', 'error'); return; }
-      SC?.toast('Receta eliminada ✓', 'success');
-      renderRecetas();
+    el.querySelectorAll('.receta-btn-eliminar').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const confirmado = await _modalConfirmar(btn.dataset.titulo, '¿Eliminar esta receta?');
+        if (!confirmado) return;
+        const { error: errDel } = await window.db.from('recetas').delete().eq('rec_id', btn.dataset.recId);
+        if (errDel) { SC?.toast('Error al eliminar la receta', 'error'); return; }
+        SC?.toast('Receta eliminada ✓', 'success');
+        renderRecetas();
+      });
     });
-  }
-
-  function _irARecetaId(recId) {
-    const idx = _recetasCache.findIndex(r => r.rec_id === recId);
-    if (idx < 0) return;
-    _recetaActualIdx = idx;
-    _mostrarRecetaActual();
-  }
-
-  function _initRecetasNav() {
-    document.getElementById('receta-lista-sidebar')?.addEventListener('click', e => {
-      const btn = e.target.closest('.receta-lista-item');
-      if (btn) _irARecetaId(btn.dataset.recId);
-    });
-    document.getElementById('receta-buscador')?.addEventListener('input', () => _pintarListaSidebar());
   }
 
   function _filaIngredienteHtml(valores = {}) {
@@ -3946,7 +3884,7 @@ window.VistaAdmin = (function () {
 
     _cerrarFormReceta();
     SC?.toast(`Receta "${titulo}" guardada ✓`, 'success');
-    renderRecetas(recId);
+    renderRecetas();
   }
 
   function _initFormReceta() {
