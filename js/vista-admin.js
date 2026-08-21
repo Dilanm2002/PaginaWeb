@@ -3634,20 +3634,31 @@ window.VistaAdmin = (function () {
     return `<div class="receta-ing-linea">${SC?.escapeHtml(i.ingrec_nombre) ?? i.ingrec_nombre} — ${SC?.escapeHtml(i.ingrec_unidad) ?? i.ingrec_unidad}</div>`;
   };
 
-  function _pintarSelectorRecetas(lista) {
-    const selector = document.getElementById('receta-selector');
-    if (!selector) return;
+  // Pinta la lista clicable del sidebar (filtrada por el buscador si hay
+  // texto) y marca como activa la receta que se está mostrando.
+  function _pintarListaSidebar() {
+    const cont = document.getElementById('receta-lista-sidebar');
+    if (!cont) return;
     const SC = window.SC;
-    selector.innerHTML = '<option value="">— Elegir receta —</option>' +
-      lista.map(r => `<option value="${r.rec_id}">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</option>`).join('');
+    const q = (document.getElementById('receta-buscador')?.value ?? '').trim().toLowerCase();
+    const lista = q ? _recetasCache.filter(r => r.rec_titulo.toLowerCase().includes(q)) : _recetasCache;
+    const activaId = _recetasCache[_recetaActualIdx]?.rec_id;
+
+    if (!lista.length) {
+      cont.innerHTML = `<p class="receta-lista-sidebar__vacio">${q ? 'Sin resultados.' : 'No hay recetas aún.'}</p>`;
+      return;
+    }
+    cont.innerHTML = lista.map(r => `
+      <button type="button" class="receta-lista-item${r.rec_id === activaId ? ' activo' : ''}" data-rec-id="${r.rec_id}">
+        ${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}
+      </button>`).join('');
   }
 
-  // Carga el listado completo (para el buscador/desplegable/flechas) y
-  // muestra una sola receta a la vez, tipo hoja de cuaderno — preferId
-  // fuerza cuál mostrar (ej. la que se acaba de guardar).
+  // Carga el listado completo (para el buscador/sidebar) y muestra la
+  // receta elegida en el panel de detalle — preferId fuerza cuál mostrar
+  // (ej. la que se acaba de guardar).
   async function renderRecetas(preferId) {
     const notebook = document.getElementById('receta-notebook');
-    const nav       = document.getElementById('receta-nav');
     if (!notebook) return;
     notebook.innerHTML = '<p class="usu-cargando">Cargando recetas…</p>';
 
@@ -3658,17 +3669,16 @@ window.VistaAdmin = (function () {
 
     if (error) {
       notebook.innerHTML = '<p style="color:#dc2626;font-size:.9rem">Error al cargar recetas.</p>';
-      if (nav) nav.style.display = 'none';
-      _pintarSelectorRecetas([]);
+      _recetasCache = [];
+      _pintarListaSidebar();
       return;
     }
 
     _recetasCache = data || [];
-    _pintarSelectorRecetas(_recetasCache);
 
     if (!_recetasCache.length) {
       notebook.innerHTML = '<p class="receta-notebook__vacio">📖 No hay recetas registradas aún.<br>Crea la primera con "+ Nueva receta".</p>';
-      if (nav) nav.style.display = 'none';
+      _pintarListaSidebar();
       return;
     }
 
@@ -3678,14 +3688,12 @@ window.VistaAdmin = (function () {
     } else if (_recetaActualIdx >= _recetasCache.length) {
       _recetaActualIdx = 0;
     }
+    _pintarListaSidebar();
     _mostrarRecetaActual();
   }
 
   function _mostrarRecetaActual() {
     const notebook  = document.getElementById('receta-notebook');
-    const nav       = document.getElementById('receta-nav');
-    const navLabel  = document.getElementById('receta-nav-label');
-    const selector  = document.getElementById('receta-selector');
     if (!notebook || !_recetasCache.length) return;
 
     const SC = window.SC;
@@ -3725,9 +3733,9 @@ window.VistaAdmin = (function () {
         </div>
       </div>`;
 
-    if (nav) nav.style.display = _recetasCache.length > 1 ? 'flex' : 'none';
-    if (navLabel) navLabel.textContent = `${_recetaActualIdx + 1} / ${_recetasCache.length}`;
-    if (selector) selector.value = r.rec_id;
+    document.querySelectorAll('.receta-lista-item').forEach(btn => {
+      btn.classList.toggle('activo', btn.dataset.recId === r.rec_id);
+    });
 
     notebook.querySelector('.receta-btn-editar')?.addEventListener('click', () => _abrirFormReceta(r));
     notebook.querySelector('.receta-btn-eliminar')?.addEventListener('click', async () => {
@@ -3740,47 +3748,19 @@ window.VistaAdmin = (function () {
     });
   }
 
-  function _irARecetaIdx(idx) {
-    if (!_recetasCache.length) return;
-    _recetaActualIdx = ((idx % _recetasCache.length) + _recetasCache.length) % _recetasCache.length;
+  function _irARecetaId(recId) {
+    const idx = _recetasCache.findIndex(r => r.rec_id === recId);
+    if (idx < 0) return;
+    _recetaActualIdx = idx;
     _mostrarRecetaActual();
   }
 
   function _initRecetasNav() {
-    document.getElementById('receta-nav-ant')?.addEventListener('click', () => _irARecetaIdx(_recetaActualIdx - 1));
-    document.getElementById('receta-nav-sig')?.addEventListener('click', () => _irARecetaIdx(_recetaActualIdx + 1));
-
-    document.getElementById('receta-selector')?.addEventListener('change', e => {
-      const idx = _recetasCache.findIndex(r => r.rec_id === e.target.value);
-      if (idx >= 0) _irARecetaIdx(idx);
+    document.getElementById('receta-lista-sidebar')?.addEventListener('click', e => {
+      const btn = e.target.closest('.receta-lista-item');
+      if (btn) _irARecetaId(btn.dataset.recId);
     });
-
-    const buscadorInp = document.getElementById('receta-buscador');
-    const buscadorRes = document.getElementById('receta-buscador-resultados');
-    buscadorInp?.addEventListener('input', () => {
-      const q = buscadorInp.value.trim().toLowerCase();
-      if (!buscadorRes) return;
-      if (!q) { buscadorRes.style.display = 'none'; return; }
-      const SC = window.SC;
-      const coincidencias = _recetasCache.filter(r => r.rec_titulo.toLowerCase().includes(q)).slice(0, 6);
-      buscadorRes.innerHTML = coincidencias.length
-        ? coincidencias.map(r => `<button type="button" class="receta-buscador-item" data-rec-id="${r.rec_id}">${SC?.escapeHtml(r.rec_titulo) ?? r.rec_titulo}</button>`).join('')
-        : '<div class="receta-buscador-vacio">Sin resultados</div>';
-      buscadorRes.style.display = 'block';
-    });
-    buscadorRes?.addEventListener('click', e => {
-      const btn = e.target.closest('.receta-buscador-item');
-      if (!btn) return;
-      const idx = _recetasCache.findIndex(r => r.rec_id === btn.dataset.recId);
-      if (idx >= 0) _irARecetaIdx(idx);
-      if (buscadorInp) buscadorInp.value = '';
-      buscadorRes.style.display = 'none';
-    });
-    document.addEventListener('click', e => {
-      if (buscadorRes && buscadorRes.style.display !== 'none' && !buscadorRes.contains(e.target) && e.target !== buscadorInp) {
-        buscadorRes.style.display = 'none';
-      }
-    });
+    document.getElementById('receta-buscador')?.addEventListener('input', () => _pintarListaSidebar());
   }
 
   function _filaIngredienteHtml(valores = {}) {

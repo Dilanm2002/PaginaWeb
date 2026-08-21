@@ -4501,37 +4501,29 @@
   }
   .rf-btn-agregar-ing:hover { background: rgba(200,86,26,.12); }
 
-  /* Recetas — barra de búsqueda/selector + hoja tipo cuaderno */
-  .receta-toolbar { display: flex; gap: .75rem; margin: 1rem 0; flex-wrap: wrap; }
-  .receta-buscador-wrap { position: relative; flex: 2; min-width: 220px; }
+  /* Recetas — layout tipo "maestro-detalle": sidebar con buscador + lista
+     clicable a la izquierda, receta elegida a la derecha. */
+  .receta-layout { display: grid; grid-template-columns: 260px 1fr; gap: 1.25rem; margin-top: 1rem; align-items: start; }
+  .receta-sidebar {
+    background: #fff; border: 1px solid var(--border); border-radius: 14px;
+    padding: 1rem; box-shadow: 0 3px 14px rgba(59,26,8,.06);
+  }
   .receta-buscador {
-    width: 100%; padding: .65rem .9rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm, 10px);
-    font-size: .9rem; font-family: 'Inter', sans-serif; background: #fff; color: var(--text);
-    box-sizing: border-box; transition: border-color .2s;
+    width: 100%; padding: .6rem .85rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm, 10px);
+    font-size: .87rem; font-family: 'Inter', sans-serif; background: var(--cream); color: var(--text);
+    box-sizing: border-box; transition: border-color .2s; margin-bottom: .85rem;
   }
   .receta-buscador:focus { outline: none; border-color: var(--cinnamon); }
-  .receta-buscador-resultados {
-    position: absolute; top: calc(100% + .4rem); left: 0; right: 0; z-index: 20;
-    background: #fff; border: 1px solid var(--border); border-radius: 10px;
-    box-shadow: 0 8px 24px rgba(59,26,8,.12); overflow: hidden; max-height: 260px; overflow-y: auto;
+  .receta-lista-sidebar { display: flex; flex-direction: column; gap: .3rem; max-height: 60vh; overflow-y: auto; }
+  .receta-lista-item {
+    -webkit-appearance: none; appearance: none; border: none; background: none;
+    text-align: left; padding: .6rem .7rem; border-radius: 9px; font-size: .87rem; font-family: inherit;
+    color: var(--text); cursor: pointer; transition: background .15s, color .15s;
   }
-  .receta-buscador-item {
-    display: block; width: 100%; text-align: left; padding: .6rem .9rem; border: none;
-    background: none; font-size: .85rem; color: var(--text); cursor: pointer; font-family: inherit;
-  }
-  .receta-buscador-item:hover { background: var(--cream-dk); }
-  .receta-buscador-vacio { padding: .6rem .9rem; font-size: .82rem; color: var(--text-muted); }
-  .receta-selector {
-    flex: 1; min-width: 180px; padding: .65rem 2.2rem .65rem .9rem; border: 1.5px solid var(--border); border-radius: var(--radius-sm, 10px);
-    font-size: .88rem; font-family: 'Inter', sans-serif; background-color: #fff; color: var(--text);
-    box-sizing: border-box; cursor: pointer; transition: border-color .2s;
-    appearance: none; -webkit-appearance: none; -moz-appearance: none;
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%237A5640' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
-    background-repeat: no-repeat; background-position: right .8rem center; background-size: 14px;
-  }
-  .receta-selector:focus, .receta-selector:hover { outline: none; border-color: var(--cinnamon); }
-  .receta-nav { margin-bottom: 1rem; width: fit-content; }
-  #receta-nav-label { min-width: 56px; }
+  .receta-lista-item:hover { background: var(--cream-dk); }
+  .receta-lista-item.activo { background: var(--cinnamon); color: #fff; font-weight: 600; }
+  .receta-lista-sidebar__vacio { font-size: .82rem; color: var(--text-muted); padding: .5rem .3rem; }
+  .receta-detalle { min-width: 0; }
 
   .receta-notebook__vacio { color: var(--text-muted); font-size: .95rem; text-align: center; padding: 3rem 1rem; line-height: 1.8; }
   /* Hoja tipo documento con la misma cabecera de marca que ya se usa en
@@ -4639,8 +4631,8 @@
     .rf-ing-quitar { grid-area: quitar; width: 100%; height: 34px; border-radius: 8px; }
     .rf-grupo-head { flex-wrap: wrap; }
     .rf-grupo-nombre { flex-basis: 100%; }
-    .receta-toolbar { flex-direction: column; }
-    .receta-buscador-wrap, .receta-selector { min-width: 0; }
+    .receta-layout { grid-template-columns: 1fr; }
+    .receta-lista-sidebar { max-height: 40vh; }
     .receta-notebook__header { padding: .85rem 1.1rem; }
     .receta-notebook__body { padding: 1.25rem 1.1rem 1.5rem; }
     .receta-notebook__acciones { flex-direction: column; }
