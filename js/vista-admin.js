@@ -1858,12 +1858,25 @@ window.VistaAdmin = (function () {
     const divTop    = document.getElementById('chart-top-productos');
     const divCat    = document.getElementById('chart-top-categorias');
 
+    // En pantallas angostas, el nombre de los platos/categorías (eje Y de
+    // las gráficas horizontales) se mide con este mismo tamaño de letra
+    // para calcular el margen izquierdo (automargin) — con el tamaño de
+    // escritorio, esos márgenes le comían casi todo el ancho disponible a
+    // las barras en celular. Con letra más chica el margen se achica y
+    // las barras quedan legibles.
+    const _esMobile = window.innerWidth <= 640;
     const _layout = {
       paper_bgcolor: 'transparent',
       plot_bgcolor:  'transparent',
-      font: { family: "'Inter', sans-serif", size: 12, color: '#5a3e2b' },
+      font: { family: "'Inter', sans-serif", size: _esMobile ? 10 : 12, color: '#5a3e2b' },
       margin: { t: 10, r: 16, b: 40, l: 50 },
       showlegend: false,
+      // En celular, arrastrar o hacer pinch sobre el gráfico lo dejaba
+      // "acercado" (zoom) sin forma fácil de volver atrás, tapando los
+      // datos — se desactiva el zoom/pan por completo (los ejes de cada
+      // gráfico llevan fixedrange:true) y se deja solo el hover con el
+      // detalle, que es lo único que hace falta acá.
+      dragmode: false,
       // Por defecto el tooltip de Plotly sale con poco contraste y letra
       // chica — casi ilegible con el desglose de varias líneas que
       // agrega el gráfico de categorías.
@@ -1873,7 +1886,7 @@ window.VistaAdmin = (function () {
         align: 'left'
       }
     };
-    const _config = { responsive: true, displayModeBar: false, locale: 'es' };
+    const _config = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false, locale: 'es' };
 
     // ── Gráfica 1: por hora (hoy) o por día (semana/mes) ──────────
     let xLabels, yValues;
@@ -1943,10 +1956,10 @@ window.VistaAdmin = (function () {
         hovertemplate: '<b>%{x}</b><br>Ventas: <b>$%{y:.2f}</b><extra></extra>'
       }], {
         ..._layout,
-        yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false },
+        yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false, fixedrange: true },
         xaxis: _tickStep > 1
-          ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40 }
-          : { showgrid: false }
+          ? { showgrid: false, tickmode: 'array', tickvals: _tickvals, ticktext: _ticktext, tickangle: -40, fixedrange: true }
+          : { showgrid: false, fixedrange: true }
       }, _config).then(() => _forzarResizeChart(divVentas));
     }
     _dibujarChartVentas();
@@ -1998,9 +2011,9 @@ window.VistaAdmin = (function () {
         hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata:.2f}</b><extra></extra>'
       }], {
         ..._layout,
-        margin: { t: 10, r: 20, b: 30, l: 130 },
-        xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1] },
-        yaxis: { showgrid: false, automargin: true }
+        margin: { t: 10, r: 20, b: 30, l: _esMobile ? 90 : 130 },
+        xaxis: { tickformat: 'd', dtick: _dtickTop, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTop + Math.ceil(maxTop * 0.35) + 1], fixedrange: true },
+        yaxis: { showgrid: false, automargin: true, fixedrange: true }
       }, _config).then(() => _forzarResizeChart(divTop));
     }
     _dibujarChartTop();
@@ -2057,9 +2070,9 @@ window.VistaAdmin = (function () {
         hovertemplate: '<b>%{y}</b><br>Unidades: <b>%{x}</b><br>Total vendido: <b>$%{customdata[0]:.2f}</b><br><br>%{customdata[1]}<extra></extra>'
       }], {
         ..._layout,
-        margin: { t: 10, r: 20, b: 30, l: 130 },
-        xaxis: { tickformat: 'd', dtick: _dtickTopCat, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTopCat + Math.ceil(maxTopCat * 0.35) + 1] },
-        yaxis: { showgrid: false, automargin: true }
+        margin: { t: 10, r: 20, b: 30, l: _esMobile ? 90 : 130 },
+        xaxis: { tickformat: 'd', dtick: _dtickTopCat, gridcolor: 'rgba(0,0,0,.07)', zeroline: false, range: [0, maxTopCat + Math.ceil(maxTopCat * 0.35) + 1], fixedrange: true },
+        yaxis: { showgrid: false, automargin: true, fixedrange: true }
       }, _config).then(() => _forzarResizeChart(divCat));
     }
     _dibujarChartCat();

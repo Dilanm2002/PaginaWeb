@@ -3428,6 +3428,10 @@
     .reportes-charts { grid-template-columns: 1fr; }
     .rep-tabs { flex-wrap: wrap; }
     .rep-tab  { flex: 1; text-align: center; }
+    .reportes-chart-wrap { padding: .9rem .75rem; }
+    .reportes-chart-title { font-size: .72rem; margin-bottom: .6rem; padding-bottom: .45rem; }
+    .reportes-kpi { padding: 1rem .9rem; }
+    .reportes-kpi__val { font-size: 1.4rem; }
     .pago-modal-box { max-width: 100%; }
     .usu-row { flex-direction: column; align-items: flex-start; }
     .usu-rol-wrap { width: 100%; }
