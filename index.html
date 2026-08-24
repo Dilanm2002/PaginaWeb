@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260824a">
+  <link rel="stylesheet" href="assets/styles.css?v=20260824b">
 </head>
 <body>
 
@@ -1568,15 +1568,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260824a"></script>
-  <script src="js/logica-carrito.js?v=20260824a"></script>
-  <script src="js/carrito.js?v=20260824a"></script>
-  <script src="js/vista.js?v=20260824a"></script>
-  <script src="js/aplicacion.js?v=20260824a"></script>
-  <script src="js/vista-cajero.js?v=20260824a"></script>
-  <script src="js/vista-admin.js?v=20260824a"></script>
-  <script src="js/vista-menu.js?v=20260824a"></script>
-  <script src="js/vista-cocina.js?v=20260824a"></script>
+  <script src="js/autenticacion.js?v=20260824b"></script>
+  <script src="js/logica-carrito.js?v=20260824b"></script>
+  <script src="js/carrito.js?v=20260824b"></script>
+  <script src="js/vista.js?v=20260824b"></script>
+  <script src="js/aplicacion.js?v=20260824b"></script>
+  <script src="js/vista-cajero.js?v=20260824b"></script>
+  <script src="js/vista-admin.js?v=20260824b"></script>
+  <script src="js/vista-menu.js?v=20260824b"></script>
+  <script src="js/vista-cocina.js?v=20260824b"></script>
 
   <script>
   'use strict';
@@ -5349,12 +5349,7 @@
     if (!view) return;
     view.classList.add('activo');
 
-    const CAMPOS = [
-      { col: 'sopa',         icon: '🍲', lbl: 'Sopa' },
-      { col: 'plato_fuerte', icon: '🍽️', lbl: 'Plato fuerte' },
-      { col: 'ensalada',     icon: '🥗', lbl: 'Ensalada' },
-      { col: 'jugo',         icon: '🥤', lbl: 'Jugo' }
-    ];
+    const IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%236B3015%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2270%22%3E%F0%9F%8D%BD%EF%B8%8F%3C/text%3E%3C/svg%3E'";
 
     function escapeHtml(s) {
       return String(s)
@@ -5369,18 +5364,6 @@
       return new Date(d - tz).toISOString().slice(0, 10);
     }
 
-    // Si algún campo del menú quedó ligado a un plato del catálogo (id) en
-    // vez de texto libre, se resuelve su nombre actual acá — normalmente
-    // el admin escribe todo como texto libre, pero por si acaso.
-    async function cargarNombresPlatos(ids) {
-      const idsValidos = [...new Set(ids.filter(Boolean))];
-      if (!idsValidos.length) return {};
-      const { data } = await window.db.from('platos').select('plat_id, plat_nombre').in('plat_id', idsValidos);
-      const mapa = {};
-      (data || []).forEach(p => { mapa[p.plat_id] = p.plat_nombre; });
-      return mapa;
-    }
-
     async function cargar() {
       const contEl  = document.getElementById('pantalla-menu-contenido');
       const fechaEl = document.getElementById('pantalla-menu-fecha');
@@ -5391,26 +5374,27 @@
         });
       }
 
-      const { data, error } = await window.db.from('menu_dia')
-        .select('mendia_sopa_id, mendia_sopa_texto, mendia_plato_fuerte_id, mendia_plato_fuerte_texto, mendia_ensalada_id, mendia_ensalada_texto, mendia_jugo_id, mendia_jugo_texto')
-        .eq('mendia_fecha', hoyISO).maybeSingle();
+      // Misma fuente que ve el cliente al pedir: los platos de la
+      // categoría "Almuerzos" que estén activos/visibles en Productos —
+      // no un registro aparte. Lo que se active/oculte ahí es lo que
+      // sale acá, con su foto/precio/descripción tal cual estén cargados.
+      const { data, error } = await window.db.from('platos')
+        .select('plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen, categorias!inner(cat_nombre)')
+        .eq('plat_activo', true)
+        .eq('categorias.cat_nombre', 'Almuerzos')
+        .order('plat_nombre');
 
-      const vacioHtml = '<p class="pantalla-menu__vacio">🍽️ Todavía no se ha registrado el menú de hoy.</p>';
-      if (error || !data) { contEl.innerHTML = vacioHtml; return; }
+      const vacioHtml = '<p class="pantalla-menu__vacio">🍽️ Todavía no hay ningún almuerzo activo hoy — actívalo en Productos.</p>';
+      if (error || !data || !data.length) { contEl.innerHTML = vacioHtml; return; }
 
-      const nombresPorId = await cargarNombresPlatos(CAMPOS.map(c => data[`mendia_${c.col}_id`]));
-      const items = CAMPOS.map(c => ({
-        ...c,
-        nombre: data[`mendia_${c.col}_texto`] || nombresPorId[data[`mendia_${c.col}_id`]] || null
-      }));
-
-      if (!items.some(i => i.nombre)) { contEl.innerHTML = vacioHtml; return; }
-
-      contEl.innerHTML = items.map(i => `
+      contEl.innerHTML = data.map(p => `
         <div class="pantalla-menu__item">
-          <div class="pantalla-menu__item-icon">${i.icon}</div>
-          <div class="pantalla-menu__item-lbl">${i.lbl}</div>
-          <div class="pantalla-menu__item-nombre">${i.nombre ? escapeHtml(i.nombre) : '<span style="opacity:.5">Sin definir</span>'}</div>
+          <img class="pantalla-menu__item-foto" src="${p.plat_imagen || ''}" alt="" onerror="${IMG_FALLBACK}">
+          <div class="pantalla-menu__item-info">
+            <div class="pantalla-menu__item-nombre">${escapeHtml(p.plat_nombre)}</div>
+            ${p.plat_descripcion ? `<div class="pantalla-menu__item-desc">${escapeHtml(p.plat_descripcion)}</div>` : ''}
+            <div class="pantalla-menu__item-precio">$${parseFloat(p.plat_precio).toFixed(2)}</div>
+          </div>
         </div>`).join('');
     }
 
@@ -5436,7 +5420,7 @@
       setInterval(cargar, 5 * 60 * 1000);
       try {
         window.db.channel('pantalla-menu-dia')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'menu_dia' }, cargar)
+          .on('postgres_changes', { event: '*', schema: 'public', table: 'platos' }, cargar)
           .subscribe();
       } catch (_) {}
     });
