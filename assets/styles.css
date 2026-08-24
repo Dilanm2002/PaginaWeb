@@ -4830,13 +4830,17 @@
   font-size: clamp(1.05rem, 1.9vw, 1.5rem); opacity: .7;
   margin: .3rem 0 4vh; text-transform: capitalize;
 }
+/* Fijo en 4 columnas (min 260px c/u) para que la pantalla siempre
+   reserve espacio para al menos 4 platos en fila — con menos activos,
+   las tarjetas no se estiran para llenar el hueco (minmax con techo
+   fijo), simplemente queda espacio vacío en vez de verse infladas. */
 .pantalla-menu__contenido {
-  display: flex; flex-wrap: wrap; justify-content: center;
-  gap: 2.5vw; width: 100%; max-width: 1300px;
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 320px));
+  justify-content: center; gap: 2rem; width: 100%; max-width: 1500px;
 }
 .pantalla-menu__item {
   background: rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.2);
-  border-radius: 24px; overflow: hidden; width: min(90vw, 420px);
+  border-radius: 24px; overflow: hidden;
   text-align: left; display: flex; flex-direction: column;
 }
 .pantalla-menu__item-foto {

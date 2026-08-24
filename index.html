@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260824b">
+  <link rel="stylesheet" href="assets/styles.css?v=20260824c">
 </head>
 <body>
 
@@ -1568,15 +1568,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260824b"></script>
-  <script src="js/logica-carrito.js?v=20260824b"></script>
-  <script src="js/carrito.js?v=20260824b"></script>
-  <script src="js/vista.js?v=20260824b"></script>
-  <script src="js/aplicacion.js?v=20260824b"></script>
-  <script src="js/vista-cajero.js?v=20260824b"></script>
-  <script src="js/vista-admin.js?v=20260824b"></script>
-  <script src="js/vista-menu.js?v=20260824b"></script>
-  <script src="js/vista-cocina.js?v=20260824b"></script>
+  <script src="js/autenticacion.js?v=20260824c"></script>
+  <script src="js/logica-carrito.js?v=20260824c"></script>
+  <script src="js/carrito.js?v=20260824c"></script>
+  <script src="js/vista.js?v=20260824c"></script>
+  <script src="js/aplicacion.js?v=20260824c"></script>
+  <script src="js/vista-cajero.js?v=20260824c"></script>
+  <script src="js/vista-admin.js?v=20260824c"></script>
+  <script src="js/vista-menu.js?v=20260824c"></script>
+  <script src="js/vista-cocina.js?v=20260824c"></script>
 
   <script>
   'use strict';
@@ -5377,9 +5377,10 @@
       // Misma fuente que ve el cliente al pedir: los platos de la
       // categoría "Almuerzos" que estén activos/visibles en Productos —
       // no un registro aparte. Lo que se active/oculte ahí es lo que
-      // sale acá, con su foto/precio/descripción tal cual estén cargados.
+      // sale acá, con su foto, ingredientes y precio tal cual estén
+      // cargados (nada de descripción genérica).
       const { data, error } = await window.db.from('platos')
-        .select('plat_id, plat_nombre, plat_descripcion, plat_precio, plat_imagen, categorias!inner(cat_nombre)')
+        .select('plat_id, plat_nombre, plat_precio, plat_imagen, categorias!inner(cat_nombre), plato_ingredientes(ingredientes(ing_nombre))')
         .eq('plat_activo', true)
         .eq('categorias.cat_nombre', 'Almuerzos')
         .order('plat_nombre');
@@ -5387,15 +5388,18 @@
       const vacioHtml = '<p class="pantalla-menu__vacio">🍽️ Todavía no hay ningún almuerzo activo hoy — actívalo en Productos.</p>';
       if (error || !data || !data.length) { contEl.innerHTML = vacioHtml; return; }
 
-      contEl.innerHTML = data.map(p => `
+      contEl.innerHTML = data.map(p => {
+        const ingredientes = (p.plato_ingredientes || []).map(pi => pi.ingredientes?.ing_nombre).filter(Boolean).join(', ');
+        return `
         <div class="pantalla-menu__item">
           <img class="pantalla-menu__item-foto" src="${p.plat_imagen || ''}" alt="" onerror="${IMG_FALLBACK}">
           <div class="pantalla-menu__item-info">
             <div class="pantalla-menu__item-nombre">${escapeHtml(p.plat_nombre)}</div>
-            ${p.plat_descripcion ? `<div class="pantalla-menu__item-desc">${escapeHtml(p.plat_descripcion)}</div>` : ''}
+            ${ingredientes ? `<div class="pantalla-menu__item-desc">${escapeHtml(ingredientes)}</div>` : ''}
             <div class="pantalla-menu__item-precio">$${parseFloat(p.plat_precio).toFixed(2)}</div>
           </div>
-        </div>`).join('');
+        </div>`;
+      }).join('');
     }
 
     function actualizarReloj() {
