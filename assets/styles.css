@@ -1248,6 +1248,21 @@
       font-size: .82rem; font-weight: 700; cursor: pointer; transition: all .15s;
     }
     .btn-agregar-grupo-op:hover { background: rgba(200,86,26,.08); }
+    /* Fila de ingrediente en el form de Productos — mismo patrón visual
+       que grupo-op-row (nombre suelto en vez de coma, uno a la vez). */
+    .ing-prod-row { display: flex; gap: .5rem; align-items: center; margin-bottom: .5rem; }
+    .ing-prod-nombre {
+      flex: 1; padding: .55rem .75rem; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); font-size: .85rem; font-family: 'Inter', sans-serif;
+      background: var(--cream); color: var(--text); box-sizing: border-box;
+    }
+    .ing-prod-nombre:focus { outline: none; border-color: var(--cinnamon); }
+    .ing-prod-quitar {
+      flex-shrink: 0; width: 34px; height: 34px; border: 1.5px solid var(--border);
+      border-radius: var(--radius-sm); background: var(--white); color: #dc2626;
+      font-size: .9rem; cursor: pointer; transition: all .15s;
+    }
+    .ing-prod-quitar:hover { background: #fef2f2; border-color: #dc2626; }
     .prod-form-footer {
       padding: 1rem 1.5rem; border-top: 1px solid var(--border);
       display: flex; gap: .75rem; justify-content: flex-end;

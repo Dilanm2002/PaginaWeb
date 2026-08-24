@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260824f">
+  <link rel="stylesheet" href="assets/styles.css?v=20260824g">
 </head>
 <body>
 
@@ -1042,8 +1042,9 @@
               <span id="pf-descripcion-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group prod-form-full">
-              <label for="pf-ingredientes">Ingredientes (separados por coma)</label>
-              <input type="text" id="pf-ingredientes" placeholder="Ej: Arroz, Pollo, Ensalada, Jugo" aria-describedby="pf-ingredientes-error" autocomplete="off">
+              <label>Ingredientes</label>
+              <div id="pf-ingredientes-lista"></div>
+              <button type="button" id="btn-agregar-ingrediente" class="btn-agregar-grupo-op">+ Agregar ingrediente</button>
               <span id="pf-ingredientes-error" role="alert" aria-live="polite" style="display:none;color:#dc2626;font-size:.78rem;margin-top:.25rem;"></span>
             </div>
             <div class="prod-form-group">
@@ -1568,15 +1569,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260824f"></script>
-  <script src="js/logica-carrito.js?v=20260824f"></script>
-  <script src="js/carrito.js?v=20260824f"></script>
-  <script src="js/vista.js?v=20260824f"></script>
-  <script src="js/aplicacion.js?v=20260824f"></script>
-  <script src="js/vista-cajero.js?v=20260824f"></script>
-  <script src="js/vista-admin.js?v=20260824f"></script>
-  <script src="js/vista-menu.js?v=20260824f"></script>
-  <script src="js/vista-cocina.js?v=20260824f"></script>
+  <script src="js/autenticacion.js?v=20260824g"></script>
+  <script src="js/logica-carrito.js?v=20260824g"></script>
+  <script src="js/carrito.js?v=20260824g"></script>
+  <script src="js/vista.js?v=20260824g"></script>
+  <script src="js/aplicacion.js?v=20260824g"></script>
+  <script src="js/vista-cajero.js?v=20260824g"></script>
+  <script src="js/vista-admin.js?v=20260824g"></script>
+  <script src="js/vista-menu.js?v=20260824g"></script>
+  <script src="js/vista-cocina.js?v=20260824g"></script>
 
   <script>
   'use strict';

@@ -1078,8 +1078,15 @@ window.VistaAdmin = (function () {
     document.getElementById('pf-permite-excluir').checked = p?.permiteExcluir ?? false;
     document.getElementById('pf-stock').value        = p ? SC.getStock(p.id).stock : '';
     const ingsArr = Array.isArray(p?.ingredientes) ? p.ingredientes : [];
-    const ings = ingsArr.map(i => typeof i === 'string' ? i : i.nombre).join(', ');
-    document.getElementById('pf-ingredientes').value = ings;
+    const ingsLista = document.getElementById('pf-ingredientes-lista');
+    if (ingsLista) {
+      ingsLista.innerHTML = '';
+      if (ingsArr.length) {
+        ingsArr.forEach(i => _agregarFilaIngredienteProducto(typeof i === 'string' ? i : i.nombre));
+      } else {
+        _agregarFilaIngredienteProducto();
+      }
+    }
     document.getElementById('pf-imagen').value       = '';
 
     const gruposLista = document.getElementById('pf-grupos-lista');
@@ -1293,6 +1300,28 @@ window.VistaAdmin = (function () {
     if (!v) return 'Los ingredientes son obligatorios.';
     if (!_parsearNombresIngredientes(v).length) return 'Ingresa al menos un ingrediente.';
     return '';
+  }
+
+  // Lee el valor combinado de todas las filas de #pf-ingredientes-lista
+  // como un solo string separado por comas — así _parsearNombresIngredientes
+  // y _validarIngredientes (y el guardado, más abajo) no tienen que cambiar.
+  function _leerIngredientesForm() {
+    return [...document.querySelectorAll('#pf-ingredientes-lista .ing-prod-nombre')]
+      .map(inp => inp.value.trim()).filter(Boolean).join(', ');
+  }
+
+  function _filaIngredienteProductoHtml(nombre = '') {
+    return `
+      <div class="ing-prod-row">
+        <input type="text" class="ing-prod-nombre" placeholder="Ej: Arroz" value="${window.SC?.escapeHtml(nombre) ?? nombre}">
+        <button type="button" class="ing-prod-quitar" title="Quitar ingrediente" aria-label="Quitar ingrediente">✕</button>
+      </div>`;
+  }
+
+  function _agregarFilaIngredienteProducto(nombre) {
+    const lista = document.getElementById('pf-ingredientes-lista');
+    if (!lista) return;
+    lista.insertAdjacentHTML('beforeend', _filaIngredienteProductoHtml(nombre));
   }
 
   // ── Grupos de opciones ("elige 1 de N") en el form de producto ──
@@ -1553,9 +1582,22 @@ window.VistaAdmin = (function () {
     const pfDesc = document.getElementById('pf-descripcion');
     pfDesc.addEventListener('blur', () => _mostrarErrorDescripcion(pfDesc.value.trim() ? '' : 'La descripción es obligatoria.'));
 
-    const pfIng = document.getElementById('pf-ingredientes');
-    pfIng.addEventListener('blur',  () => _mostrarErrorIngredientes(_validarIngredientes(pfIng.value)));
-    pfIng.addEventListener('input', () => { if (pfIng.value) _mostrarErrorIngredientes(_validarIngredientes(pfIng.value)); });
+    document.getElementById('btn-agregar-ingrediente')?.addEventListener('click', () => _agregarFilaIngredienteProducto());
+    document.getElementById('pf-ingredientes-lista')?.addEventListener('click', e => {
+      const btn = e.target.closest('.ing-prod-quitar');
+      if (!btn) return;
+      const lista = document.getElementById('pf-ingredientes-lista');
+      // Siempre debe quedar al menos una fila para poder seguir agregando.
+      if (lista.querySelectorAll('.ing-prod-row').length > 1) btn.closest('.ing-prod-row')?.remove();
+      else btn.closest('.ing-prod-row')?.querySelector('input').value = '';
+      _mostrarErrorIngredientes(_validarIngredientes(_leerIngredientesForm()));
+    });
+    document.getElementById('pf-ingredientes-lista')?.addEventListener('blur', e => {
+      if (e.target.classList.contains('ing-prod-nombre')) _mostrarErrorIngredientes(_validarIngredientes(_leerIngredientesForm()));
+    }, true);
+    document.getElementById('pf-ingredientes-lista')?.addEventListener('input', e => {
+      if (e.target.classList.contains('ing-prod-nombre') && _leerIngredientesForm()) _mostrarErrorIngredientes(_validarIngredientes(_leerIngredientesForm()));
+    });
 
     document.getElementById('btn-cerrar-prod-form').addEventListener('click', cerrarFormProducto);
     document.getElementById('btn-prod-cancel').addEventListener('click', cerrarFormProducto);
@@ -1576,7 +1618,7 @@ window.VistaAdmin = (function () {
       const precioRaw     = document.getElementById('pf-precio').value.replace(',', '.');
       const precio        = Math.round(parseFloat(precioRaw) * 100) / 100;
       const descripcion   = document.getElementById('pf-descripcion').value.trim();
-      const ingredientesRaw = document.getElementById('pf-ingredientes').value.trim();
+      const ingredientesRaw = _leerIngredientesForm();
       const stockRaw      = document.getElementById('pf-stock').value;
 
       const errNombre = _validarNombre(nombre);
@@ -1599,7 +1641,7 @@ window.VistaAdmin = (function () {
       if (errCategoria) { document.getElementById('pf-categoria').focus(); return; }
       if (errPrecio)    { document.getElementById('pf-precio').focus(); return; }
       if (!descripcion) { document.getElementById('pf-descripcion').focus(); return; }
-      if (errIng)       { document.getElementById('pf-ingredientes').focus(); return; }
+      if (errIng)       { document.querySelector('#pf-ingredientes-lista .ing-prod-nombre')?.focus(); return; }
       if (errStock)     { document.getElementById('pf-stock').focus(); return; }
       if (errGrupos)    return;
 
