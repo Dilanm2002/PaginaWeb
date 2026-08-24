@@ -4847,8 +4847,19 @@
   width: 100%; aspect-ratio: 4 / 3; object-fit: cover;
   background: var(--brown-mid);
 }
-.pantalla-menu__item-info { padding: 1.5rem 1.6rem 1.75rem; }
-.pantalla-menu__item-nombre { font-size: clamp(1.35rem, 2.3vw, 2rem); font-weight: 700; line-height: 1.25; }
-.pantalla-menu__item-desc { font-size: clamp(.95rem, 1.5vw, 1.2rem); opacity: .8; margin-top: .4rem; line-height: 1.4; }
-.pantalla-menu__item-precio { font-size: clamp(1.3rem, 2vw, 1.8rem); font-weight: 800; color: var(--cinnamon-lt); margin-top: .8rem; }
+.pantalla-menu__item-info {
+  padding: 1.5rem 1.6rem 1.75rem;
+  /* Fondo propio (más oscuro y opaco que el resto de la tarjeta) para que
+     el texto blanco siempre tenga buen contraste, sin depender de en qué
+     parte del degradé de fondo cae la tarjeta. */
+  background: rgba(20,10,4,.55);
+}
+.pantalla-menu__item-nombre { font-size: clamp(1.35rem, 2.3vw, 2rem); font-weight: 700; line-height: 1.25; color: #fff; }
+.pantalla-menu__seccion { margin-top: 1rem; padding-top: .8rem; border-top: 1px solid rgba(255,255,255,.18); }
+.pantalla-menu__seccion-lbl {
+  font-size: clamp(.72rem, 1vw, .85rem); font-weight: 700; text-transform: uppercase;
+  letter-spacing: .1em; color: var(--cinnamon-lt); margin-bottom: .35rem;
+}
+.pantalla-menu__item-desc { font-size: clamp(1rem, 1.6vw, 1.25rem); color: #fff; line-height: 1.45; }
+.pantalla-menu__item-precio { font-size: clamp(1.3rem, 2vw, 1.8rem); font-weight: 800; color: #fff; }
 .pantalla-menu__vacio { font-size: clamp(1.15rem, 2vw, 1.7rem); opacity: .9; max-width: 600px; }
