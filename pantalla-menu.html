@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Menú del Día — Sal y Canela</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="assets/styles.css?v=20260824f">
+<style>
+  html, body { margin: 0; padding: 0; height: 100%; background: #3B1A08; }
+</style>
+</head>
+<body>
+
+  <section id="pantalla-menu-view" class="activo" aria-label="Menú del día">
+    <div class="pantalla-menu__reloj" id="pantalla-menu-reloj"></div>
+    <div class="pantalla-menu__logo">Sal <span>y</span> Canela</div>
+    <div class="pantalla-menu__titulo">Menú del Día</div>
+    <div class="pantalla-menu__fecha" id="pantalla-menu-fecha"></div>
+    <div class="pantalla-menu__contenido" id="pantalla-menu-contenido">
+      <p class="pantalla-menu__vacio">Cargando…</p>
+    </div>
+  </section>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script>
+  (function () {
+    const SUPABASE_URL = 'https://aagcxtggeqkzfngzfqne.supabase.co';
+    const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFhZ2N4dGdnZXFremZuZ3pmcW5lIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzgzNzIyMDYsImV4cCI6MjA5Mzk0ODIwNn0.Byyo-cRfRvZ4ww7dBNF1dPK51rYAFjjpw-JnEzg7-G8';
+    const db = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    const IMG_FALLBACK = "this.onerror=null;this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22200%22 height=%22200%22%3E%3Crect fill=%22%236B3015%22 width=%22100%25%22 height=%22100%25%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 font-size=%2270%22%3E%F0%9F%8D%BD%EF%B8%8F%3C/text%3E%3C/svg%3E'";
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;').replace(/'/g, '&#x27;');
+    }
+
+    // Mismo criterio de "fecha de hoy en horario local" que el resto de la
+    // app (evita que a medianoche se corra un día por usar UTC).
+    function fechaLocalISO(d) {
+      d = d || new Date();
+      const tz = d.getTimezoneOffset() * 60000;
+      return new Date(d.getTime() - tz).toISOString().slice(0, 10);
+    }
+
+    function cargar() {
+      const contEl  = document.getElementById('pantalla-menu-contenido');
+      const fechaEl = document.getElementById('pantalla-menu-fecha');
+      const hoyISO  = fechaLocalISO();
+      if (fechaEl) {
+        fechaEl.textContent = new Date(hoyISO + 'T00:00:00').toLocaleDateString('es-EC', {
+          weekday: 'long', day: 'numeric', month: 'long'
+        });
+      }
+
+      // Misma fuente que ve el cliente al pedir: los platos de la
+      // categoría "Almuerzos" que estén activos/visibles en Productos.
+      db.from('platos')
+        .select('plat_id, plat_nombre, plat_precio, plat_imagen, categorias!inner(cat_nombre), plato_ingredientes(ingredientes(ing_nombre))')
+        .eq('plat_activo', true)
+        .eq('categorias.cat_nombre', 'Almuerzos')
+        .order('plat_nombre')
+        .then(function (res) {
+          const data = res.data, error = res.error;
+          const vacioHtml = '<p class="pantalla-menu__vacio">🍽️ Todavía no hay ningún almuerzo activo hoy — actívalo en Productos.</p>';
+          if (error || !data || !data.length) { contEl.innerHTML = vacioHtml; return; }
+
+          contEl.innerHTML = data.map(function (p) {
+            const ingredientes = (p.plato_ingredientes || [])
+              .map(function (pi) { return pi.ingredientes ? pi.ingredientes.ing_nombre : null; })
+              .filter(Boolean).join(', ');
+            return '' +
+              '<div class="pantalla-menu__item">' +
+                '<img class="pantalla-menu__item-foto" src="' + (p.plat_imagen || '') + '" alt="" onerror="' + IMG_FALLBACK + '">' +
+                '<div class="pantalla-menu__item-info">' +
+                  '<div class="pantalla-menu__item-nombre">' + escapeHtml(p.plat_nombre) + '</div>' +
+                  (ingredientes ? (
+                    '<div class="pantalla-menu__seccion">' +
+                      '<div class="pantalla-menu__seccion-lbl">Ingredientes</div>' +
+                      '<div class="pantalla-menu__item-desc">' + escapeHtml(ingredientes) + '</div>' +
+                    '</div>'
+                  ) : '') +
+                  '<div class="pantalla-menu__seccion">' +
+                    '<div class="pantalla-menu__seccion-lbl">Precio</div>' +
+                    '<div class="pantalla-menu__item-precio">$' + parseFloat(p.plat_precio).toFixed(2) + '</div>' +
+                  '</div>' +
+                '</div>' +
+              '</div>';
+          }).join('');
+        });
+    }
+
+    function actualizarReloj() {
+      const el = document.getElementById('pantalla-menu-reloj');
+      if (el) el.textContent = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+    }
+
+    cargar();
+    actualizarReloj();
+    setInterval(actualizarReloj, 30000);
+    // Refresco periódico (por si Realtime no está habilitado en esta
+    // tabla) + Realtime para que un cambio del admin se vea al toque.
+    setInterval(cargar, 5 * 60 * 1000);
+    try {
+      db.channel('pantalla-menu-dia')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'platos' }, cargar)
+        .subscribe();
+    } catch (e) {}
+  })();
+  </script>
+</body>
+</html>
