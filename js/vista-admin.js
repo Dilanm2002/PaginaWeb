@@ -3249,29 +3249,36 @@ window.VistaAdmin = (function () {
     });
 
     // Historial combinado de descuentos/adelantos/saldo pendiente por
-    // empleado, para mostrar dentro del detalle expandible.
+    // empleado, para mostrar dentro del detalle expandible — solo lo que
+    // TODAVÍA no se liquidó. Lo ya pagado/descontado queda registrado (y
+    // visible) únicamente en la pestaña "Historial de pagos", para que
+    // "Movimientos" no se vaya acumulando con cosas ya resueltas semana
+    // tras semana.
     const movPorUsu = {};
     (descuentos || []).forEach(d => {
+      if (d.desc_aplicado) return;
       (movPorUsu[d.usu_id] ??= []).push({
         fecha: d.desc_fecha, tipo: 'Descuento', signo: -1, monto: parseFloat(d.desc_monto) || 0,
-        motivo: d.desc_motivo, estado: d.desc_aplicado ? 'Aplicado' : 'Por descontar'
+        motivo: d.desc_motivo, estado: 'Por descontar'
       });
     });
     (adelHist || []).forEach(a => {
       const monto = parseFloat(a.adel_monto) || 0, aplicado = parseFloat(a.adel_aplicado) || 0;
+      if (aplicado >= monto - 0.004) return;
       // "Pendiente" sería confuso acá — el adelanto ya se le dio al
       // empleado (eso pasó al registrarlo); lo que puede seguir pendiente
       // es descontárselo de un pago futuro, no entregárselo.
       (movPorUsu[a.usu_id] ??= []).push({
         fecha: a.adel_fecha, tipo: 'Adelanto', signo: -1, monto,
-        motivo: a.adel_motivo, estado: aplicado >= monto - 0.004 ? 'Descontado' : (aplicado > 0 ? `Parcial ($${aplicado.toFixed(2)} descontado)` : 'Por descontar')
+        motivo: a.adel_motivo, estado: aplicado > 0 ? `Parcial ($${aplicado.toFixed(2)} descontado)` : 'Por descontar'
       });
     });
     (pendHist || []).forEach(p => {
       const monto = parseFloat(p.sp_monto) || 0, pagado = parseFloat(p.sp_pagado) || 0;
+      if (pagado >= monto - 0.004) return;
       (movPorUsu[p.usu_id] ??= []).push({
         fecha: p.sp_fecha, tipo: 'Saldo a favor', signo: 1, monto,
-        motivo: p.sp_motivo, estado: pagado >= monto - 0.004 ? 'Pagado' : (pagado > 0 ? `Parcial ($${pagado.toFixed(2)})` : 'Pendiente')
+        motivo: p.sp_motivo, estado: pagado > 0 ? `Parcial ($${pagado.toFixed(2)})` : 'Pendiente'
       });
     });
     Object.values(movPorUsu).forEach(lista => lista.sort((a, b) => b.fecha.localeCompare(a.fecha)));
