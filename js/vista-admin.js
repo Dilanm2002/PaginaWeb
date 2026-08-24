@@ -1588,8 +1588,12 @@ window.VistaAdmin = (function () {
       if (!btn) return;
       const lista = document.getElementById('pf-ingredientes-lista');
       // Siempre debe quedar al menos una fila para poder seguir agregando.
-      if (lista.querySelectorAll('.ing-prod-row').length > 1) btn.closest('.ing-prod-row')?.remove();
-      else btn.closest('.ing-prod-row')?.querySelector('input').value = '';
+      if (lista.querySelectorAll('.ing-prod-row').length > 1) {
+        btn.closest('.ing-prod-row')?.remove();
+      } else {
+        const inp = btn.closest('.ing-prod-row')?.querySelector('input');
+        if (inp) inp.value = '';
+      }
       _mostrarErrorIngredientes(_validarIngredientes(_leerIngredientesForm()));
     });
     document.getElementById('pf-ingredientes-lista')?.addEventListener('blur', e => {
