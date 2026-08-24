@@ -3407,30 +3407,87 @@ window.VistaAdmin = (function () {
     }
 
     const _fmtFecha = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    const _fmtDiaH  = iso => new Date(iso + 'T00:00:00').toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit', month: '2-digit' });
+    const _fmtHoraH = iso => iso ? new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—';
 
     wrap.innerHTML = `
       <table class="adm-tabla">
         <thead><tr>
           <th>Registrado</th><th>Empleado</th><th>Período pagado</th><th style="text-align:center">Días</th>
-          <th style="text-align:right">Total calculado</th><th style="text-align:right">Entregado</th>
-          <th style="text-align:right">Quedó pendiente</th>
+          <th style="text-align:right">Subtotal</th><th style="text-align:right">Descuentos</th>
+          <th style="text-align:right">Adelanto</th><th style="text-align:right">Total calculado</th>
+          <th style="text-align:right">Entregado</th><th style="text-align:right">Quedó pendiente</th>
         </tr></thead>
         <tbody>
           ${pagos.map(p => {
             const nombre = nombrePorUsu[p.usu_id] ?? p.usu_id;
+            const detalleId = `rrhh-hist-detalle-${p.pago_id}`;
+            const desc = parseFloat(p.pago_descuentos) || 0;
+            const adelanto = parseFloat(p.pago_adelanto) || 0;
             return `<tr>
               <td data-label="Registrado">${new Date(p.created_at).toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit', year: 'numeric' })}</td>
               <td data-label="Empleado">${SC?.escapeHtml(nombre) ?? nombre}</td>
               <td data-label="Período pagado">${_fmtFecha(p.pago_desde)} – ${_fmtFecha(p.pago_hasta)}</td>
-              <td data-label="Días" style="text-align:center">${p.pago_dias}</td>
+              <td data-label="Días" style="text-align:center">
+                <button type="button" class="rrhh-toggle-semanas rrhh-hist-toggle" data-target="${detalleId}" data-usu-id="${p.usu_id}" data-desde="${p.pago_desde}" data-hasta="${p.pago_hasta}" title="Ver asistencia de este período">${p.pago_dias} <span class="rrhh-toggle-arrow">▸</span></button>
+              </td>
+              <td data-label="Subtotal" style="text-align:right">$${parseFloat(p.pago_subtotal).toFixed(2)}</td>
+              <td data-label="Descuentos" style="text-align:right;color:#dc2626">${desc > 0 ? '-$' + desc.toFixed(2) : '—'}</td>
+              <td data-label="Adelanto" style="text-align:right;color:#dc2626">${adelanto > 0 ? '-$' + adelanto.toFixed(2) : '—'}</td>
               <td data-label="Total calculado" style="text-align:right">$${parseFloat(p.pago_total_calculado).toFixed(2)}</td>
               <td data-label="Entregado" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${parseFloat(p.pago_monto_entregado).toFixed(2)}</td>
               <td data-label="Quedó pendiente" style="text-align:right;color:${parseFloat(p.pago_diferencia) > 0 ? '#dc2626' : 'inherit'}">${parseFloat(p.pago_diferencia) > 0 ? '$' + parseFloat(p.pago_diferencia).toFixed(2) : '—'}</td>
+            </tr>
+            <tr class="rrhh-detalle-row" id="${detalleId}" style="display:none">
+              <td colspan="10">
+                <div class="rrhh-detalle-titulo">Asistencia de este período</div>
+                <div class="rrhh-hist-asistencia" data-usu-id="${p.usu_id}" data-desde="${p.pago_desde}" data-hasta="${p.pago_hasta}">
+                  <p class="usu-cargando" style="margin:0">Cargando…</p>
+                </div>
+              </td>
             </tr>`;
           }).join('')}
         </tbody>
       </table>`;
     _rrhhHistorialCargado = true;
+
+    // Detalle de asistencia por período — se carga solo la primera vez que
+    // se abre cada fila (no hace falta pedirlo todo de una si el
+    // historial tiene muchos pagos registrados).
+    wrap.querySelectorAll('.rrhh-hist-toggle').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const fila = document.getElementById(btn.dataset.target);
+        if (!fila) return;
+        const abierta = fila.style.display !== 'none';
+        fila.style.display = abierta ? 'none' : '';
+        btn.querySelector('.rrhh-toggle-arrow').textContent = abierta ? '▸' : '▾';
+        if (abierta) return;
+
+        const cont = fila.querySelector('.rrhh-hist-asistencia');
+        if (!cont || cont.dataset.cargado === '1') return;
+        cont.dataset.cargado = '1';
+
+        const { data: asis, error: errAsis } = await window.db.rpc('listar_asistencias', {
+          p_desde: btn.dataset.desde, p_hasta: btn.dataset.hasta
+        });
+        if (errAsis) { cont.innerHTML = '<p style="color:#dc2626;font-size:.85rem;margin:0">No se pudo cargar la asistencia.</p>'; return; }
+        const registros = (asis || [])
+          .filter(a => a.usu_id === btn.dataset.usuId && a.asis_entrada)
+          .sort((a, b) => a.asis_fecha.localeCompare(b.asis_fecha));
+
+        cont.innerHTML = registros.length ? `
+          <table class="rrhh-semanas-tabla">
+            <thead><tr><th>Día</th><th>Entrada</th><th>Salida</th></tr></thead>
+            <tbody>
+              ${registros.map(r => `<tr>
+                <td>${_fmtDiaH(r.asis_fecha)}</td>
+                <td>${_fmtHoraH(r.asis_entrada)}</td>
+                <td>${_fmtHoraH(r.asis_salida)}</td>
+              </tr>`).join('')}
+            </tbody>
+          </table>` : '<p style="font-size:.8rem;color:var(--text-muted);margin:0">Sin registros de asistencia en este período.</p>';
+      });
+    });
   }
 
   function _initRRHH() {
