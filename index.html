@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260824i">
+  <link rel="stylesheet" href="assets/styles.css?v=20260824j">
 </head>
 <body>
 
@@ -1569,15 +1569,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260824i"></script>
-  <script src="js/logica-carrito.js?v=20260824i"></script>
-  <script src="js/carrito.js?v=20260824i"></script>
-  <script src="js/vista.js?v=20260824i"></script>
-  <script src="js/aplicacion.js?v=20260824i"></script>
-  <script src="js/vista-cajero.js?v=20260824i"></script>
-  <script src="js/vista-admin.js?v=20260824i"></script>
-  <script src="js/vista-menu.js?v=20260824i"></script>
-  <script src="js/vista-cocina.js?v=20260824i"></script>
+  <script src="js/autenticacion.js?v=20260824j"></script>
+  <script src="js/logica-carrito.js?v=20260824j"></script>
+  <script src="js/carrito.js?v=20260824j"></script>
+  <script src="js/vista.js?v=20260824j"></script>
+  <script src="js/aplicacion.js?v=20260824j"></script>
+  <script src="js/vista-cajero.js?v=20260824j"></script>
+  <script src="js/vista-admin.js?v=20260824j"></script>
+  <script src="js/vista-menu.js?v=20260824j"></script>
+  <script src="js/vista-cocina.js?v=20260824j"></script>
 
   <script>
   'use strict';
@@ -1852,6 +1852,16 @@
 
   async function recargarCaja() {
     try {
+      // Se captura ANTES de tocar la red — getEdicionPendiente() mira
+      // SC.leerCaja(), que hasta este punto todavía apunta a los pedidos
+      // con la mutación local del mesero (ítem agregado sin "Guardar ✓"
+      // todavía). Si se pidiera después de reemplazar _caja más abajo, ya
+      // estaría mirando la versión fresca de la BD (sin ese ítem) y la
+      // comparación contra _meseroOriginalItems daría "sin cambios",
+      // perdiendo la edición en vez de reaplicarla — eso hacía que el
+      // ítem recién agregado apareciera un instante y se borrara solo en
+      // el siguiente refresco por tiempo real.
+      const pendiente = window.VistaMenu?.getEdicionPendiente?.();
       const [rCaja, rHist, rGastos] = await Promise.all([
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'pendiente').order('ped_created_at', { ascending: true }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }),
         db.from('pedidos').select(_PED_SELECT).eq('ped_estado', 'cobrado').order('ped_cobrado_en', { ascending: false }).order('detped_id', { foreignTable: 'detalle_pedidos', ascending: true }).limit(200),
@@ -1883,8 +1893,8 @@
         // guardó con "Guardar ✓" (viven solo en memoria). Este refresco
         // (disparado por CUALQUIER pedido, no necesariamente el suyo)
         // acaba de reemplazar _caja entera desde la BD, perdiendo esa
-        // edición — se reaplica encima si sigue en curso.
-        const pendiente = window.VistaMenu?.getEdicionPendiente?.();
+        // edición — se reaplica encima si sigue en curso (pendiente ya
+        // se capturó arriba, antes de este reemplazo).
         if (pendiente) {
           const p = _caja.find(x => String(x.id) === String(pendiente.id));
           if (p) {
