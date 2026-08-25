@@ -29,7 +29,7 @@
   <link rel="preload" as="image" href="https://images.unsplash.com/photo-1506368249639-73a05d6f6488?w=1600&h=700&fit=crop&q=80&fm=webp" fetchpriority="high">
   <link rel="preload" as="style" href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" onload="this.rel='stylesheet'">
   <noscript><link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@600;700&family=Inter:wght@400;500;600&family=Playfair+Display:wght@700;800&display=swap" rel="stylesheet"></noscript>
-  <link rel="stylesheet" href="assets/styles.css?v=20260824h">
+  <link rel="stylesheet" href="assets/styles.css?v=20260824i">
 </head>
 <body>
 
@@ -1569,15 +1569,15 @@
     IVA         : 0 // negocio bajo RIMPE — Negocio Popular no cobra IVA, tarifa 0%
   };
   </script>
-  <script src="js/autenticacion.js?v=20260824h"></script>
-  <script src="js/logica-carrito.js?v=20260824h"></script>
-  <script src="js/carrito.js?v=20260824h"></script>
-  <script src="js/vista.js?v=20260824h"></script>
-  <script src="js/aplicacion.js?v=20260824h"></script>
-  <script src="js/vista-cajero.js?v=20260824h"></script>
-  <script src="js/vista-admin.js?v=20260824h"></script>
-  <script src="js/vista-menu.js?v=20260824h"></script>
-  <script src="js/vista-cocina.js?v=20260824h"></script>
+  <script src="js/autenticacion.js?v=20260824i"></script>
+  <script src="js/logica-carrito.js?v=20260824i"></script>
+  <script src="js/carrito.js?v=20260824i"></script>
+  <script src="js/vista.js?v=20260824i"></script>
+  <script src="js/aplicacion.js?v=20260824i"></script>
+  <script src="js/vista-cajero.js?v=20260824i"></script>
+  <script src="js/vista-admin.js?v=20260824i"></script>
+  <script src="js/vista-menu.js?v=20260824i"></script>
+  <script src="js/vista-cocina.js?v=20260824i"></script>
 
   <script>
   'use strict';
@@ -2428,19 +2428,17 @@
     _pedidosEditandoLocal.add(pedidoId);
     clearTimeout(_pedidoUpdateTimers[pedidoId]);
     _pedidoUpdateTimers[pedidoId] = setTimeout(async () => {
-      // Reemplazar detalle_pedidos: eliminar y reinsertar. Antes de borrar
-      // los detalles hay que borrar lo que cuelga de ellos (FK: exclusiones
-      // / opciones → detalle), igual que en _limpiarPeds — si no, además de
-      // fallar el borrado, las exclusiones y opciones elegidas ("sin: Arroz",
-      // "Bebida: Café") se perdían al reinsertar los ítems y no volvían a
-      // aparecer la próxima vez que se abría el pedido.
+      // Se insertan primero los items NUEVOS y recién si eso funciona se
+      // borran los viejos (guardando antes sus ids, para borrarlos por id
+      // y no arriesgar borrar los que se acaban de insertar). Al revés de
+      // como era antes (borrar y después insertar) — si la inserción
+      // fallaba ahí, el pedido se quedaba sin ítems y sin forma de
+      // recuperar los que tenía, mostrando "Sin detalle de ítems" pero
+      // cobrable igual. Así, si algo falla acá, el pedido queda
+      // exactamente como estaba antes de este intento de editarlo.
       const { data: detsPrevios } = await db.from('detalle_pedidos').select('detped_id').eq('ped_id', pedidoId);
-      if (detsPrevios?.length) {
-        const detIdsPrevios = detsPrevios.map(d => d.detped_id);
-        await db.from('det_exclusiones').delete().in('detped_id', detIdsPrevios);
-        await db.from('det_opciones_elegidas').delete().in('detped_id', detIdsPrevios);
-      }
-      await db.from('detalle_pedidos').delete().eq('ped_id', pedidoId);
+      const detIdsPrevios = (detsPrevios || []).map(d => d.detped_id);
+
       const { data: detData, error: detError } = await db.from('detalle_pedidos').insert(
         nuevoItems.map(i => ({
           ped_id:             pedidoId,
@@ -2451,7 +2449,26 @@
           detped_para_llevar: i.paraLlevar || false
         }))
       ).select('detped_id, plat_id');
-      if (detError) console.error('Supabase insert detalle_pedidos (actualizarPedido):', detError);
+
+      if (detError || !detData?.length) {
+        console.error('Supabase insert detalle_pedidos (actualizarPedido):', detError);
+        toast('Error al actualizar el pedido — no se guardaron los cambios. Intenta de nuevo.', 'error');
+        _pedidosEditandoLocal.delete(pedidoId);
+        await recargarCaja();
+        window.VistaCajero?.renderCajeroView?.();
+        window.VistaAdmin?.renderAdminPedidos?.();
+        return;
+      }
+
+      // Ya quedaron insertados los nuevos — ahora sí se borran los
+      // anteriores por su id (nunca por ped_id, para no llevarse de paso
+      // los que se acaban de insertar), y antes lo que colgaba de ellos
+      // (FK: exclusiones/opciones → detalle), igual que en _limpiarPeds.
+      if (detIdsPrevios.length) {
+        await db.from('det_exclusiones').delete().in('detped_id', detIdsPrevios);
+        await db.from('det_opciones_elegidas').delete().in('detped_id', detIdsPrevios);
+        await db.from('detalle_pedidos').delete().in('detped_id', detIdsPrevios);
+      }
 
       // Mismo criterio de correlación por posición que enviarACaja: detData[i]
       // corresponde a nuevoItems[i], no se busca por plat_id porque un mismo
