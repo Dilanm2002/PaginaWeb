@@ -4478,6 +4478,11 @@
   // ya marcó las dos) — en móvil se oculta el texto y queda solo el
   // ícono (mismo tratamiento que "Cambiar a Mesero"/"Salir"), así que el
   // ícono por sí solo tiene que alcanzar para entender qué falta marcar.
+  // Qué se registraría si el staff toca el botón ahora ('entrada' o
+  // 'salida') — lo fija _actualizarBotonAsistencia según el estado que
+  // devuelve el servidor. Se usa para el texto del pop de confirmación.
+  let _asistenciaTipoPendiente = 'entrada';
+
   function _pintarBotonAsistencia(icono, label, deshabilitado) {
     const iconEl  = document.getElementById('btn-marcar-asistencia-icon');
     const labelEl = document.getElementById('btn-marcar-asistencia-label');
@@ -4488,19 +4493,58 @@
     btnMarcarAsistencia.disabled = deshabilitado;
   }
 
+  // Pop de confirmación antes de marcar entrada/salida — mismo look que
+  // "¿Eliminar producto?" del panel admin (_modalConfirmar). Evita que un
+  // toque accidental en el header registre una marca sin querer.
+  function _confirmarAsistencia(tipo) {
+    return new Promise(resolve => {
+      const esEntrada = tipo === 'entrada';
+      const icono = esEntrada ? '⏰' : '🚪';
+      const hora  = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+      const overlay = document.createElement('div');
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+      overlay.innerHTML = `
+        <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
+          <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">${icono}</div>
+          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Deseas registrar tu hora de ${esEntrada ? 'entrada' : 'salida'}?</h3>
+          <p style="color:#7A5640;font-size:.88rem;margin-bottom:1.5rem;line-height:1.5;">
+            Se registrará la hora actual: <strong style="color:#C8561A;">${hora}</strong>.
+          </p>
+          <div style="display:flex;gap:.75rem;justify-content:center;">
+            <button id="_asist-cancel" style="flex:1;padding:.65rem 1rem;border:1.5px solid #E0C9B0;border-radius:10px;background:#fff;color:#7A5640;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;">Cancelar</button>
+            <button id="_asist-ok" style="flex:1;padding:.65rem 1rem;border:none;border-radius:10px;background:#16a34a;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;">Sí, registrar</button>
+          </div>
+        </div>`;
+      document.body.appendChild(overlay);
+      const cleanup = val => { document.removeEventListener('keydown', onKey); document.body.removeChild(overlay); resolve(val); };
+      function onKey(e) {
+        if (e.key === 'Escape') cleanup(false);
+        if (e.key === 'Enter')  cleanup(true);
+      }
+      overlay.querySelector('#_asist-ok').addEventListener('click', () => cleanup(true));
+      overlay.querySelector('#_asist-cancel').addEventListener('click', () => cleanup(false));
+      overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
+      document.addEventListener('keydown', onKey);
+      setTimeout(() => overlay.querySelector('#_asist-ok')?.focus(), 0);
+    });
+  }
+
   async function _actualizarBotonAsistencia() {
     if (!btnMarcarAsistencia) return;
     const session = ModuloAutenticacion.getSession();
     if (!session?.id) return;
     // Estado por defecto antes de consultar — así el botón nunca se ve en
     // blanco, ni siquiera si la RPC todavía no existe en el servidor.
+    _asistenciaTipoPendiente = 'entrada';
     _pintarBotonAsistencia('⏰', 'Marcar entrada', false);
     try {
       const { data, error } = await db.rpc('estado_asistencia_hoy', { p_usu_id: session.id });
       if (error) throw error;
       if (!data.entrada) {
+        _asistenciaTipoPendiente = 'entrada';
         _pintarBotonAsistencia('⏰', 'Marcar entrada', false);
       } else if (!data.salida) {
+        _asistenciaTipoPendiente = 'salida';
         _pintarBotonAsistencia('🚪', 'Marcar salida', false);
       } else {
         _pintarBotonAsistencia('✅', 'Asistencia de hoy completa', true);
@@ -4513,6 +4557,10 @@
   btnMarcarAsistencia?.addEventListener('click', async () => {
     const session = ModuloAutenticacion.getSession();
     if (!session?.id) return;
+
+    const confirmado = await _confirmarAsistencia(_asistenciaTipoPendiente);
+    if (!confirmado) return;
+
     btnMarcarAsistencia.disabled = true;
     let tipoRegistrado = null;
     try {
