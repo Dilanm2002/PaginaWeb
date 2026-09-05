@@ -4496,23 +4496,36 @@
   // Pop de confirmación antes de marcar entrada/salida — mismo look que
   // "¿Eliminar producto?" del panel admin (_modalConfirmar). Evita que un
   // toque accidental en el header registre una marca sin querer.
+  // En móvil (≤480px) se muestra como hoja inferior con botones apilados y
+  // más grandes — el staff suele marcar la asistencia desde el celular.
   function _confirmarAsistencia(tipo) {
     return new Promise(resolve => {
       const esEntrada = tipo === 'entrada';
       const icono = esEntrada ? '⏰' : '🚪';
       const hora  = new Date().toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' });
+      const movil = window.matchMedia('(max-width: 480px)').matches;
+
       const overlay = document.createElement('div');
-      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:9999;display:flex;align-items:center;justify-content:center;padding:1rem;';
+      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:99999;display:flex;justify-content:center;'
+        + (movil ? 'align-items:flex-end;padding:0;' : 'align-items:center;padding:1rem;');
+
+      const cardStyle = movil
+        ? 'background:#fff;border-radius:20px 20px 0 0;padding:1.75rem 1.25rem calc(1.5rem + env(safe-area-inset-bottom, 0px));width:100%;box-shadow:0 -12px 48px rgba(0,0,0,.3);text-align:center;animation:fadeUp .2s ease;'
+        : 'background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;';
+      const btnBase = movil
+        ? 'width:100%;padding:.95rem 1rem;border-radius:12px;cursor:pointer;font-size:1rem;font-weight:700;transition:all .15s;'
+        : 'flex:1;padding:.65rem 1rem;border-radius:10px;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;';
+
       overlay.innerHTML = `
-        <div style="background:#fff;border-radius:16px;padding:2rem 1.75rem 1.5rem;max-width:360px;width:100%;box-shadow:0 24px 64px rgba(0,0,0,.3);text-align:center;animation:fadeUp .18s ease;">
-          <div style="font-size:2.5rem;line-height:1;margin-bottom:.75rem;">${icono}</div>
-          <h3 style="font-size:1.1rem;font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Deseas registrar tu hora de ${esEntrada ? 'entrada' : 'salida'}?</h3>
-          <p style="color:#7A5640;font-size:.88rem;margin-bottom:1.5rem;line-height:1.5;">
+        <div style="${cardStyle}">
+          <div style="font-size:${movil ? '2.75rem' : '2.5rem'};line-height:1;margin-bottom:.75rem;">${icono}</div>
+          <h3 style="font-size:${movil ? '1.2rem' : '1.1rem'};font-weight:700;color:#3B1A08;margin-bottom:.4rem;">¿Deseas registrar tu hora de ${esEntrada ? 'entrada' : 'salida'}?</h3>
+          <p style="color:#7A5640;font-size:${movil ? '.95rem' : '.88rem'};margin-bottom:1.5rem;line-height:1.5;">
             Se registrará la hora actual: <strong style="color:#C8561A;">${hora}</strong>.
           </p>
-          <div style="display:flex;gap:.75rem;justify-content:center;">
-            <button id="_asist-cancel" style="flex:1;padding:.65rem 1rem;border:1.5px solid #E0C9B0;border-radius:10px;background:#fff;color:#7A5640;cursor:pointer;font-size:.88rem;font-weight:600;transition:all .15s;">Cancelar</button>
-            <button id="_asist-ok" style="flex:1;padding:.65rem 1rem;border:none;border-radius:10px;background:#16a34a;color:#fff;cursor:pointer;font-size:.88rem;font-weight:700;transition:all .15s;">Sí, registrar</button>
+          <div style="display:flex;gap:.75rem;justify-content:center;${movil ? 'flex-direction:column;' : ''}">
+            <button id="_asist-cancel" style="${btnBase}border:1.5px solid #E0C9B0;background:#fff;color:#7A5640;font-weight:600;">Cancelar</button>
+            <button id="_asist-ok" style="${btnBase}border:none;background:#16a34a;color:#fff;">Sí, registrar</button>
           </div>
         </div>`;
       document.body.appendChild(overlay);
@@ -4525,7 +4538,9 @@
       overlay.querySelector('#_asist-cancel').addEventListener('click', () => cleanup(false));
       overlay.addEventListener('click', e => { if (e.target === overlay) cleanup(false); });
       document.addEventListener('keydown', onKey);
-      setTimeout(() => overlay.querySelector('#_asist-ok')?.focus(), 0);
+      // En móvil no se enfoca el botón (evita saltos de scroll en la hoja);
+      // ahí se confirma con el toque, no con Enter.
+      if (!movil) setTimeout(() => overlay.querySelector('#_asist-ok')?.focus(), 0);
     });
   }
 
