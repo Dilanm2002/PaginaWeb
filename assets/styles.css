@@ -3098,6 +3098,42 @@
   .adm-tabla tr.consultas-fila-cat:hover { background: rgba(200,86,26,.06); }
   .adm-tabla tr.consultas-fila-detalle td { color: var(--text-muted); font-size: .86rem; background: rgba(59,26,8,.015); }
   .adm-tabla tr.consultas-fila-detalle td:first-child { padding-left: 2.1rem; }
+
+  /* En celular, .adm-tabla se apila como tarjetas (ver @media 767px más
+     abajo en el archivo) — ese es el criterio del resto del panel admin,
+     pero acá se pidió explícitamente que se vea como tabla real (igual
+     que la referencia que mandó el cliente), así que para ESTE módulo
+     puntual se deshace esa conversión y se vuelve a layout de tabla,
+     compacto para que las 3 columnas entren sin scroll horizontal. */
+  @media (max-width: 767px) {
+    #consultas-tabla-wrap .adm-tabla { display: table; width: 100%; table-layout: fixed; }
+    #consultas-tabla-wrap .adm-tabla thead { display: table-header-group; }
+    #consultas-tabla-wrap .adm-tabla tbody { display: table-row-group; }
+    #consultas-tabla-wrap .adm-tabla tr { display: table-row; width: auto; }
+    #consultas-tabla-wrap .adm-tabla tbody tr {
+      background: none; border: none; margin: 0; padding: 0; box-shadow: none; border-radius: 0;
+    }
+    #consultas-tabla-wrap .adm-tabla tbody tr:nth-child(even) { background: rgba(59,26,8,.025); }
+    #consultas-tabla-wrap .adm-tabla th {
+      padding: .5rem .4rem !important; font-size: .62rem;
+    }
+    #consultas-tabla-wrap .adm-tabla td {
+      display: table-cell !important; text-align: inherit; vertical-align: middle;
+      padding: .55rem .4rem !important; font-size: .78rem;
+      border-bottom: 1px solid var(--border);
+    }
+    #consultas-tabla-wrap .adm-tabla td:last-child { border-bottom: 1px solid var(--border); }
+    #consultas-tabla-wrap .adm-tabla td[data-label]::before { content: none; }
+    #consultas-tabla-wrap .adm-tabla th:first-child,
+    #consultas-tabla-wrap .adm-tabla td:first-child { width: 54%; text-align: left; word-break: break-word; }
+    #consultas-tabla-wrap .adm-tabla th:nth-child(2),
+    #consultas-tabla-wrap .adm-tabla td:nth-child(2) { width: 16%; }
+    #consultas-tabla-wrap .adm-tabla th:last-child,
+    #consultas-tabla-wrap .adm-tabla td:last-child { width: 30%; }
+    #consultas-tabla-wrap .consultas-expandir__cont { display: none; } /* ya no entra "N productos" en una columna angosta */
+    #consultas-tabla-wrap .consultas-fila-detalle td:first-child { padding-left: 1.3rem !important; font-size: .74rem; }
+    #consultas-tabla-wrap tr.consultas-total td { border-top: 2px solid var(--cinnamon); }
+  }
   @media (max-width: 760px) {
     .consultas-toolbar { padding: .8rem; gap: .6rem .5rem; }
     /* Desde/Hasta uno junto al otro (2 columnas) en vez de apilados verticales,
