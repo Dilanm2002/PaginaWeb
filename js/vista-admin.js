@@ -1958,40 +1958,72 @@ window.VistaAdmin = (function () {
     };
     const _config = { responsive: true, displayModeBar: false, scrollZoom: false, doubleClick: false, locale: 'es' };
 
+    // Arma "Producto: cantidad" de mayor a menor, una línea por producto —
+    // mismo formato que el desglose de la gráfica de categorías (customdata[1]
+    // de _dibujarChartCat), pero por bucket de hora/día acá.
+    const _detalleProductos = (mapaCantidades) => {
+      const items = Object.entries(mapaCantidades).sort((a, b) => b[1] - a[1]);
+      return items.length ? items.map(([nombre, cant]) => `${nombre}: ${cant}`).join('<br>') : 'Sin ventas';
+    };
+    const _sumarProductos = (mapa, pedido) => {
+      (pedido.detalle_pedidos ?? []).forEach(d => {
+        const nombre = d.platos?.plat_nombre;
+        if (!nombre) return;
+        mapa[nombre] = (mapa[nombre] || 0) + (d.detped_cantidad || 0);
+      });
+    };
+
     // ── Gráfica 1: por hora (hoy) o por día (semana/mes) ──────────
-    let xLabels, yValues;
+    // detalleBucket trae, para cada barra, qué productos se vendieron ahí
+    // (texto ya formateado para el tooltip — ver hovertemplate de abajo).
+    let xLabels, yValues, detalleBucket;
     if (periodo === 'hoy') {
       xLabels = Array.from({ length: 18 }, (_, i) => `${String(i + 6).padStart(2, '0')}:00`);
       yValues = Array(18).fill(0);
+      const productosPorHora = Array.from({ length: 18 }, () => ({}));
       data.forEach(p => {
         if (p.ped_cobrado_en) {
           const h = new Date(p.ped_cobrado_en).getHours();
           const idx = h - 6;
-          if (idx >= 0 && idx < 18) yValues[idx] += parseFloat(p.ped_total) || 0;
+          if (idx >= 0 && idx < 18) {
+            yValues[idx] += parseFloat(p.ped_total) || 0;
+            _sumarProductos(productosPorHora[idx], p);
+          }
         }
       });
+      detalleBucket = productosPorHora.map(_detalleProductos);
     } else if (periodo === 'semana') {
       // Un punto por cada día lun-vie entre desdeStr y hastaStr (rango ya calculado arriba)
       xLabels = [];
       yValues = [];
+      detalleBucket = [];
       const cursor = new Date(desdeStr + 'T00:00:00');
       const hastaDate = new Date(hastaStr + 'T00:00:00');
       while (cursor <= hastaDate) {
         const isoFecha = _fechaLocalISO(cursor);
+        const pedidosDia = data.filter(p => p.ped_fecha === isoFecha);
         xLabels.push(cursor.toLocaleDateString('es-EC', { weekday: 'short', day: '2-digit' }));
-        yValues.push(data.filter(p => p.ped_fecha === isoFecha).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
+        yValues.push(pedidosDia.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
+        const productosDia = {};
+        pedidosDia.forEach(p => _sumarProductos(productosDia, p));
+        detalleBucket.push(_detalleProductos(productosDia));
         cursor.setDate(cursor.getDate() + 1);
       }
     } else {
       const nDias = 30;
       xLabels = [];
       yValues = [];
+      detalleBucket = [];
       for (let i = nDias - 1; i >= 0; i--) {
         const d = new Date(hoy);
         d.setDate(d.getDate() - i);
         const isoFecha = _fechaLocalISO(d);
+        const pedidosDia = data.filter(p => p.ped_fecha === isoFecha);
         xLabels.push(d.toLocaleDateString('es-EC', { day: '2-digit', month: '2-digit' }));
-        yValues.push(data.filter(p => p.ped_fecha === isoFecha).reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
+        yValues.push(pedidosDia.reduce((s, p) => s + (parseFloat(p.ped_total) || 0), 0));
+        const productosDia = {};
+        pedidosDia.forEach(p => _sumarProductos(productosDia, p));
+        detalleBucket.push(_detalleProductos(productosDia));
       }
     }
 
@@ -2018,12 +2050,15 @@ window.VistaAdmin = (function () {
         type: 'bar',
         x:    xLabels,
         y:    yValues,
+        customdata: detalleBucket,
         marker: {
           color:        yValues.map(v => v > 0 ? 'rgba(200,86,26,.85)' : 'rgba(200,86,26,.2)'),
           line:         { color: '#a84515', width: 1 },
           cornerradius: 6
         },
-        hovertemplate: '<b>%{x}</b><br>Ventas: <b>$%{y:.2f}</b><extra></extra>'
+        // Qué se vendió en esa hora/día, no solo cuánto — mismo criterio que
+        // el desglose de la gráfica de categorías (_dibujarChartCat).
+        hovertemplate: '<b>%{x}</b><br>Ventas: <b>$%{y:.2f}</b><br><br>%{customdata}<extra></extra>'
       }], {
         ..._layout,
         yaxis: { tickprefix: '$', tickformat: '.2f', gridcolor: 'rgba(0,0,0,.07)', zeroline: false, fixedrange: true },
