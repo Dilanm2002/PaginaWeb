@@ -501,6 +501,10 @@
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
               Reportes
             </button>
+            <button class="adm-nav__item" data-mod="consultas">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+              Consultas
+            </button>
             <button class="adm-nav__item" data-mod="gastos">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
               Gastos
@@ -804,7 +808,6 @@
                   <button class="rep-tab active" data-period="hoy" role="tab" aria-selected="true">Hoy</button>
                   <button class="rep-tab" data-period="semana" role="tab" aria-selected="false">5 días</button>
                   <button class="rep-tab" data-period="mes" role="tab" aria-selected="false">Este mes</button>
-                  <button class="rep-tab" data-period="consultas" role="tab" aria-selected="false">Consultas</button>
                 </div>
                 <div class="resumen-fecha-nav" id="rep-dia-nav">
                   <button class="btn-fecha-nav" id="rep-dia-ant" aria-label="Día anterior">‹</button>
@@ -853,52 +856,55 @@
               <!-- Control de Caja -->
               <div id="rep-cuadre-wrap" style="margin-top:1.5rem"></div>
             </div>
+          </section>
 
-            <!-- Pestaña "Consultas" — detalle por producto con rango de fechas libre -->
-            <div id="admin-consultas-content" style="display:none">
-              <div class="consultas-toolbar">
-                <label class="consultas-field">
-                  <span>Desde</span>
-                  <input type="date" id="consultas-desde" class="consultas-input">
-                </label>
-                <label class="consultas-field">
-                  <span>Hasta</span>
-                  <input type="date" id="consultas-hasta" class="consultas-input">
-                </label>
-                <button class="cajero-refresh" id="btn-consultas-buscar" style="background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-                  Buscar
-                </button>
-                <button class="cajero-refresh" id="btn-consultas-exportar">
-                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
-                  Excel
-                </button>
-                <div class="consultas-agrupar" id="consultas-agrupar" role="group" aria-label="Agrupar por">
-                  <button class="consultas-agrupar__btn active" data-agrupar="producto" type="button">Por producto</button>
-                  <button class="consultas-agrupar__btn" data-agrupar="categoria" type="button">Por categoría</button>
-                </div>
-                <label class="consultas-search">
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
-                  <input type="search" id="consultas-filtro" placeholder="Filtrar por nombre…">
-                </label>
-                <!-- Solo visible en celular: en la tabla-tarjeta móvil el encabezado
-                     (donde se ordena con clic en escritorio) queda oculto, así que
-                     acá hay una forma de ordenar igual, con el dedo. -->
-                <label class="consultas-field consultas-orden-movil">
-                  <span>Ordenar por</span>
-                  <select id="consultas-orden-movil" class="consultas-input">
-                    <option value="valor-desc">Valor: mayor a menor</option>
-                    <option value="valor-asc">Valor: menor a mayor</option>
-                    <option value="cantidad-desc">Cantidad: mayor a menor</option>
-                    <option value="cantidad-asc">Cantidad: menor a mayor</option>
-                    <option value="nombre-asc">Nombre: A-Z</option>
-                    <option value="nombre-desc">Nombre: Z-A</option>
-                  </select>
-                </label>
-              </div>
-              <div id="consultas-resumen" class="resumen-kpis" style="margin-bottom:1rem"></div>
-              <div id="consultas-tabla-wrap"></div>
+          <!-- MÓDULO: Consultas — detalle de ventas por producto/categoría con rango de fechas libre -->
+          <section class="adm-module" id="mod-consultas" aria-label="Consultas de ventas">
+            <div class="adm-module-header" style="flex-wrap:wrap;gap:.75rem;align-items:center">
+              <h2 class="adm-section-title">Consultas</h2>
             </div>
+            <div class="consultas-toolbar">
+              <label class="consultas-field">
+                <span>Desde</span>
+                <input type="date" id="consultas-desde" class="consultas-input">
+              </label>
+              <label class="consultas-field">
+                <span>Hasta</span>
+                <input type="date" id="consultas-hasta" class="consultas-input">
+              </label>
+              <button class="cajero-refresh" id="btn-consultas-buscar" style="background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+                Buscar
+              </button>
+              <button class="cajero-refresh" id="btn-consultas-exportar">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+                Excel
+              </button>
+              <div class="consultas-agrupar" id="consultas-agrupar" role="group" aria-label="Agrupar por">
+                <button class="consultas-agrupar__btn active" data-agrupar="producto" type="button">Por producto</button>
+                <button class="consultas-agrupar__btn" data-agrupar="categoria" type="button">Por categoría</button>
+              </div>
+              <label class="consultas-search">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+                <input type="search" id="consultas-filtro" placeholder="Filtrar por nombre…">
+              </label>
+              <!-- Solo visible en celular: en la tabla-tarjeta móvil el encabezado
+                   (donde se ordena con clic en escritorio) queda oculto, así que
+                   acá hay una forma de ordenar igual, con el dedo. -->
+              <label class="consultas-field consultas-orden-movil">
+                <span>Ordenar por</span>
+                <select id="consultas-orden-movil" class="consultas-input">
+                  <option value="valor-desc">Valor: mayor a menor</option>
+                  <option value="valor-asc">Valor: menor a mayor</option>
+                  <option value="cantidad-desc">Cantidad: mayor a menor</option>
+                  <option value="cantidad-asc">Cantidad: menor a mayor</option>
+                  <option value="nombre-asc">Nombre: A-Z</option>
+                  <option value="nombre-desc">Nombre: Z-A</option>
+                </select>
+              </label>
+            </div>
+            <div id="consultas-resumen" class="resumen-kpis" style="margin-bottom:1rem"></div>
+            <div id="consultas-tabla-wrap"></div>
           </section>
 
           <!-- MÓDULO: Gastos -->

@@ -163,6 +163,7 @@ window.VistaAdmin = (function () {
     clientes:  'Clientes',
     rrhh:      'Recursos Humanos',
     reportes:  'Reportes de Ventas',
+    consultas: 'Consultas de Ventas',
     gastos:    'Control de Gastos',
     mensajes:  'Mensajes de contacto'
   };
@@ -522,6 +523,7 @@ window.VistaAdmin = (function () {
     else if (nombre === 'rrhh')      renderRRHH();
     else if (nombre === 'mensajes')  renderMensajes();
     else if (nombre === 'reportes')  renderReportes('hoy');
+    else if (nombre === 'consultas') _abrirConsultas();
     else if (nombre === 'gastos')    _renderGastos();
     else if (nombre === 'menudia')   _renderMenuDia();
     else if (nombre === 'recetas')   renderRecetas();
@@ -1760,22 +1762,6 @@ window.VistaAdmin = (function () {
       t.setAttribute('aria-selected', active ? 'true' : 'false');
     });
 
-    // "Consultas" es una pestaña aparte (rango de fechas libre, no las
-    // presets hoy/5 días/mes) con su propio contenedor y su propio botón
-    // de exportar — no comparte nada del flujo de abajo (KPIs/gráficas/
-    // cuadre de caja), así que se resuelve y se sale antes de tocar eso.
-    const esConsultas = periodo === 'consultas';
-    const contReportes  = document.getElementById('admin-reportes-content');
-    const contConsultas = document.getElementById('admin-consultas-content');
-    if (contReportes)  contReportes.style.display  = esConsultas ? 'none' : '';
-    if (contConsultas) contConsultas.style.display = esConsultas ? '' : 'none';
-    const btnExportarReporte = document.getElementById('btn-exportar-reporte');
-    if (btnExportarReporte) btnExportarReporte.style.display = esConsultas ? 'none' : '';
-    if (esConsultas) {
-      _initConsultas();
-      return;
-    }
-
     // Mientras se recarga el reporte (p.ej. al cambiar de pestaña Hoy/5
     // días/30 días), _ultimoReporte todavía apunta al período anterior —
     // se deshabilita "Exportar" para que no se pueda exportar ese período
@@ -2323,18 +2309,28 @@ window.VistaAdmin = (function () {
     return { desde: _fechaLocalISO(primerDia), hasta: _fechaLocalISO(hoy) };
   }
 
-  function _initConsultas() {
-    if (_consultasInicializada) return;
-    _consultasInicializada = true;
+  // Módulo "Consultas" del sidebar (grupo ANÁLISIS, debajo de Reportes).
+  // Cablear eventos y fijar el rango de fechas por defecto solo hace falta
+  // la primera vez; la búsqueda en cambio se repite cada vez que se entra
+  // al módulo, para que los datos no queden desactualizados si ya pasó
+  // tiempo desde la última visita (igual que el resto de los módulos de
+  // _cambiarModulo, que también se refrescan al navegar a ellos).
+  function _abrirConsultas() {
+    if (!_consultasInicializada) {
+      _consultasInicializada = true;
+      const { desde, hasta } = _consultasRangoPorDefecto();
+      const elDesde = document.getElementById('consultas-desde');
+      const elHasta = document.getElementById('consultas-hasta');
+      if (elDesde) elDesde.value = desde;
+      if (elHasta) elHasta.value = hasta;
+      _consultasDesde = desde;
+      _consultasHasta = hasta;
+      _wireConsultasEventos();
+    }
+    _buscarConsultas();
+  }
 
-    const { desde, hasta } = _consultasRangoPorDefecto();
-    const elDesde = document.getElementById('consultas-desde');
-    const elHasta = document.getElementById('consultas-hasta');
-    if (elDesde) elDesde.value = desde;
-    if (elHasta) elHasta.value = hasta;
-    _consultasDesde = desde;
-    _consultasHasta = hasta;
-
+  function _wireConsultasEventos() {
     document.getElementById('btn-consultas-buscar')?.addEventListener('click', () => _buscarConsultas());
     document.getElementById('btn-consultas-exportar')?.addEventListener('click', _exportarConsultasExcel);
     document.getElementById('consultas-filtro')?.addEventListener('input', () => _renderTablaConsultas());
@@ -2372,8 +2368,6 @@ window.VistaAdmin = (function () {
       }
       _renderTablaConsultas();
     });
-
-    _buscarConsultas();
   }
 
   async function _buscarConsultas() {
