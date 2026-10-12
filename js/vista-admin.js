@@ -111,6 +111,7 @@ window.VistaAdmin = (function () {
   let _consultasOrdenDir  = 'desc'; // 'asc' | 'desc'
   let _consultasDesde     = null;
   let _consultasHasta     = null;
+  let _consultasExpandido = new Set(); // nombres de categoría actualmente desplegadas (solo aplica agrupando por categoría)
   // Clic en el encabezado "Método de pago" del Control de Caja alterna
   // entre orden cronológico y agrupado por método — agrupar hace mucho más
   // rápido el cuadre manual (todo el efectivo junto, luego transferencias...).
@@ -2357,6 +2358,15 @@ window.VistaAdmin = (function () {
 
     // Delegado: clic en cualquier encabezado ordenable de la tabla de consultas.
     document.getElementById('consultas-tabla-wrap')?.addEventListener('click', (e) => {
+      const btnExpandir = e.target.closest('.consultas-expandir');
+      if (btnExpandir) {
+        const cat = btnExpandir.closest('tr')?.dataset.cat;
+        if (!cat) return;
+        if (_consultasExpandido.has(cat)) _consultasExpandido.delete(cat);
+        else _consultasExpandido.add(cat);
+        _renderTablaConsultas();
+        return;
+      }
       const th = e.target.closest('th[data-col]');
       if (!th) return;
       const col = th.dataset.col;
@@ -2422,11 +2432,24 @@ window.VistaAdmin = (function () {
     const mapa = {};
     _consultasCrudo.forEach(r => {
       const key = r[campo];
-      if (!mapa[key]) mapa[key] = { nombre: key, cantidad: 0, valor: 0 };
+      if (!mapa[key]) mapa[key] = { nombre: key, cantidad: 0, valor: 0, detalle: _consultasAgrupar === 'categoria' ? {} : null };
       mapa[key].cantidad += r.cantidad;
       mapa[key].valor += r.valor;
+      // Agrupando por categoría, cada fila además arrastra el desglose por
+      // producto (cuáles y cuántos la componen) para poder desplegarlo sin
+      // perder la vista resumida — ver _th/_fila en _renderTablaConsultas.
+      if (mapa[key].detalle) {
+        const d = mapa[key].detalle;
+        if (!d[r.producto]) d[r.producto] = { nombre: r.producto, cantidad: 0, valor: 0 };
+        d[r.producto].cantidad += r.cantidad;
+        d[r.producto].valor += r.valor;
+      }
     });
-    _consultasFilas = Object.values(mapa);
+    _consultasFilas = Object.values(mapa).map(f => ({
+      ...f,
+      detalle: f.detalle ? Object.values(f.detalle).sort((a, b) => b.valor - a.valor) : null
+    }));
+    _consultasExpandido.clear();
     _renderTablaConsultas();
   }
 
@@ -2492,11 +2515,33 @@ window.VistaAdmin = (function () {
           ${_th('valor', 'Valor', 'right')}
         </tr></thead>
         <tbody>
-          ${filas.map(f => `<tr>
-            <td data-label="${etiquetaCol}">${SC?.escapeHtml(f.nombre) ?? f.nombre}</td>
-            <td data-label="Cant." style="text-align:center">${f.cantidad}</td>
-            <td data-label="Valor" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${f.valor.toFixed(2)}</td>
-          </tr>`).join('')}
+          ${filas.map(f => {
+            const tieneDetalle = Array.isArray(f.detalle) && f.detalle.length > 0;
+            const expandida = tieneDetalle && _consultasExpandido.has(f.nombre);
+            const filaPrincipal = `<tr class="${tieneDetalle ? 'consultas-fila-cat' : ''}"${tieneDetalle ? ` data-cat="${SC?.escapeHtml(f.nombre) ?? f.nombre}"` : ''}>
+              <td data-label="${etiquetaCol}">
+                ${tieneDetalle
+                  ? `<button type="button" class="consultas-expandir" aria-expanded="${expandida}">
+                       <span class="consultas-expandir__flecha">${expandida ? '▾' : '▸'}</span>
+                       ${SC?.escapeHtml(f.nombre) ?? f.nombre}
+                       <span class="consultas-expandir__cont">${f.detalle.length} producto${f.detalle.length === 1 ? '' : 's'}</span>
+                     </button>`
+                  : (SC?.escapeHtml(f.nombre) ?? f.nombre)}
+              </td>
+              <td data-label="Cant." style="text-align:center">${f.cantidad}</td>
+              <td data-label="Valor" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${f.valor.toFixed(2)}</td>
+            </tr>`;
+            if (!tieneDetalle || !expandida) return filaPrincipal;
+            // Sub-filas: qué productos componen esta categoría, de mayor a
+            // menor valor vendido — mismo criterio que el desglose del
+            // tooltip de la gráfica de categorías, pero visible en la tabla.
+            const subFilas = f.detalle.map(d => `<tr class="consultas-fila-detalle">
+              <td data-label="Producto">↳ ${SC?.escapeHtml(d.nombre) ?? d.nombre}</td>
+              <td data-label="Cant." style="text-align:center">${d.cantidad}</td>
+              <td data-label="Valor" style="text-align:right">$${d.valor.toFixed(2)}</td>
+            </tr>`).join('');
+            return filaPrincipal + subFilas;
+          }).join('')}
           <tr class="consultas-total">
             <td data-label="Total">TOTAL</td>
             <td data-label="Cant." style="text-align:center">${totalCantidad}</td>

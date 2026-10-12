@@ -3083,6 +3083,21 @@
   .adm-tabla th.ord.ord-activo .ord-arrow { opacity: 1; }
   .adm-tabla tr.consultas-total { font-weight: 800; background: var(--cream-dk) !important; }
   .adm-tabla tr.consultas-total td { color: var(--brown-dark); border-top: 2px solid var(--cinnamon); }
+
+  /* Fila de categoría expandible (agrupar "Por categoría") — el botón
+     ocupa toda la celda para que el renglón entero sea tocable, no solo
+     la flechita. */
+  .consultas-expandir {
+    display: flex; align-items: center; gap: .5rem; width: 100%;
+    background: none; border: none; padding: 0; margin: 0;
+    font-family: 'Inter', sans-serif; font-size: inherit; font-weight: 700; color: var(--brown-dark);
+    text-align: left; cursor: pointer;
+  }
+  .consultas-expandir__flecha { color: var(--cinnamon); font-size: .8em; width: 1em; flex-shrink: 0; }
+  .consultas-expandir__cont { font-size: .72rem; font-weight: 500; color: var(--text-muted); white-space: nowrap; }
+  .adm-tabla tr.consultas-fila-cat:hover { background: rgba(200,86,26,.06); }
+  .adm-tabla tr.consultas-fila-detalle td { color: var(--text-muted); font-size: .86rem; background: rgba(59,26,8,.015); }
+  .adm-tabla tr.consultas-fila-detalle td:first-child { padding-left: 2.1rem; }
   @media (max-width: 760px) {
     .consultas-toolbar { padding: .8rem; gap: .6rem .5rem; }
     /* Desde/Hasta uno junto al otro (2 columnas) en vez de apilados verticales,
