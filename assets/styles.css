@@ -3039,23 +3039,28 @@
     margin: 1rem 0 1.25rem; padding: .9rem 1rem;
     background: #fff; border: 1.5px solid var(--border); border-radius: var(--radius);
   }
-  .consultas-field { display: flex; flex-direction: column; gap: .25rem; font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
+  .consultas-field { display: flex; flex-direction: column; gap: .25rem; width: 150px; font-size: .72rem; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: .03em; }
   .consultas-input {
-    border: 1.5px solid var(--border); border-radius: var(--radius-sm);
+    width: 100%; box-sizing: border-box; border: 1.5px solid var(--border); border-radius: var(--radius-sm);
     padding: .5rem .7rem; font-family: 'Inter', sans-serif; font-size: .88rem; color: var(--text);
-    background: var(--cream); min-height: 38px;
+    background: var(--cream); min-height: 40px;
   }
   .consultas-input:focus { outline: none; border-color: var(--cinnamon); box-shadow: 0 0 0 3px rgba(200,86,26,.14); }
+  /* En este toolbar los botones comparten fila con los date-picker, así que
+     se les sube el alto mínimo acá (sin tocar .cajero-refresh global, que
+     se usa en Caja/Pedidos con otra densidad) para que no queden
+     descuadrados ni demasiado chicos para el dedo en celular. */
+  .consultas-toolbar .cajero-refresh { min-height: 40px; box-sizing: border-box; }
   .consultas-agrupar { display: flex; gap: .3rem; background: rgba(59,26,8,.07); border-radius: 9px; padding: .25rem; }
   .consultas-agrupar__btn {
-    padding: .4rem .85rem; border: none; border-radius: 6px; background: transparent;
+    min-height: 36px; padding: .4rem .85rem; border: none; border-radius: 6px; background: transparent;
     font-family: 'Inter', sans-serif; font-size: .78rem; font-weight: 600; color: var(--text-muted);
     cursor: pointer; transition: all .15s; white-space: nowrap;
   }
   .consultas-agrupar__btn.active { background: var(--brown-dark); color: #fff; }
   .consultas-agrupar__btn:hover:not(.active) { background: rgba(59,26,8,.1); color: var(--brown-dark); }
   .consultas-search {
-    display: flex; align-items: center; gap: .4rem; flex: 1; min-width: 180px;
+    display: flex; align-items: center; gap: .4rem; flex: 1; min-width: 180px; min-height: 40px; box-sizing: border-box;
     border: 1.5px solid var(--border); border-radius: var(--radius-sm);
     padding: 0 .7rem; background: var(--cream); color: var(--text-muted);
   }
@@ -3064,6 +3069,10 @@
     font-family: 'Inter', sans-serif; font-size: .86rem; color: var(--text); min-height: 38px;
   }
   .consultas-search input::placeholder { color: #b89a82; }
+  /* Select de orden solo-móvil — en escritorio se ordena con clic en el
+     encabezado de la tabla, que en celular queda oculto (ver .adm-tabla
+     thead{display:none} en el media query de tablas-tarjeta). */
+  .consultas-orden-movil { display: none; }
 
   /* Encabezados ordenables (clic para ordenar) dentro de .adm-tabla */
   .adm-tabla th.ord {
@@ -3075,8 +3084,20 @@
   .adm-tabla tr.consultas-total { font-weight: 800; background: var(--cream-dk) !important; }
   .adm-tabla tr.consultas-total td { color: var(--brown-dark); border-top: 2px solid var(--cinnamon); }
   @media (max-width: 760px) {
-    .consultas-toolbar { padding: .8rem; }
-    .consultas-field, .consultas-search { width: 100%; }
+    .consultas-toolbar { padding: .8rem; gap: .6rem .5rem; }
+    /* Desde/Hasta uno junto al otro (2 columnas) en vez de apilados verticales,
+       que en un celular angosto se siente eterno para algo tan rápido. */
+    .consultas-field { width: calc(50% - .25rem); }
+    .consultas-toolbar .cajero-refresh { flex: 1 1 calc(50% - .25rem); justify-content: center; }
+    .consultas-agrupar { width: 100%; }
+    .consultas-agrupar__btn { flex: 1; text-align: center; }
+    .consultas-search { width: 100%; }
+    .consultas-orden-movil { display: flex; width: 100%; }
+  }
+  @media (max-width: 420px) {
+    /* Pantallas muy angostas: Desde/Hasta ya no entran cómodos uno junto al
+       otro con el formato de fecha largo del navegador — se apilan. */
+    .consultas-field { width: 100%; }
   }
 
   /* KPI grid */

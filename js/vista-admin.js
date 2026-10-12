@@ -2304,6 +2304,15 @@ window.VistaAdmin = (function () {
     document.getElementById('btn-consultas-exportar')?.addEventListener('click', _exportarConsultasExcel);
     document.getElementById('consultas-filtro')?.addEventListener('input', () => _renderTablaConsultas());
 
+    // Select de orden solo-móvil (el <thead> ordenable con clic se oculta
+    // en la tabla-tarjeta de celular — ver CSS .adm-tabla thead{display:none}).
+    document.getElementById('consultas-orden-movil')?.addEventListener('change', (e) => {
+      const [col, dir] = e.target.value.split('-');
+      _consultasOrdenCol = col;
+      _consultasOrdenDir = dir;
+      _renderTablaConsultas();
+    });
+
     document.querySelectorAll('#consultas-agrupar .consultas-agrupar__btn').forEach(btn => {
       btn.addEventListener('click', () => {
         if (_consultasAgrupar === btn.dataset.agrupar) return;
@@ -2399,6 +2408,13 @@ window.VistaAdmin = (function () {
 
     const SC = window.SC;
     const etiquetaCol = _consultasAgrupar === 'categoria' ? 'Categoría' : 'Producto';
+
+    // Mantiene el select de orden móvil reflejando el estado real, sin
+    // importar si lo disparó ese mismo select o un clic de encabezado (en
+    // una pantalla que cambió de ancho, por ejemplo).
+    const selOrdenMovil = document.getElementById('consultas-orden-movil');
+    if (selOrdenMovil) selOrdenMovil.value = `${_consultasOrdenCol}-${_consultasOrdenDir}`;
+
     const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
     let filas = filtro ? _consultasFilas.filter(f => f.nombre.toLowerCase().includes(filtro)) : _consultasFilas;
 
