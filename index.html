@@ -804,6 +804,7 @@
                   <button class="rep-tab active" data-period="hoy" role="tab" aria-selected="true">Hoy</button>
                   <button class="rep-tab" data-period="semana" role="tab" aria-selected="false">5 días</button>
                   <button class="rep-tab" data-period="mes" role="tab" aria-selected="false">Este mes</button>
+                  <button class="rep-tab" data-period="consultas" role="tab" aria-selected="false">Consultas</button>
                 </div>
                 <div class="resumen-fecha-nav" id="rep-dia-nav">
                   <button class="btn-fecha-nav" id="rep-dia-ant" aria-label="Día anterior">‹</button>
@@ -851,6 +852,38 @@
               </div>
               <!-- Control de Caja -->
               <div id="rep-cuadre-wrap" style="margin-top:1.5rem"></div>
+            </div>
+
+            <!-- Pestaña "Consultas" — detalle por producto con rango de fechas libre -->
+            <div id="admin-consultas-content" style="display:none">
+              <div class="consultas-toolbar">
+                <label class="consultas-field">
+                  <span>Desde</span>
+                  <input type="date" id="consultas-desde" class="consultas-input">
+                </label>
+                <label class="consultas-field">
+                  <span>Hasta</span>
+                  <input type="date" id="consultas-hasta" class="consultas-input">
+                </label>
+                <button class="cajero-refresh" id="btn-consultas-buscar" style="background:var(--cinnamon);color:#fff;border-color:var(--cinnamon)">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+                  Buscar
+                </button>
+                <button class="cajero-refresh" id="btn-consultas-exportar">
+                  <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3v12"/><path d="M7 10l5 5 5-5"/><path d="M4 19h16"/></svg>
+                  Excel
+                </button>
+                <div class="consultas-agrupar" id="consultas-agrupar" role="group" aria-label="Agrupar por">
+                  <button class="consultas-agrupar__btn active" data-agrupar="producto" type="button">Por producto</button>
+                  <button class="consultas-agrupar__btn" data-agrupar="categoria" type="button">Por categoría</button>
+                </div>
+                <label class="consultas-search">
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.35-4.35"/></svg>
+                  <input type="search" id="consultas-filtro" placeholder="Filtrar por nombre…">
+                </label>
+              </div>
+              <div id="consultas-resumen" class="resumen-kpis" style="margin-bottom:1rem"></div>
+              <div id="consultas-tabla-wrap"></div>
             </div>
           </section>
 

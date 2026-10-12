@@ -103,6 +103,14 @@ window.VistaAdmin = (function () {
   let _repMesOffset      = 0; // navegación mes a mes en Reportes → tab "Este mes" (0=mes actual, -1=mes anterior, ...)
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
+  // ── Pestaña "Consultas" (Reportes): detalle por producto/categoría con rango libre ──
+  let _consultasInicializada = false; // para fijar el rango por defecto (este mes) una sola vez
+  let _consultasFilas     = []; // [{nombre, categoria, cantidad, valor}], ya agregado para el rango buscado
+  let _consultasAgrupar   = 'producto'; // 'producto' | 'categoria'
+  let _consultasOrdenCol  = 'valor';
+  let _consultasOrdenDir  = 'desc'; // 'asc' | 'desc'
+  let _consultasDesde     = null;
+  let _consultasHasta     = null;
   // Clic en el encabezado "Método de pago" del Control de Caja alterna
   // entre orden cronológico y agrupado por método — agrupar hace mucho más
   // rápido el cuadre manual (todo el efectivo junto, luego transferencias...).
@@ -1746,6 +1754,28 @@ window.VistaAdmin = (function () {
       periodo = activeTab?.dataset.period ?? 'hoy';
     }
 
+    document.querySelectorAll('#rep-periodo-tabs .rep-tab').forEach(t => {
+      const active = t.dataset.period === periodo;
+      t.classList.toggle('active', active);
+      t.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    // "Consultas" es una pestaña aparte (rango de fechas libre, no las
+    // presets hoy/5 días/mes) con su propio contenedor y su propio botón
+    // de exportar — no comparte nada del flujo de abajo (KPIs/gráficas/
+    // cuadre de caja), así que se resuelve y se sale antes de tocar eso.
+    const esConsultas = periodo === 'consultas';
+    const contReportes  = document.getElementById('admin-reportes-content');
+    const contConsultas = document.getElementById('admin-consultas-content');
+    if (contReportes)  contReportes.style.display  = esConsultas ? 'none' : '';
+    if (contConsultas) contConsultas.style.display = esConsultas ? '' : 'none';
+    const btnExportarReporte = document.getElementById('btn-exportar-reporte');
+    if (btnExportarReporte) btnExportarReporte.style.display = esConsultas ? 'none' : '';
+    if (esConsultas) {
+      _initConsultas();
+      return;
+    }
+
     // Mientras se recarga el reporte (p.ej. al cambiar de pestaña Hoy/5
     // días/30 días), _ultimoReporte todavía apunta al período anterior —
     // se deshabilita "Exportar" para que no se pueda exportar ese período
@@ -1765,12 +1795,6 @@ window.VistaAdmin = (function () {
       s.onload = resolve;
       s.onerror = reject;
       document.head.appendChild(s);
-    });
-
-    document.querySelectorAll('#rep-periodo-tabs .rep-tab').forEach(t => {
-      const active = t.dataset.period === periodo;
-      t.classList.toggle('active', active);
-      t.setAttribute('aria-selected', active ? 'true' : 'false');
     });
 
     const diaNavEl = document.getElementById('rep-dia-nav');
@@ -2245,6 +2269,284 @@ window.VistaAdmin = (function () {
       </table>`;
 
     await _renderCuadreCaja(periodo, desdeStr, periodoLabel, SC, porMetodo, metodoPorPedido);
+  }
+
+  // ════════════════════════════════════════════════════════════════════
+  // Pestaña "Consultas" de Reportes — detalle de ventas por producto o por
+  // categoría con rango de fechas libre (no atado a hoy/5 días/mes),
+  // ordenable por columna, filtrable por nombre y exportable a Excel con
+  // el mismo estilo de marca que el resto de los reportes. A diferencia de
+  // las otras pestañas, la consulta a Supabase solo se repite al tocar
+  // "Buscar" — cambiar de agrupación, filtrar u ordenar reusa los mismos
+  // datos ya traídos (_consultasCrudo), sin golpear la base de nuevo.
+  // ════════════════════════════════════════════════════════════════════
+  let _consultasCrudo = []; // [{producto, categoria, cantidad, valor}] — una fila por línea de detalle, sin agregar
+
+  function _consultasRangoPorDefecto() {
+    const hoy = new Date();
+    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
+    return { desde: _fechaLocalISO(primerDia), hasta: _fechaLocalISO(hoy) };
+  }
+
+  function _initConsultas() {
+    if (_consultasInicializada) return;
+    _consultasInicializada = true;
+
+    const { desde, hasta } = _consultasRangoPorDefecto();
+    const elDesde = document.getElementById('consultas-desde');
+    const elHasta = document.getElementById('consultas-hasta');
+    if (elDesde) elDesde.value = desde;
+    if (elHasta) elHasta.value = hasta;
+    _consultasDesde = desde;
+    _consultasHasta = hasta;
+
+    document.getElementById('btn-consultas-buscar')?.addEventListener('click', () => _buscarConsultas());
+    document.getElementById('btn-consultas-exportar')?.addEventListener('click', _exportarConsultasExcel);
+    document.getElementById('consultas-filtro')?.addEventListener('input', () => _renderTablaConsultas());
+
+    document.querySelectorAll('#consultas-agrupar .consultas-agrupar__btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (_consultasAgrupar === btn.dataset.agrupar) return;
+        _consultasAgrupar = btn.dataset.agrupar;
+        document.querySelectorAll('#consultas-agrupar .consultas-agrupar__btn').forEach(b => b.classList.toggle('active', b === btn));
+        // El cambio de agrupación (producto ↔ categoría) se re-calcula de los
+        // datos crudos ya en memoria, no hace falta volver a consultar.
+        _agregarYRenderConsultas();
+      });
+    });
+
+    // Delegado: clic en cualquier encabezado ordenable de la tabla de consultas.
+    document.getElementById('consultas-tabla-wrap')?.addEventListener('click', (e) => {
+      const th = e.target.closest('th[data-col]');
+      if (!th) return;
+      const col = th.dataset.col;
+      if (_consultasOrdenCol === col) {
+        _consultasOrdenDir = _consultasOrdenDir === 'asc' ? 'desc' : 'asc';
+      } else {
+        _consultasOrdenCol = col;
+        _consultasOrdenDir = col === 'nombre' ? 'asc' : 'desc';
+      }
+      _renderTablaConsultas();
+    });
+
+    _buscarConsultas();
+  }
+
+  async function _buscarConsultas() {
+    const SC = window.SC;
+    const elDesde = document.getElementById('consultas-desde');
+    const elHasta = document.getElementById('consultas-hasta');
+    const desde = elDesde?.value || _consultasDesde;
+    const hasta = elHasta?.value || _consultasHasta;
+    if (!desde || !hasta) return;
+    if (desde > hasta) { SC?.toast('"Desde" no puede ser posterior a "Hasta"', 'error'); return; }
+    _consultasDesde = desde;
+    _consultasHasta = hasta;
+
+    const btnBuscar = document.getElementById('btn-consultas-buscar');
+    if (btnBuscar) btnBuscar.disabled = true;
+    const tablaEl = document.getElementById('consultas-tabla-wrap');
+    if (tablaEl) tablaEl.innerHTML = '<p class="usu-cargando" style="padding:2rem 0;text-align:center">Cargando…</p>';
+
+    const { data, error } = await window.db
+      .from('pedidos')
+      .select('ped_fecha, detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre, categorias(cat_nombre)))')
+      .eq('ped_estado', 'cobrado')
+      .gte('ped_fecha', desde)
+      .lte('ped_fecha', hasta);
+
+    if (btnBuscar) btnBuscar.disabled = false;
+
+    if (error) {
+      if (tablaEl) tablaEl.innerHTML = '<p style="color:#dc2626;text-align:center;padding:2rem 0">Error al cargar la consulta.</p>';
+      return;
+    }
+
+    const crudo = [];
+    (data ?? []).forEach(p => {
+      (p.detalle_pedidos ?? []).forEach(d => {
+        const nombre = d.platos?.plat_nombre;
+        if (!nombre) return;
+        crudo.push({
+          producto: nombre,
+          categoria: d.platos?.categorias?.cat_nombre || 'Sin categoría',
+          cantidad: d.detped_cantidad || 0,
+          valor: parseFloat(d.detped_subtotal) || 0
+        });
+      });
+    });
+    _consultasCrudo = crudo;
+    _agregarYRenderConsultas();
+  }
+
+  function _agregarYRenderConsultas() {
+    const campo = _consultasAgrupar === 'categoria' ? 'categoria' : 'producto';
+    const mapa = {};
+    _consultasCrudo.forEach(r => {
+      const key = r[campo];
+      if (!mapa[key]) mapa[key] = { nombre: key, cantidad: 0, valor: 0 };
+      mapa[key].cantidad += r.cantidad;
+      mapa[key].valor += r.valor;
+    });
+    _consultasFilas = Object.values(mapa);
+    _renderTablaConsultas();
+  }
+
+  function _renderTablaConsultas() {
+    const tablaEl = document.getElementById('consultas-tabla-wrap');
+    const resumenEl = document.getElementById('consultas-resumen');
+    if (!tablaEl) return;
+
+    const SC = window.SC;
+    const etiquetaCol = _consultasAgrupar === 'categoria' ? 'Categoría' : 'Producto';
+    const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
+    let filas = filtro ? _consultasFilas.filter(f => f.nombre.toLowerCase().includes(filtro)) : _consultasFilas;
+
+    const dir = _consultasOrdenDir === 'asc' ? 1 : -1;
+    filas = filas.slice().sort((a, b) => {
+      if (_consultasOrdenCol === 'nombre') return a.nombre.localeCompare(b.nombre) * dir;
+      return (a[_consultasOrdenCol] - b[_consultasOrdenCol]) * dir;
+    });
+
+    // Los totales reflejan lo que está visible (filtrado), no el total
+    // bruto sin filtrar — así, al buscar un producto puntual, el TOTAL de
+    // abajo contesta directamente "¿cuánto vendí de esto?".
+    const totalCantidad = filas.reduce((s, f) => s + f.cantidad, 0);
+    const totalValor    = filas.reduce((s, f) => s + f.valor, 0);
+
+    if (resumenEl) {
+      resumenEl.innerHTML = `
+        <div class="resumen-kpi-card">
+          <div class="resumen-kpi-card__val">${filas.length}</div>
+          <div class="resumen-kpi-card__lbl">${etiquetaCol === 'Categoría' ? 'Categorías' : 'Productos'}</div>
+        </div>
+        <div class="resumen-kpi-card">
+          <div class="resumen-kpi-card__val">${totalCantidad}</div>
+          <div class="resumen-kpi-card__lbl">Unidades vendidas</div>
+        </div>
+        <div class="resumen-kpi-card">
+          <div class="resumen-kpi-card__val" style="color:var(--cinnamon)">$${totalValor.toFixed(2)}</div>
+          <div class="resumen-kpi-card__lbl">Total vendido</div>
+        </div>`;
+    }
+
+    if (!filas.length) {
+      tablaEl.innerHTML = '<p style="text-align:center;color:#888;font-size:.85rem;padding:2rem 0;font-style:italic">No hay ventas que coincidan en este rango.</p>';
+      return;
+    }
+
+    const _flecha = col => _consultasOrdenCol === col ? (_consultasOrdenDir === 'asc' ? '▲' : '▼') : '↕';
+    const _th = (col, label, align) =>
+      `<th class="ord${_consultasOrdenCol === col ? ' ord-activo' : ''}" data-col="${col}"${align ? ` style="text-align:${align}"` : ''}>${label}<span class="ord-arrow">${_flecha(col)}</span></th>`;
+
+    tablaEl.innerHTML = `
+      <table class="adm-tabla">
+        <thead><tr>
+          ${_th('nombre', etiquetaCol)}
+          ${_th('cantidad', 'Cant.', 'center')}
+          ${_th('valor', 'Valor', 'right')}
+        </tr></thead>
+        <tbody>
+          ${filas.map(f => `<tr>
+            <td data-label="${etiquetaCol}">${SC?.escapeHtml(f.nombre) ?? f.nombre}</td>
+            <td data-label="Cant." style="text-align:center">${f.cantidad}</td>
+            <td data-label="Valor" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${f.valor.toFixed(2)}</td>
+          </tr>`).join('')}
+          <tr class="consultas-total">
+            <td data-label="Total">TOTAL</td>
+            <td data-label="Cant." style="text-align:center">${totalCantidad}</td>
+            <td data-label="Valor" style="text-align:right">$${totalValor.toFixed(2)}</td>
+          </tr>
+        </tbody>
+      </table>`;
+  }
+
+  // Exporta la consulta actualmente visible (ya filtrada/ordenada según lo
+  // que el usuario armó) a un .xlsx con el mismo estilo de marca que el
+  // resto de los reportes (café oscuro + canela, filas alternadas).
+  async function _exportarConsultasExcel() {
+    const SC = window.SC;
+    if (!_consultasFilas.length) { SC?.toast('No hay datos para exportar', 'error'); return; }
+
+    const btn = document.getElementById('btn-consultas-exportar');
+    const _btnHtmlOriginal = btn?.innerHTML;
+    if (btn) { btn.disabled = true; btn.textContent = 'Generando…'; }
+
+    try {
+      if (!window.__XLSX_STYLED__) {
+        await new Promise((resolve, reject) => {
+          const s = document.createElement('script');
+          s.src = 'https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js';
+          s.onload = () => { window.__XLSX_STYLED__ = true; resolve(); };
+          s.onerror = reject;
+          document.head.appendChild(s);
+        });
+      }
+      const XLSX = window.XLSX;
+
+      // ── Paleta de marca (misma que _exportarReporteExcel) ──
+      const CINNAMON    = 'C8561A';
+      const BROWN_DARK   = '3B1A08';
+      const CREAM        = 'FDF6EE';
+      const WHITE        = 'FFFFFF';
+      const BORDER_COLOR = 'E0C9B0';
+      const _thin = { style: 'thin', color: { rgb: BORDER_COLOR } };
+      const _borderAll = { top: _thin, bottom: _thin, left: _thin, right: _thin };
+      const _sTitle    = { font: { bold: true, sz: 16, color: { rgb: WHITE } }, fill: { fgColor: { rgb: BROWN_DARK } }, alignment: { horizontal: 'left', vertical: 'center' } };
+      const _sSubtitle = { font: { sz: 10, color: { rgb: WHITE } }, fill: { fgColor: { rgb: BROWN_DARK } }, alignment: { horizontal: 'left', vertical: 'center' } };
+      const _sLabel    = { font: { bold: true, color: { rgb: BROWN_DARK } }, fill: { fgColor: { rgb: CREAM } }, border: _borderAll };
+      const _sValue    = { font: { color: { rgb: BROWN_DARK } }, border: _borderAll };
+      const _sValueBold = { font: { bold: true, color: { rgb: CINNAMON } }, border: _borderAll };
+      const _sHeader   = { font: { bold: true, color: { rgb: WHITE } }, fill: { fgColor: { rgb: BROWN_DARK } }, alignment: { horizontal: 'center', vertical: 'center' }, border: _borderAll };
+      const _sCell = (bg) => ({ font: { color: { rgb: BROWN_DARK } }, fill: { fgColor: { rgb: bg } }, border: _borderAll, alignment: { vertical: 'center' } });
+      const _sCellRight  = (bg) => ({ ..._sCell(bg), alignment: { horizontal: 'right', vertical: 'center' } });
+      const _sCellCenter = (bg) => ({ ..._sCell(bg), alignment: { horizontal: 'center', vertical: 'center' } });
+      const MONEY_FMT = '"$"#,##0.00';
+      const INT_FMT   = '0';
+      const _cell = (v, s, z) => { const c = { v, s }; c.z = z || (typeof v === 'number' ? INT_FMT : 'General'); if (typeof v === 'number') c.t = 'n'; return c; };
+      const _merge = (ws, r1, c1, r2, c2) => { ws['!merges'] = ws['!merges'] || []; ws['!merges'].push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }); };
+
+      // Misma fila visible que la pantalla: respeta el filtro de texto actual
+      // (no el orden de clic, que ya no aporta nada en un Excel — se deja
+      // ordenado de mayor a menor valor vendido, que es lo más útil para leer).
+      const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
+      const filas = (filtro ? _consultasFilas.filter(f => f.nombre.toLowerCase().includes(filtro)) : _consultasFilas)
+        .slice().sort((a, b) => b.valor - a.valor);
+      const totalCantidad = filas.reduce((s, f) => s + f.cantidad, 0);
+      const totalValor    = filas.reduce((s, f) => s + f.valor, 0);
+      const etiquetaCol   = _consultasAgrupar === 'categoria' ? 'Categoría' : 'Producto';
+
+      const filasHoja = [
+        [_cell('Sal y Canela — Consulta de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
+        [_cell(`RUC ${RUC_NEGOCIO} · RIMPE Negocio Popular (exento de IVA)`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
+        [],
+        [_cell('Desde', _sLabel), _cell(_consultasDesde, _sValue), _cell('', _sValue)],
+        [_cell('Hasta', _sLabel), _cell(_consultasHasta, _sValue), _cell('', _sValue)],
+        [_cell('Agrupado por', _sLabel), _cell(etiquetaCol, _sValue), _cell('', _sValue)],
+        [_cell('Generado', _sLabel), _cell(new Date().toLocaleString('es-EC'), _sValue), _cell('', _sValue)],
+        [],
+        [_cell(etiquetaCol, _sHeader), _cell('Cantidad', _sHeader), _cell('Valor', _sHeader)],
+        ...filas.map((f, i) => {
+          const bg = i % 2 === 0 ? WHITE : CREAM;
+          return [_cell(f.nombre, _sCell(bg)), _cell(f.cantidad, _sCellCenter(bg), INT_FMT), _cell(f.valor, _sCellRight(bg), MONEY_FMT)];
+        }),
+        [_cell('TOTAL', _sLabel), _cell(totalCantidad, { ..._sValueBold, alignment: { horizontal: 'center' } }, INT_FMT), _cell(totalValor, _sValueBold, MONEY_FMT)]
+      ];
+      const ws = XLSX.utils.aoa_to_sheet(filasHoja);
+      _merge(ws, 0, 0, 0, 2);
+      _merge(ws, 1, 0, 1, 2);
+      ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }];
+      ws['!rows'] = [{ hpt: 26 }];
+
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Consulta');
+      XLSX.writeFile(wb, `sal-y-canela-consulta-${_consultasDesde}_a_${_consultasHasta}.xlsx`);
+    } catch (e) {
+      console.error('Exportar consulta a Excel:', e);
+      SC?.toast('No se pudo generar el archivo Excel', 'error');
+    } finally {
+      if (btn) { btn.disabled = false; btn.innerHTML = _btnHtmlOriginal; }
+    }
   }
 
   // Exporta el reporte actualmente visible (KPIs + detalle de pedidos +
