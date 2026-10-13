@@ -2501,13 +2501,17 @@ window.VistaAdmin = (function () {
     if (selOrdenMovil) selOrdenMovil.value = `${_consultasOrdenCol}-${_consultasOrdenDir}`;
 
     const dir = _consultasOrdenDir === 'asc' ? 1 : -1;
-    const filas = _consultasFilasVisibles().slice().sort((a, b) => {
-      if (_consultasOrdenCol === 'nombre') {
+    const _cmp = col => (a, b) => {
+      if (col === 'nombre') {
         return (a.nombre.localeCompare(b.nombre) || (a.tipo || '').localeCompare(b.tipo || '')) * dir;
       }
-      // Categorías no tienen precio unitario (null) — van al final al ordenar por precio.
-      return ((a[_consultasOrdenCol] ?? -1) - (b[_consultasOrdenCol] ?? -1)) * dir;
-    });
+      return ((a[col] ?? -1) - (b[col] ?? -1)) * dir;
+    };
+    // Las categorías no tienen precio unitario: al ordenar por precio, las
+    // categorías se ordenan por valor y es su desglose el que va por precio.
+    const colFila = _consultasAgrupar === 'categoria' && _consultasOrdenCol === 'precio' ? 'valor' : _consultasOrdenCol;
+    const filas = _consultasFilasVisibles().slice().sort(_cmp(colFila))
+      .map(f => (f.detalle ? { ...f, detalle: f.detalle.slice().sort(_cmp(_consultasOrdenCol)) } : f));
 
     // Los totales reflejan lo que está visible (filtrado), no el total
     // bruto sin filtrar — así, al buscar un producto puntual, el TOTAL de
@@ -2570,7 +2574,7 @@ window.VistaAdmin = (function () {
                 ${tieneDetalle
                   ? `<button type="button" class="consultas-expandir" aria-expanded="${expandida}">
                        <span class="consultas-expandir__flecha">${expandida ? '▾' : '▸'}</span>
-                       <span>${_esc(f.nombre)}</span>
+                       <span class="consultas-expandir__nombre">${_esc(f.nombre)}</span>
                        <span class="consultas-expandir__cont">${_contCat(f)}</span>
                      </button>`
                   : `${_esc(f.nombre)}${_badge(f.tipo)}`}

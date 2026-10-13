@@ -3141,6 +3141,9 @@
     #consultas-tabla-wrap .adm-tabla td:last-child { width: 25%; }
     /* En columna angosta el conteo ("13 almuerzos · 5 segundos") baja a su propia línea */
     #consultas-tabla-wrap .consultas-expandir { flex-wrap: wrap; row-gap: .1rem; }
+    /* El nombre comparte renglón con la flecha y se parte por dentro, en vez de
+       bajar entero y dejar "▸" sola (pasaba con "Bebidas Calientes", etc.). */
+    #consultas-tabla-wrap .consultas-expandir__nombre { flex: 1 1 0; min-width: 0; }
     #consultas-tabla-wrap .consultas-expandir__cont { flex-basis: 100%; padding-left: 1.5em; font-size: .64rem; white-space: normal; }
     #consultas-tabla-wrap .consultas-tipo { margin-left: .25rem; padding: .05rem .35rem; font-size: .58rem; }
     #consultas-tabla-wrap .consultas-fila-detalle td:first-child { padding-left: 1.3rem !important; font-size: .74rem; }
