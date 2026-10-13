@@ -2445,9 +2445,13 @@ window.VistaAdmin = (function () {
         d[r.producto].valor += r.valor;
       }
     });
-    _consultasFilas = Object.values(mapa).map(f => ({
+    // Precio unitario = valor / cantidad (promedio real de venta, no el
+    // precio de catálogo — si el plato cambió de precio a mitad del rango
+    // buscado, esto refleja lo que de verdad se cobró en promedio).
+    const _conPrecio = o => ({ ...o, precio: o.cantidad > 0 ? o.valor / o.cantidad : 0 });
+    _consultasFilas = Object.values(mapa).map(f => _conPrecio({
       ...f,
-      detalle: f.detalle ? Object.values(f.detalle).sort((a, b) => b.valor - a.valor) : null
+      detalle: f.detalle ? Object.values(f.detalle).sort((a, b) => b.valor - a.valor).map(_conPrecio) : null
     }));
     _consultasExpandido.clear();
     _renderTablaConsultas();
@@ -2507,11 +2511,14 @@ window.VistaAdmin = (function () {
     const _th = (col, label, align) =>
       `<th class="ord${_consultasOrdenCol === col ? ' ord-activo' : ''}" data-col="${col}"${align ? ` style="text-align:${align}"` : ''}>${label}<span class="ord-arrow">${_flecha(col)}</span></th>`;
 
+    const precioPromedioTotal = totalCantidad > 0 ? totalValor / totalCantidad : 0;
+
     tablaEl.innerHTML = `
       <table class="adm-tabla">
         <thead><tr>
           ${_th('nombre', etiquetaCol)}
           ${_th('cantidad', 'Cant.', 'center')}
+          ${_th('precio', 'Precio Unit.', 'right')}
           ${_th('valor', 'Valor', 'right')}
         </tr></thead>
         <tbody>
@@ -2529,6 +2536,7 @@ window.VistaAdmin = (function () {
                   : (SC?.escapeHtml(f.nombre) ?? f.nombre)}
               </td>
               <td data-label="Cant." style="text-align:center">${f.cantidad}</td>
+              <td data-label="Precio Unit." style="text-align:right;color:var(--text-muted)">$${f.precio.toFixed(2)}</td>
               <td data-label="Valor" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${f.valor.toFixed(2)}</td>
             </tr>`;
             if (!tieneDetalle || !expandida) return filaPrincipal;
@@ -2538,6 +2546,7 @@ window.VistaAdmin = (function () {
             const subFilas = f.detalle.map(d => `<tr class="consultas-fila-detalle">
               <td data-label="Producto">↳ ${SC?.escapeHtml(d.nombre) ?? d.nombre}</td>
               <td data-label="Cant." style="text-align:center">${d.cantidad}</td>
+              <td data-label="Precio Unit." style="text-align:right">$${d.precio.toFixed(2)}</td>
               <td data-label="Valor" style="text-align:right">$${d.valor.toFixed(2)}</td>
             </tr>`).join('');
             return filaPrincipal + subFilas;
@@ -2545,6 +2554,7 @@ window.VistaAdmin = (function () {
           <tr class="consultas-total">
             <td data-label="Total">TOTAL</td>
             <td data-label="Cant." style="text-align:center">${totalCantidad}</td>
+            <td data-label="Precio Unit." style="text-align:right;font-weight:400;font-size:.85em" title="Precio unitario promedio de todo lo visible">prom. $${precioPromedioTotal.toFixed(2)}</td>
             <td data-label="Valor" style="text-align:right">$${totalValor.toFixed(2)}</td>
           </tr>
         </tbody>
@@ -2606,26 +2616,27 @@ window.VistaAdmin = (function () {
       const totalValor    = filas.reduce((s, f) => s + f.valor, 0);
       const etiquetaCol   = _consultasAgrupar === 'categoria' ? 'Categoría' : 'Producto';
 
+      const precioPromedioTotal = totalCantidad > 0 ? totalValor / totalCantidad : 0;
       const filasHoja = [
-        [_cell('Sal y Canela — Consulta de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
-        [_cell(`RUC ${RUC_NEGOCIO} · RIMPE Negocio Popular (exento de IVA)`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
+        [_cell('Sal y Canela — Consulta de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
+        [_cell(`RUC ${RUC_NEGOCIO} · RIMPE Negocio Popular (exento de IVA)`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
         [],
-        [_cell('Desde', _sLabel), _cell(_consultasDesde, _sValue), _cell('', _sValue)],
-        [_cell('Hasta', _sLabel), _cell(_consultasHasta, _sValue), _cell('', _sValue)],
-        [_cell('Agrupado por', _sLabel), _cell(etiquetaCol, _sValue), _cell('', _sValue)],
-        [_cell('Generado', _sLabel), _cell(new Date().toLocaleString('es-EC'), _sValue), _cell('', _sValue)],
+        [_cell('Desde', _sLabel), _cell(_consultasDesde, _sValue), _cell('', _sValue), _cell('', _sValue)],
+        [_cell('Hasta', _sLabel), _cell(_consultasHasta, _sValue), _cell('', _sValue), _cell('', _sValue)],
+        [_cell('Agrupado por', _sLabel), _cell(etiquetaCol, _sValue), _cell('', _sValue), _cell('', _sValue)],
+        [_cell('Generado', _sLabel), _cell(new Date().toLocaleString('es-EC'), _sValue), _cell('', _sValue), _cell('', _sValue)],
         [],
-        [_cell(etiquetaCol, _sHeader), _cell('Cantidad', _sHeader), _cell('Valor', _sHeader)],
+        [_cell(etiquetaCol, _sHeader), _cell('Cantidad', _sHeader), _cell('Precio Unit.', _sHeader), _cell('Valor', _sHeader)],
         ...filas.map((f, i) => {
           const bg = i % 2 === 0 ? WHITE : CREAM;
-          return [_cell(f.nombre, _sCell(bg)), _cell(f.cantidad, _sCellCenter(bg), INT_FMT), _cell(f.valor, _sCellRight(bg), MONEY_FMT)];
+          return [_cell(f.nombre, _sCell(bg)), _cell(f.cantidad, _sCellCenter(bg), INT_FMT), _cell(f.precio, _sCellRight(bg), MONEY_FMT), _cell(f.valor, _sCellRight(bg), MONEY_FMT)];
         }),
-        [_cell('TOTAL', _sLabel), _cell(totalCantidad, { ..._sValueBold, alignment: { horizontal: 'center' } }, INT_FMT), _cell(totalValor, _sValueBold, MONEY_FMT)]
+        [_cell('TOTAL', _sLabel), _cell(totalCantidad, { ..._sValueBold, alignment: { horizontal: 'center' } }, INT_FMT), _cell(precioPromedioTotal, _sValue, MONEY_FMT), _cell(totalValor, _sValueBold, MONEY_FMT)]
       ];
       const ws = XLSX.utils.aoa_to_sheet(filasHoja);
-      _merge(ws, 0, 0, 0, 2);
-      _merge(ws, 1, 0, 1, 2);
-      ws['!cols'] = [{ wch: 30 }, { wch: 14 }, { wch: 14 }];
+      _merge(ws, 0, 0, 0, 3);
+      _merge(ws, 1, 0, 1, 3);
+      ws['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
       ws['!rows'] = [{ hpt: 26 }];
 
       const wb = XLSX.utils.book_new();

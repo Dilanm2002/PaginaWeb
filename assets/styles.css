@@ -3125,11 +3125,13 @@
     #consultas-tabla-wrap .adm-tabla td:last-child { border-bottom: 1px solid var(--border); }
     #consultas-tabla-wrap .adm-tabla td[data-label]::before { content: none; }
     #consultas-tabla-wrap .adm-tabla th:first-child,
-    #consultas-tabla-wrap .adm-tabla td:first-child { width: 54%; text-align: left; word-break: break-word; }
+    #consultas-tabla-wrap .adm-tabla td:first-child { width: 40%; text-align: left; word-break: break-word; }
     #consultas-tabla-wrap .adm-tabla th:nth-child(2),
-    #consultas-tabla-wrap .adm-tabla td:nth-child(2) { width: 16%; }
+    #consultas-tabla-wrap .adm-tabla td:nth-child(2) { width: 13%; }
+    #consultas-tabla-wrap .adm-tabla th:nth-child(3),
+    #consultas-tabla-wrap .adm-tabla td:nth-child(3) { width: 22%; font-size: .7rem; }
     #consultas-tabla-wrap .adm-tabla th:last-child,
-    #consultas-tabla-wrap .adm-tabla td:last-child { width: 30%; }
+    #consultas-tabla-wrap .adm-tabla td:last-child { width: 25%; }
     #consultas-tabla-wrap .consultas-expandir__cont { display: none; } /* ya no entra "N productos" en una columna angosta */
     #consultas-tabla-wrap .consultas-fila-detalle td:first-child { padding-left: 1.3rem !important; font-size: .74rem; }
     #consultas-tabla-wrap tr.consultas-total td { border-top: 2px solid var(--cinnamon); }
