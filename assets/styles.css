@@ -3098,6 +3098,13 @@
   .adm-tabla tr.consultas-fila-cat:hover { background: rgba(200,86,26,.06); }
   .adm-tabla tr.consultas-fila-detalle td { color: var(--text-muted); font-size: .86rem; background: rgba(59,26,8,.015); }
   .adm-tabla tr.consultas-fila-detalle td:first-child { padding-left: 2.1rem; }
+  /* Insignia de tipo en platos de Almuerzos: completo (sopa + segundo) vs. solo segundo */
+  .consultas-tipo {
+    display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 999px;
+    font-size: .68rem; font-weight: 700; letter-spacing: .02em; vertical-align: middle; white-space: nowrap;
+  }
+  .consultas-tipo--almuerzo { background: rgba(200,86,26,.12); color: var(--cinnamon); }
+  .consultas-tipo--segundo  { background: rgba(59,26,8,.1);   color: var(--brown-dark); }
 
   /* En celular, .adm-tabla se apila como tarjetas (ver @media 767px más
      abajo en el archivo) — ese es el criterio del resto del panel admin,
@@ -3132,7 +3139,10 @@
     #consultas-tabla-wrap .adm-tabla td:nth-child(3) { width: 22%; font-size: .7rem; }
     #consultas-tabla-wrap .adm-tabla th:last-child,
     #consultas-tabla-wrap .adm-tabla td:last-child { width: 25%; }
-    #consultas-tabla-wrap .consultas-expandir__cont { display: none; } /* ya no entra "N productos" en una columna angosta */
+    /* En columna angosta el conteo ("13 almuerzos · 5 segundos") baja a su propia línea */
+    #consultas-tabla-wrap .consultas-expandir { flex-wrap: wrap; row-gap: .1rem; }
+    #consultas-tabla-wrap .consultas-expandir__cont { flex-basis: 100%; padding-left: 1.5em; font-size: .64rem; white-space: normal; }
+    #consultas-tabla-wrap .consultas-tipo { margin-left: .25rem; padding: .05rem .35rem; font-size: .58rem; }
     #consultas-tabla-wrap .consultas-fila-detalle td:first-child { padding-left: 1.3rem !important; font-size: .74rem; }
     #consultas-tabla-wrap tr.consultas-total td { border-top: 2px solid var(--cinnamon); }
   }

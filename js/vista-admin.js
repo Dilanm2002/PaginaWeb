@@ -2398,7 +2398,7 @@ window.VistaAdmin = (function () {
 
     const { data, error } = await window.db
       .from('pedidos')
-      .select('ped_fecha, detalle_pedidos(detped_cantidad, detped_subtotal, platos(plat_nombre, categorias(cat_nombre)))')
+      .select('ped_fecha, detalle_pedidos(detped_cantidad, detped_subtotal, detped_precio_unit, platos(plat_nombre, plat_precio, categorias(cat_nombre)), det_exclusiones(ingredientes(ing_nombre)))')
       .eq('ped_estado', 'cobrado')
       .gte('ped_fecha', desde)
       .lte('ped_fecha', hasta);
@@ -2410,14 +2410,31 @@ window.VistaAdmin = (function () {
       return;
     }
 
+    // "Segundo" = almuerzo sin sopa: misma regla fija que usa el carrito y
+    // la caja (logica-carrito.js → formatoExclusiones/calcularPrecioConExclusiones),
+    // así el reporte clasifica y pone precio exactamente igual que se cobró.
+    const LC = window.LogicaCarrito;
     const crudo = [];
     (data ?? []).forEach(p => {
       (p.detalle_pedidos ?? []).forEach(d => {
         const nombre = d.platos?.plat_nombre;
         if (!nombre) return;
+        const categoria   = d.platos?.categorias?.cat_nombre || 'Sin categoría';
+        const exclNombres = (d.det_exclusiones ?? []).map(e => e.ingredientes?.ing_nombre).filter(Boolean);
+        const esAlmuerzo  = categoria === 'Almuerzos';
+        const esSegundo   = esAlmuerzo && !!LC?.formatoExclusiones(exclNombres).individual;
+        // Precio unitario = el registrado en el catálogo (plat_precio), no un
+        // promedio. Para un segundo, ese mismo precio menos el descuento fijo
+        // de la sopa. Solo si el plato no trae precio se cae al de la línea.
+        const precioCatalogo = parseFloat(d.platos?.plat_precio);
+        const precio = Number.isFinite(precioCatalogo)
+          ? (LC ? LC.calcularPrecioConExclusiones({ precio: precioCatalogo, categoria }, exclNombres) : precioCatalogo)
+          : (parseFloat(d.detped_precio_unit) || 0);
         crudo.push({
           producto: nombre,
-          categoria: d.platos?.categorias?.cat_nombre || 'Sin categoría',
+          categoria,
+          tipo: esAlmuerzo ? (esSegundo ? 'Segundo' : 'Almuerzo') : null,
+          precio,
           cantidad: d.detped_cantidad || 0,
           valor: parseFloat(d.detped_subtotal) || 0
         });
@@ -2427,32 +2444,44 @@ window.VistaAdmin = (function () {
     _agregarYRenderConsultas();
   }
 
+  // Un mismo plato de Almuerzos se parte en dos renglones: vendido como
+  // almuerzo completo o como segundo (sin sopa) — cada uno con su precio.
+  const _consultasKeyProducto = r => (r.tipo ? `${r.producto}::${r.tipo}` : r.producto);
+
+  // Filas que se ven con el filtro de texto actual — compartido por la
+  // tabla y el Excel para que nunca muestren cosas distintas. Por producto
+  // el filtro también busca en el tipo (escribir "segundo" lista solo esos).
+  function _consultasFilasVisibles() {
+    const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
+    if (!filtro) return _consultasFilas;
+    return _consultasFilas.filter(f => `${f.nombre} ${f.tipo || ''}`.toLowerCase().includes(filtro));
+  }
+
   function _agregarYRenderConsultas() {
-    const campo = _consultasAgrupar === 'categoria' ? 'categoria' : 'producto';
+    const porCategoria = _consultasAgrupar === 'categoria';
+    const _acumular = (mapa, key, base, r) => {
+      if (!mapa[key]) mapa[key] = { ...base, cantidad: 0, valor: 0 };
+      mapa[key].cantidad += r.cantidad;
+      mapa[key].valor    += r.valor;
+      return mapa[key];
+    };
     const mapa = {};
     _consultasCrudo.forEach(r => {
-      const key = r[campo];
-      if (!mapa[key]) mapa[key] = { nombre: key, cantidad: 0, valor: 0, detalle: _consultasAgrupar === 'categoria' ? {} : null };
-      mapa[key].cantidad += r.cantidad;
-      mapa[key].valor += r.valor;
-      // Agrupando por categoría, cada fila además arrastra el desglose por
-      // producto (cuáles y cuántos la componen) para poder desplegarlo sin
-      // perder la vista resumida — ver _th/_fila en _renderTablaConsultas.
-      if (mapa[key].detalle) {
-        const d = mapa[key].detalle;
-        if (!d[r.producto]) d[r.producto] = { nombre: r.producto, cantidad: 0, valor: 0 };
-        d[r.producto].cantidad += r.cantidad;
-        d[r.producto].valor += r.valor;
+      if (porCategoria) {
+        // La categoría no tiene un precio unitario propio (mezcla platos de
+        // distinto precio) — el precio va en el desglose por producto.
+        const cat = _acumular(mapa, r.categoria, { nombre: r.categoria, tipo: null, precio: null, detalle: {} }, r);
+        _acumular(cat.detalle, _consultasKeyProducto(r), { nombre: r.producto, tipo: r.tipo, precio: r.precio }, r);
+      } else {
+        _acumular(mapa, _consultasKeyProducto(r), { nombre: r.producto, tipo: r.tipo, precio: r.precio, detalle: null }, r);
       }
     });
-    // Precio unitario = valor / cantidad (promedio real de venta, no el
-    // precio de catálogo — si el plato cambió de precio a mitad del rango
-    // buscado, esto refleja lo que de verdad se cobró en promedio).
-    const _conPrecio = o => ({ ...o, precio: o.cantidad > 0 ? o.valor / o.cantidad : 0 });
-    _consultasFilas = Object.values(mapa).map(f => _conPrecio({
-      ...f,
-      detalle: f.detalle ? Object.values(f.detalle).sort((a, b) => b.valor - a.valor).map(_conPrecio) : null
-    }));
+    const _sumaTipo = (lista, tipo) => lista.filter(d => d.tipo === tipo).reduce((s, d) => s + d.cantidad, 0);
+    _consultasFilas = Object.values(mapa).map(f => {
+      if (!f.detalle) return f;
+      const detalle = Object.values(f.detalle).sort((a, b) => b.valor - a.valor);
+      return { ...f, detalle, almuerzos: _sumaTipo(detalle, 'Almuerzo'), segundos: _sumaTipo(detalle, 'Segundo') };
+    });
     _consultasExpandido.clear();
     _renderTablaConsultas();
   }
@@ -2471,13 +2500,13 @@ window.VistaAdmin = (function () {
     const selOrdenMovil = document.getElementById('consultas-orden-movil');
     if (selOrdenMovil) selOrdenMovil.value = `${_consultasOrdenCol}-${_consultasOrdenDir}`;
 
-    const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
-    let filas = filtro ? _consultasFilas.filter(f => f.nombre.toLowerCase().includes(filtro)) : _consultasFilas;
-
     const dir = _consultasOrdenDir === 'asc' ? 1 : -1;
-    filas = filas.slice().sort((a, b) => {
-      if (_consultasOrdenCol === 'nombre') return a.nombre.localeCompare(b.nombre) * dir;
-      return (a[_consultasOrdenCol] - b[_consultasOrdenCol]) * dir;
+    const filas = _consultasFilasVisibles().slice().sort((a, b) => {
+      if (_consultasOrdenCol === 'nombre') {
+        return (a.nombre.localeCompare(b.nombre) || (a.tipo || '').localeCompare(b.tipo || '')) * dir;
+      }
+      // Categorías no tienen precio unitario (null) — van al final al ordenar por precio.
+      return ((a[_consultasOrdenCol] ?? -1) - (b[_consultasOrdenCol] ?? -1)) * dir;
     });
 
     // Los totales reflejan lo que está visible (filtrado), no el total
@@ -2485,21 +2514,28 @@ window.VistaAdmin = (function () {
     // abajo contesta directamente "¿cuánto vendí de esto?".
     const totalCantidad = filas.reduce((s, f) => s + f.cantidad, 0);
     const totalValor    = filas.reduce((s, f) => s + f.valor, 0);
+    const porCategoria  = _consultasAgrupar === 'categoria';
+    const _unidadesTipo = tipo => porCategoria
+      ? filas.reduce((s, f) => s + (tipo === 'Almuerzo' ? (f.almuerzos || 0) : (f.segundos || 0)), 0)
+      : filas.filter(f => f.tipo === tipo).reduce((s, f) => s + f.cantidad, 0);
+    const totalAlmuerzos = _unidadesTipo('Almuerzo');
+    const totalSegundos  = _unidadesTipo('Segundo');
+    // Un plato partido en almuerzo/segundo sigue siendo un solo producto.
+    const numItems = porCategoria ? filas.length : new Set(filas.map(f => f.nombre)).size;
 
     if (resumenEl) {
-      resumenEl.innerHTML = `
+      const _kpi = (val, lbl, color) => `
         <div class="resumen-kpi-card">
-          <div class="resumen-kpi-card__val">${filas.length}</div>
-          <div class="resumen-kpi-card__lbl">${etiquetaCol === 'Categoría' ? 'Categorías' : 'Productos'}</div>
-        </div>
-        <div class="resumen-kpi-card">
-          <div class="resumen-kpi-card__val">${totalCantidad}</div>
-          <div class="resumen-kpi-card__lbl">Unidades vendidas</div>
-        </div>
-        <div class="resumen-kpi-card">
-          <div class="resumen-kpi-card__val" style="color:var(--cinnamon)">$${totalValor.toFixed(2)}</div>
-          <div class="resumen-kpi-card__lbl">Total vendido</div>
+          <div class="resumen-kpi-card__val"${color ? ` style="color:${color}"` : ''}>${val}</div>
+          <div class="resumen-kpi-card__lbl">${lbl}</div>
         </div>`;
+      resumenEl.innerHTML =
+        _kpi(numItems, porCategoria ? 'Categorías' : 'Productos') +
+        _kpi(totalCantidad, 'Unidades vendidas') +
+        (totalAlmuerzos || totalSegundos
+          ? _kpi(totalAlmuerzos, 'Almuerzos completos') + _kpi(totalSegundos, 'Segundos')
+          : '') +
+        _kpi(`$${totalValor.toFixed(2)}`, 'Total vendido', 'var(--cinnamon)');
     }
 
     if (!filas.length) {
@@ -2510,8 +2546,12 @@ window.VistaAdmin = (function () {
     const _flecha = col => _consultasOrdenCol === col ? (_consultasOrdenDir === 'asc' ? '▲' : '▼') : '↕';
     const _th = (col, label, align) =>
       `<th class="ord${_consultasOrdenCol === col ? ' ord-activo' : ''}" data-col="${col}"${align ? ` style="text-align:${align}"` : ''}>${label}<span class="ord-arrow">${_flecha(col)}</span></th>`;
-
-    const precioPromedioTotal = totalCantidad > 0 ? totalValor / totalCantidad : 0;
+    const _esc   = s => SC?.escapeHtml(s) ?? s;
+    const _badge = tipo => tipo ? ` <span class="consultas-tipo consultas-tipo--${tipo.toLowerCase()}">${tipo}</span>` : '';
+    const _precio = p => (p == null ? '—' : `$${p.toFixed(2)}`);
+    const _contCat = f => (f.almuerzos || f.segundos)
+      ? `${f.almuerzos} almuerzo${f.almuerzos === 1 ? '' : 's'} · ${f.segundos} segundo${f.segundos === 1 ? '' : 's'}`
+      : `${f.detalle.length} producto${f.detalle.length === 1 ? '' : 's'}`;
 
     tablaEl.innerHTML = `
       <table class="adm-tabla">
@@ -2525,28 +2565,27 @@ window.VistaAdmin = (function () {
           ${filas.map(f => {
             const tieneDetalle = Array.isArray(f.detalle) && f.detalle.length > 0;
             const expandida = tieneDetalle && _consultasExpandido.has(f.nombre);
-            const filaPrincipal = `<tr class="${tieneDetalle ? 'consultas-fila-cat' : ''}"${tieneDetalle ? ` data-cat="${SC?.escapeHtml(f.nombre) ?? f.nombre}"` : ''}>
+            const filaPrincipal = `<tr class="${tieneDetalle ? 'consultas-fila-cat' : ''}"${tieneDetalle ? ` data-cat="${_esc(f.nombre)}"` : ''}>
               <td data-label="${etiquetaCol}">
                 ${tieneDetalle
                   ? `<button type="button" class="consultas-expandir" aria-expanded="${expandida}">
                        <span class="consultas-expandir__flecha">${expandida ? '▾' : '▸'}</span>
-                       ${SC?.escapeHtml(f.nombre) ?? f.nombre}
-                       <span class="consultas-expandir__cont">${f.detalle.length} producto${f.detalle.length === 1 ? '' : 's'}</span>
+                       <span>${_esc(f.nombre)}</span>
+                       <span class="consultas-expandir__cont">${_contCat(f)}</span>
                      </button>`
-                  : (SC?.escapeHtml(f.nombre) ?? f.nombre)}
+                  : `${_esc(f.nombre)}${_badge(f.tipo)}`}
               </td>
               <td data-label="Cant." style="text-align:center">${f.cantidad}</td>
-              <td data-label="Precio Unit." style="text-align:right;color:var(--text-muted)">$${f.precio.toFixed(2)}</td>
+              <td data-label="Precio Unit." style="text-align:right;color:var(--text-muted)">${_precio(f.precio)}</td>
               <td data-label="Valor" style="text-align:right;font-weight:700;color:var(--cinnamon)">$${f.valor.toFixed(2)}</td>
             </tr>`;
             if (!tieneDetalle || !expandida) return filaPrincipal;
-            // Sub-filas: qué productos componen esta categoría, de mayor a
-            // menor valor vendido — mismo criterio que el desglose del
-            // tooltip de la gráfica de categorías, pero visible en la tabla.
+            // Sub-filas: qué productos componen esta categoría (en Almuerzos,
+            // separados en almuerzo completo vs. segundo), de mayor a menor valor.
             const subFilas = f.detalle.map(d => `<tr class="consultas-fila-detalle">
-              <td data-label="Producto">↳ ${SC?.escapeHtml(d.nombre) ?? d.nombre}</td>
+              <td data-label="Producto">↳ ${_esc(d.nombre)}${_badge(d.tipo)}</td>
               <td data-label="Cant." style="text-align:center">${d.cantidad}</td>
-              <td data-label="Precio Unit." style="text-align:right">$${d.precio.toFixed(2)}</td>
+              <td data-label="Precio Unit." style="text-align:right">${_precio(d.precio)}</td>
               <td data-label="Valor" style="text-align:right">$${d.valor.toFixed(2)}</td>
             </tr>`).join('');
             return filaPrincipal + subFilas;
@@ -2554,7 +2593,7 @@ window.VistaAdmin = (function () {
           <tr class="consultas-total">
             <td data-label="Total">TOTAL</td>
             <td data-label="Cant." style="text-align:center">${totalCantidad}</td>
-            <td data-label="Precio Unit." style="text-align:right;font-weight:400;font-size:.85em" title="Precio unitario promedio de todo lo visible">prom. $${precioPromedioTotal.toFixed(2)}</td>
+            <td data-label="Precio Unit." style="text-align:right">—</td>
             <td data-label="Valor" style="text-align:right">$${totalValor.toFixed(2)}</td>
           </tr>
         </tbody>
@@ -2606,17 +2645,32 @@ window.VistaAdmin = (function () {
       const _cell = (v, s, z) => { const c = { v, s }; c.z = z || (typeof v === 'number' ? INT_FMT : 'General'); if (typeof v === 'number') c.t = 'n'; return c; };
       const _merge = (ws, r1, c1, r2, c2) => { ws['!merges'] = ws['!merges'] || []; ws['!merges'].push({ s: { r: r1, c: c1 }, e: { r: r2, c: c2 } }); };
 
-      // Misma fila visible que la pantalla: respeta el filtro de texto actual
-      // (no el orden de clic, que ya no aporta nada en un Excel — se deja
-      // ordenado de mayor a menor valor vendido, que es lo más útil para leer).
-      const filtro = (document.getElementById('consultas-filtro')?.value || '').trim().toLowerCase();
-      const filas = (filtro ? _consultasFilas.filter(f => f.nombre.toLowerCase().includes(filtro)) : _consultasFilas)
-        .slice().sort((a, b) => b.valor - a.valor);
+      // Mismas filas visibles que la pantalla (mismo filtro), ordenadas de
+      // mayor a menor valor vendido, que es lo más útil para leer en Excel.
+      // Agrupando por categoría, el Excel trae SIEMPRE el desglose por
+      // producto debajo de cada categoría (en pantalla es desplegable).
+      const filas = _consultasFilasVisibles().slice().sort((a, b) => b.valor - a.valor);
       const totalCantidad = filas.reduce((s, f) => s + f.cantidad, 0);
       const totalValor    = filas.reduce((s, f) => s + f.valor, 0);
-      const etiquetaCol   = _consultasAgrupar === 'categoria' ? 'Categoría' : 'Producto';
+      const porCategoria  = _consultasAgrupar === 'categoria';
+      const etiquetaCol   = porCategoria ? 'Categoría' : 'Producto';
+      const totalAlmuerzos = porCategoria ? filas.reduce((s, f) => s + (f.almuerzos || 0), 0) : filas.filter(f => f.tipo === 'Almuerzo').reduce((s, f) => s + f.cantidad, 0);
+      const totalSegundos  = porCategoria ? filas.reduce((s, f) => s + (f.segundos  || 0), 0) : filas.filter(f => f.tipo === 'Segundo').reduce((s, f) => s + f.cantidad, 0);
+      const _nombreConTipo = f => f.tipo ? `${f.nombre} — ${f.tipo}` : f.nombre;
+      const _celdaPrecio = (p, s) => (p == null ? _cell('—', s) : _cell(p, s, MONEY_FMT));
 
-      const precioPromedioTotal = totalCantidad > 0 ? totalValor / totalCantidad : 0;
+      const filasDatos = [];
+      let i = 0;
+      filas.forEach(f => {
+        const bg = i++ % 2 === 0 ? WHITE : CREAM;
+        const sNombre = porCategoria ? { ..._sCell(bg), font: { bold: true, color: { rgb: BROWN_DARK } } } : _sCell(bg);
+        filasDatos.push([_cell(_nombreConTipo(f), sNombre), _cell(f.cantidad, _sCellCenter(bg), INT_FMT), _celdaPrecio(f.precio, _sCellRight(bg)), _cell(f.valor, _sCellRight(bg), MONEY_FMT)]);
+        (porCategoria ? f.detalle || [] : []).forEach(d => {
+          const bgD = i++ % 2 === 0 ? WHITE : CREAM;
+          filasDatos.push([_cell(`    ↳ ${_nombreConTipo(d)}`, _sCell(bgD)), _cell(d.cantidad, _sCellCenter(bgD), INT_FMT), _celdaPrecio(d.precio, _sCellRight(bgD)), _cell(d.valor, _sCellRight(bgD), MONEY_FMT)]);
+        });
+      });
+
       const filasHoja = [
         [_cell('Sal y Canela — Consulta de Ventas', _sTitle), _cell('', _sTitle), _cell('', _sTitle), _cell('', _sTitle)],
         [_cell(`RUC ${RUC_NEGOCIO} · RIMPE Negocio Popular (exento de IVA)`, _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle), _cell('', _sSubtitle)],
@@ -2624,19 +2678,20 @@ window.VistaAdmin = (function () {
         [_cell('Desde', _sLabel), _cell(_consultasDesde, _sValue), _cell('', _sValue), _cell('', _sValue)],
         [_cell('Hasta', _sLabel), _cell(_consultasHasta, _sValue), _cell('', _sValue), _cell('', _sValue)],
         [_cell('Agrupado por', _sLabel), _cell(etiquetaCol, _sValue), _cell('', _sValue), _cell('', _sValue)],
+        ...(totalAlmuerzos || totalSegundos ? [
+          [_cell('Almuerzos completos', _sLabel), _cell(totalAlmuerzos, _sValue, INT_FMT), _cell('', _sValue), _cell('', _sValue)],
+          [_cell('Segundos', _sLabel), _cell(totalSegundos, _sValue, INT_FMT), _cell('', _sValue), _cell('', _sValue)]
+        ] : []),
         [_cell('Generado', _sLabel), _cell(new Date().toLocaleString('es-EC'), _sValue), _cell('', _sValue), _cell('', _sValue)],
         [],
         [_cell(etiquetaCol, _sHeader), _cell('Cantidad', _sHeader), _cell('Precio Unit.', _sHeader), _cell('Valor', _sHeader)],
-        ...filas.map((f, i) => {
-          const bg = i % 2 === 0 ? WHITE : CREAM;
-          return [_cell(f.nombre, _sCell(bg)), _cell(f.cantidad, _sCellCenter(bg), INT_FMT), _cell(f.precio, _sCellRight(bg), MONEY_FMT), _cell(f.valor, _sCellRight(bg), MONEY_FMT)];
-        }),
-        [_cell('TOTAL', _sLabel), _cell(totalCantidad, { ..._sValueBold, alignment: { horizontal: 'center' } }, INT_FMT), _cell(precioPromedioTotal, _sValue, MONEY_FMT), _cell(totalValor, _sValueBold, MONEY_FMT)]
+        ...filasDatos,
+        [_cell('TOTAL', _sLabel), _cell(totalCantidad, { ..._sValueBold, alignment: { horizontal: 'center' } }, INT_FMT), _cell('—', _sValue), _cell(totalValor, _sValueBold, MONEY_FMT)]
       ];
       const ws = XLSX.utils.aoa_to_sheet(filasHoja);
       _merge(ws, 0, 0, 0, 3);
       _merge(ws, 1, 0, 1, 3);
-      ws['!cols'] = [{ wch: 30 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
+      ws['!cols'] = [{ wch: 44 }, { wch: 12 }, { wch: 14 }, { wch: 14 }];
       ws['!rows'] = [{ hpt: 26 }];
 
       const wb = XLSX.utils.book_new();
