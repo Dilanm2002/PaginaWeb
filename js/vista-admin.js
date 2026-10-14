@@ -2473,7 +2473,7 @@ window.VistaAdmin = (function () {
         const cat = _acumular(mapa, r.categoria, { nombre: r.categoria, tipo: null, precio: null, detalle: {} }, r);
         _acumular(cat.detalle, _consultasKeyProducto(r), { nombre: r.producto, tipo: r.tipo, precio: r.precio }, r);
       } else {
-        _acumular(mapa, _consultasKeyProducto(r), { nombre: r.producto, tipo: r.tipo, precio: r.precio, detalle: null }, r);
+        _acumular(mapa, _consultasKeyProducto(r), { nombre: r.producto, categoria: r.categoria, tipo: r.tipo, precio: r.precio, detalle: null }, r);
       }
     });
     const _sumaTipo = (lista, tipo) => lista.filter(d => d.tipo === tipo).reduce((s, d) => s + d.cantidad, 0);
@@ -2528,18 +2528,53 @@ window.VistaAdmin = (function () {
     const numItems = porCategoria ? filas.length : new Set(filas.map(f => f.nombre)).size;
 
     if (resumenEl) {
-      const _kpi = (val, lbl, color) => `
-        <div class="resumen-kpi-card">
-          <div class="resumen-kpi-card__val"${color ? ` style="color:${color}"` : ''}>${val}</div>
-          <div class="resumen-kpi-card__lbl">${lbl}</div>
-        </div>`;
-      resumenEl.innerHTML =
-        _kpi(numItems, porCategoria ? 'Categorías' : 'Productos') +
-        _kpi(totalCantidad, 'Unidades vendidas') +
-        (totalAlmuerzos || totalSegundos
-          ? _kpi(totalAlmuerzos, 'Almuerzos completos') + _kpi(totalSegundos, 'Segundos')
-          : '') +
-        _kpi(`$${totalValor.toFixed(2)}`, 'Total vendido', 'var(--cinnamon)');
+      // Resumen: una tarjeta con el total y, debajo, cuánto aportó cada
+      // categoría (unidades, valor y su peso en el total). En Almuerzos se
+      // detalla cuántos fueron completos y cuántos segundos.
+      const _escR = s => window.SC?.escapeHtml(s) ?? s;
+      const cats = {};
+      filas.forEach(f => {
+        const nombreCat = porCategoria ? f.nombre : (f.categoria || 'Sin categoría');
+        const c = cats[nombreCat] || (cats[nombreCat] = { nombre: nombreCat, cantidad: 0, valor: 0, almuerzos: 0, segundos: 0 });
+        c.cantidad += f.cantidad;
+        c.valor    += f.valor;
+        if (porCategoria) { c.almuerzos += f.almuerzos || 0; c.segundos += f.segundos || 0; }
+        else if (f.tipo === 'Almuerzo') c.almuerzos += f.cantidad;
+        else if (f.tipo === 'Segundo')  c.segundos  += f.cantidad;
+      });
+      const listaCats = Object.values(cats).sort((a, b) => b.valor - a.valor);
+      const _pl = (n, s, p) => `${n} ${n === 1 ? s : (p || s + 's')}`;
+      resumenEl.innerHTML = `
+        <div class="consultas-hero">
+          <div class="consultas-hero__lbl">Total vendido</div>
+          <div class="consultas-hero__val">$${totalValor.toFixed(2)}</div>
+          <div class="consultas-hero__meta">
+            <span><strong>${totalCantidad}</strong> ${totalCantidad === 1 ? 'unidad' : 'unidades'}</span>
+            <span><strong>${numItems}</strong> ${porCategoria ? (numItems === 1 ? 'categoría' : 'categorías') : (numItems === 1 ? 'producto' : 'productos')}</span>
+          </div>
+        </div>
+        ${listaCats.length ? `
+        <div class="consultas-cats">
+          <div class="consultas-cats__titulo">Por categoría</div>
+          ${listaCats.map(c => {
+            const pct = totalValor > 0 ? Math.round(c.valor / totalValor * 100) : 0;
+            const sub = (c.almuerzos || c.segundos)
+              ? `${_pl(c.almuerzos, 'completo')} · ${_pl(c.segundos, 'segundo')}`
+              : _pl(c.cantidad, 'unidad', 'unidades');
+            return `
+            <div class="consultas-cat">
+              <div class="consultas-cat__fila">
+                <span class="consultas-cat__nombre">${_escR(c.nombre)}</span>
+                <span class="consultas-cat__valor">$${c.valor.toFixed(2)}</span>
+              </div>
+              <div class="consultas-cat__barra"><span style="width:${pct}%"></span></div>
+              <div class="consultas-cat__fila consultas-cat__sub">
+                <span>${sub}</span>
+                <span>${pct}%</span>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>` : ''}`;
     }
 
     if (!filas.length) {

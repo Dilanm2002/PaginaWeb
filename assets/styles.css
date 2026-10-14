@@ -3099,6 +3099,37 @@
   .adm-tabla tr.consultas-fila-detalle td { color: var(--text-muted); font-size: .86rem; background: rgba(59,26,8,.015); }
   .adm-tabla tr.consultas-fila-detalle td:first-child { padding-left: 2.1rem; }
   /* Insignia de tipo en platos de Almuerzos: completo (sopa + segundo) vs. solo segundo */
+  /* Resumen de Consultas: total + desglose por categoría */
+  .consultas-resumen {
+    display: grid; grid-template-columns: minmax(220px, 300px) 1fr;
+    gap: 1rem; margin: .5rem 0 1.25rem; align-items: stretch;
+  }
+  .consultas-hero, .consultas-cats {
+    background: #fff; border: 1.5px solid rgba(0,0,0,.05); border-radius: 14px;
+    box-shadow: 0 2px 8px rgba(59,26,8,.06);
+  }
+  .consultas-hero {
+    padding: 1.1rem 1.25rem; display: flex; flex-direction: column; justify-content: center;
+    background: linear-gradient(135deg, var(--brown-dark), #5a2a10); color: #fff; border: none;
+  }
+  .consultas-hero__lbl { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; opacity: .8; }
+  .consultas-hero__val { font-size: 2.1rem; font-weight: 900; line-height: 1.1; margin: .2rem 0 .55rem; color: #F5B78C; }
+  .consultas-hero__meta { display: flex; gap: 1rem; flex-wrap: wrap; font-size: .82rem; opacity: .92; }
+  .consultas-hero__meta strong { font-size: 1rem; }
+  .consultas-cats { padding: .9rem 1.1rem; display: flex; flex-direction: column; gap: .7rem; }
+  .consultas-cats__titulo { font-size: .72rem; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+  .consultas-cat { display: flex; flex-direction: column; gap: .25rem; }
+  .consultas-cat__fila { display: flex; justify-content: space-between; align-items: baseline; gap: .75rem; }
+  .consultas-cat__nombre { font-weight: 700; color: var(--brown-dark); font-size: .9rem; min-width: 0; overflow-wrap: anywhere; }
+  .consultas-cat__valor { font-weight: 800; color: var(--cinnamon); font-size: .92rem; white-space: nowrap; }
+  .consultas-cat__barra { height: 6px; border-radius: 99px; background: rgba(59,26,8,.08); overflow: hidden; }
+  .consultas-cat__barra span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cinnamon), #E07B3A); }
+  .consultas-cat__sub { font-size: .74rem; color: var(--text-muted); }
+  @media (max-width: 767px) {
+    .consultas-resumen { grid-template-columns: 1fr; gap: .75rem; }
+    .consultas-hero { padding: 1rem 1.1rem; }
+    .consultas-hero__val { font-size: 1.9rem; }
+  }
   .consultas-tipo {
     display: inline-block; margin-left: .4rem; padding: .1rem .5rem; border-radius: 999px;
     font-size: .68rem; font-weight: 700; letter-spacing: .02em; vertical-align: middle; white-space: nowrap;
