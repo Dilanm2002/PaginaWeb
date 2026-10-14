@@ -104,13 +104,14 @@ window.VistaAdmin = (function () {
   let _ultimoReporte     = null; // datos del último renderReportes(), para exportar a Excel
   let _reportesGen       = 0; // se incrementa en cada renderReportes(); evita que un dibujo de gráfica diferido (esperando Plotly) pise una pestaña que el usuario ya cambió
   // ── Pestaña "Consultas" (Reportes): detalle por producto/categoría con rango libre ──
-  let _consultasInicializada = false; // para fijar el rango por defecto (este mes) una sola vez
+  let _consultasInicializada = false; // para cablear los eventos una sola vez
   let _consultasFilas     = []; // [{nombre, categoria, cantidad, valor}], ya agregado para el rango buscado
   let _consultasAgrupar   = 'producto'; // 'producto' | 'categoria'
   let _consultasOrdenCol  = 'valor';
   let _consultasOrdenDir  = 'desc'; // 'asc' | 'desc'
   let _consultasDesde     = null;
   let _consultasHasta     = null;
+  let _consultasDiaDefecto = null; // día en que se fijó el rango por defecto
   let _consultasExpandido = new Set(); // nombres de categoría actualmente desplegadas (solo aplica agrupando por categoría)
   // Clic en el encabezado "Método de pago" del Control de Caja alterna
   // entre orden cronológico y agrupado por método — agrupar hace mucho más
@@ -2304,29 +2305,32 @@ window.VistaAdmin = (function () {
   // ════════════════════════════════════════════════════════════════════
   let _consultasCrudo = []; // [{producto, categoria, cantidad, valor}] — una fila por línea de detalle, sin agregar
 
+  // Por defecto se consulta el día de hoy (desde = hasta = hoy); ver un
+  // rango más amplio es decisión del usuario.
   function _consultasRangoPorDefecto() {
-    const hoy = new Date();
-    const primerDia = new Date(hoy.getFullYear(), hoy.getMonth(), 1);
-    return { desde: _fechaLocalISO(primerDia), hasta: _fechaLocalISO(hoy) };
+    const hoy = _fechaLocalISO(new Date());
+    return { desde: hoy, hasta: hoy };
   }
 
   // Módulo "Consultas" del sidebar (grupo ANÁLISIS, debajo de Reportes).
-  // Cablear eventos y fijar el rango de fechas por defecto solo hace falta
-  // la primera vez; la búsqueda en cambio se repite cada vez que se entra
-  // al módulo, para que los datos no queden desactualizados si ya pasó
-  // tiempo desde la última visita (igual que el resto de los módulos de
-  // _cambiarModulo, que también se refrescan al navegar a ellos).
+  // Los eventos se cablean una sola vez. El rango vuelve a "hoy" la primera
+  // vez y cada vez que cambia el día (aunque la página haya quedado abierta
+  // desde ayer); dentro del mismo día se respeta el rango que eligió el
+  // usuario. La búsqueda se repite al entrar para no mostrar datos viejos.
   function _abrirConsultas() {
     if (!_consultasInicializada) {
       _consultasInicializada = true;
-      const { desde, hasta } = _consultasRangoPorDefecto();
+      _wireConsultasEventos();
+    }
+    const { desde, hasta } = _consultasRangoPorDefecto();
+    if (_consultasDiaDefecto !== hasta) {
+      _consultasDiaDefecto = hasta;
       const elDesde = document.getElementById('consultas-desde');
       const elHasta = document.getElementById('consultas-hasta');
       if (elDesde) elDesde.value = desde;
       if (elHasta) elHasta.value = hasta;
       _consultasDesde = desde;
       _consultasHasta = hasta;
-      _wireConsultasEventos();
     }
     _buscarConsultas();
   }
