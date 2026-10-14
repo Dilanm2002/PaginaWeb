@@ -3124,7 +3124,10 @@
   .consultas-cat__valor { font-weight: 800; color: var(--cinnamon); font-size: .92rem; white-space: nowrap; }
   .consultas-cat__barra { height: 6px; border-radius: 99px; background: rgba(59,26,8,.08); overflow: hidden; }
   .consultas-cat__barra span { display: block; height: 100%; border-radius: 99px; background: linear-gradient(90deg, var(--cinnamon), #E07B3A); }
-  .consultas-cat__sub { font-size: .74rem; color: var(--text-muted); }
+  .consultas-cat__sub { font-size: .74rem; color: var(--text-muted); align-items: flex-start; }
+  .consultas-cat__sub > span:first-child { min-width: 0; line-height: 1.45; }
+  .consultas-cat__sub strong { color: var(--brown-dark); font-weight: 700; }
+  .consultas-cat__sub > span:last-child { flex-shrink: 0; }
   @media (max-width: 767px) {
     .consultas-resumen { grid-template-columns: 1fr; gap: .75rem; }
     .consultas-hero { padding: 1rem 1.1rem; }

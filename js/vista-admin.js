@@ -2539,13 +2539,22 @@ window.VistaAdmin = (function () {
       const cats = {};
       filas.forEach(f => {
         const nombreCat = porCategoria ? f.nombre : (f.categoria || 'Sin categoría');
-        const c = cats[nombreCat] || (cats[nombreCat] = { nombre: nombreCat, cantidad: 0, valor: 0, almuerzos: 0, segundos: 0 });
+        const c = cats[nombreCat] || (cats[nombreCat] = { nombre: nombreCat, cantidad: 0, valor: 0, almuerzos: 0, segundos: 0, productos: {} });
         c.cantidad += f.cantidad;
         c.valor    += f.valor;
         if (porCategoria) { c.almuerzos += f.almuerzos || 0; c.segundos += f.segundos || 0; }
         else if (f.tipo === 'Almuerzo') c.almuerzos += f.cantidad;
         else if (f.tipo === 'Segundo')  c.segundos  += f.cantidad;
+        // Cuántas unidades salieron de cada producto de la categoría
+        (porCategoria ? f.detalle : [f]).forEach(d => {
+          c.productos[d.nombre] = (c.productos[d.nombre] || 0) + d.cantidad;
+        });
       });
+      // "2 Coca-Cola · 1 Jugo de mora": los más vendidos primero
+      const _detalleProductos = c => Object.entries(c.productos)
+        .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+        .map(([nombre, cant]) => `<strong>${cant}</strong>&nbsp;${_escR(nombre)}`)
+        .join(' · ');
       const listaCats = Object.values(cats).sort((a, b) => b.valor - a.valor);
       const _pl = (n, s, p) => `${n} ${n === 1 ? s : (p || s + 's')}`;
       resumenEl.innerHTML = `
@@ -2564,7 +2573,7 @@ window.VistaAdmin = (function () {
             const pct = totalValor > 0 ? Math.round(c.valor / totalValor * 100) : 0;
             const sub = (c.almuerzos || c.segundos)
               ? `${_pl(c.almuerzos, 'completo')} · ${_pl(c.segundos, 'segundo')}`
-              : _pl(c.cantidad, 'unidad', 'unidades');
+              : _detalleProductos(c);
             return `
             <div class="consultas-cat">
               <div class="consultas-cat__fila">
